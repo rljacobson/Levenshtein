@@ -5,16 +5,28 @@ message(STATUS "Using C++ standard: ${CMAKE_CXX_STANDARD}")
 
 project(Levenshtein)
 
-#set(CMAKE_BUILD_TYPE Release)
-#SET(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 
 # Library specific.
-set(DAMLEV_BUFFER_SIZE 500)
-add_definitions("-DHAVE_DLOPEN")
+#add_definitions("-DHAVE_DLOPEN")
 
-add_library(damlev MODULE Levenshtein.cpp)
+set(DAMLEV_SOURCES
+        damlev.cpp
+        damlevlim.cpp
+        damlevnorm.cpp
+   )
+
+
+add_library(damlev MODULE ${DAMLEV_SOURCES})
+# Uncomment the following to set the buffer size to something other than 512
+# characters. There is a hard max set at ~16KB. This is the wrong tool for
+# the job if you are using it for strings that large.
+#   target_compile_definitions(damlev PRIVATE DAMLEV_BUFFER_SIZE=4096ull)
+
+
+
+# Library Installation
 
 if(NOT DEFINED MYSQL_PLUGIN_DIR)
     if(INSTALL_PLUGINDIR)
