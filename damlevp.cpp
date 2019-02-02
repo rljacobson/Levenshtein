@@ -62,6 +62,7 @@
 #include <vector>
 #include <string>
 #include <string_view>
+#include <cstring>
 #include <iterator>
 #include <numeric>
 
