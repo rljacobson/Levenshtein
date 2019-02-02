@@ -8,32 +8,27 @@
             __—R.__
 
     <hr>
-    `DAMLEVLIM()` computes the Damarau Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+    `DAMLEVP()` computes the normalized Damarau Levenshtein edit distance between two strings.
+    The normalization is the edit distance divided by the length of the longest string:
+        ("edit distance")/("length of longest string").
 
     Syntax:
 
-        DAMLEVLIM(String1, String2, PosInt);
+        DAMLEVP(String1, String2);
 
     `String1`:  A string constant or column.
     `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE DAMLEVLIM(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+    Returns: A floating point number equal to the normalized edit distance between `String1` and
+    `String2`.
 
     Example Usage:
 
-        SELECT Name, DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE EditDist < 6;
+        SELECT Name, DAMLEVP(Name, "Vladimir Iosifovich Levenshtein") AS
+            EditDist FROM CUSTOMERS WHERE EditDist < 0.2;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
+    where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
 
     <hr>
 
@@ -77,12 +72,12 @@
 #include "mysql.h"
 
 // Limits
-#ifndef DAMLEVLIM_BUFFER_SIZE
-    // 640k should be good enough for anybody.
-    #define DAMLEVLIM_BUFFER_SIZE 512ull
+#ifndef DAMLEVP_BUFFER_SIZE
+    // 640k should be good enough for anybody. Make it a multiple of 64 so it's aligned on a 64
+    // bit boundary.
+    #define DAMLEVP_BUFFER_SIZE 512ull
 #endif
-constexpr long long DAMLEVLIM_MAX_EDIT_DIST = std::max(0ull,
-        std::min(16384ull, DAMLEVLIM_BUFFER_SIZE));
+constexpr long long DAMLEVP_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull,  DAMLEVP_BUFFER_SIZE));
 
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
@@ -90,76 +85,68 @@ constexpr long long DAMLEVLIM_MAX_EDIT_DIST = std::max(0ull,
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVLIM_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVLIM() requires three arguments:\n"
-                                 "\t1. A string\n"
-                                 "\t2. A string\n"
-                                 "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_NUM_ERROR_LEN = std::size(DAMLEVLIM_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVLIM_MEM_ERROR[] = "Failed to allocate memory for DAMLEVLIM"
+        DAMLEVP_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVP() requires two arguments:\n"
+                                 "\t1. A string.\n"
+                                 "\t2. Another string.";
+constexpr const auto DAMLEVP_ARG_NUM_ERROR_LEN = std::size(DAMLEVP_ARG_NUM_ERROR) + 1;
+constexpr const char DAMLEVP_MEM_ERROR[] = "Failed to allocate memory for DAMLEVP"
                                           " function.";
-constexpr const auto DAMLEVLIM_MEM_ERROR_LEN = std::size(DAMLEVLIM_MEM_ERROR) + 1;
+constexpr const auto DAMLEVP_MEM_ERROR_LEN = std::size(DAMLEVP_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVLIM_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVLIM() requires three arguments:\n"
-                                     "\t1. A string\n"
-                                     "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIM_ARG_TYPE_ERROR) + 1;
+        DAMLEVP_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVP() requires two arguments:\n"
+                                  "\t1. A string.\n"
+                                  "\t2. Another string.";
+constexpr const auto DAMLEVP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVP_ARG_TYPE_ERROR) + 1;
 
 // Use a "C" calling convention.
 extern "C" {
-bool damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevlim_deinit(UDF_INIT *initid);
+    bool damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    void damlevp_deinit(UDF_INIT *initid);
 }
 
-bool damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+bool damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
-    if (args->arg_count != 3) {
-        strncpy(message, DAMLEVLIM_ARG_NUM_ERROR, DAMLEVLIM_ARG_NUM_ERROR_LEN);
+    if (args->arg_count != 2) {
+        strncpy(message, DAMLEVP_ARG_NUM_ERROR, DAMLEVP_ARG_NUM_ERROR_LEN);
         return 1;
     }
         // The arguments needs to be of the right type.
-    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT ||
-            args->arg_type[2] != INT_RESULT) {
-        strncpy(message, DAMLEVLIM_ARG_TYPE_ERROR, DAMLEVLIM_ARG_TYPE_ERROR_LEN);
+    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
+        strncpy(message, DAMLEVP_ARG_TYPE_ERROR, DAMLEVP_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to allocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) std::vector<size_t>(DAMLEVLIM_MAX_EDIT_DIST);
+    initid->ptr = (char *)new(std::nothrow) std::vector<size_t>((DAMLEVP_MAX_EDIT_DIST));
     if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEVLIM_MEM_ERROR, DAMLEVLIM_MEM_ERROR_LEN);
+        strncpy(message, DAMLEVP_MEM_ERROR, DAMLEVP_MEM_ERROR_LEN);
         return 1;
     }
 
-    // damlevlim does not return null.
+    // damlevp does not return null.
     initid->maybe_null = 0;
     return 0;
 }
 
-void damlevlim_deinit(UDF_INIT *initid) {
+void damlevp_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) char *is_null,
-                    __attribute__((unused)) char *error) {
-    // Retrieve the arguments.
-    // Maximum edit distance.
-    long long max;
-    max = std::min(*((long long *)args->args[2]),
-                   DAMLEVLIM_MAX_EDIT_DIST);
-    if (max == 0) {
-        return 0ll;
-    }
-    if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
-            args->lengths[1] == 0) {
+double damlevp(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) char *is_null,
+               __attribute__((unused)) char *error) {
+    // Check the arguments.
+    if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
+        || args->args[0] == nullptr) {
         // Either one of the strings doesn't exist, or one of the strings has
         // length zero. In either case
-        return (long long)std::max(args->lengths[0], args->lengths[1]);
+        return 1.0;
     }
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
-
+    // Save the original max string length for the normalization when we return.
+    const double max_string_length = static_cast<double>(std::max(args->lengths[0],
+            args->lengths[1]));
     // Let's make some string views so we can use the STL.
     std::string_view subject{args->args[0], args->lengths[0]};
     std::string_view query{args->args[1], args->lengths[1]};
@@ -171,9 +158,9 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) ch
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
-        return (size_t)(query.length() - start_offset);
+        return static_cast<double>(query.length() - start_offset)/max_string_length;
     } else if (query.length() == start_offset) {
-        return (size_t)(subject.length() - start_offset);
+        return static_cast<double>(subject.length() - start_offset)/max_string_length;
     }
 
     // Skip any common suffix.
@@ -183,7 +170,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) ch
     auto end_offset = std::min((size_t)std::distance(subject.rbegin(), subject_end),
                                (size_t)(subject.size() - start_offset));
 
-    // Take the different part.
+    // Only look at the different part in the middle.
     subject = subject.substr(start_offset, subject.size() - end_offset - start_offset + 1);
     query = query.substr(start_offset, query.size() - end_offset - start_offset + 1);
 
@@ -193,13 +180,12 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) ch
     }
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
-        return query.length();
+        return static_cast<double>(query.length())/max_string_length;
     }
 
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
-
-    size_t end_j;
+    size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
         size_t temp = buffer[0]++;
@@ -212,22 +198,14 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) ch
         // between i-max <= j <= i+max.
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
-        const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                DAMLEVLIM_MAX_EDIT_DIST/2));
+        const size_t start_j = static_cast<size_t>(std::max(1ll,
+                                               (static_cast<long long>(i) - DAMLEVP_MAX_EDIT_DIST/2)));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + DAMLEVLIM_MAX_EDIT_DIST/2));
-        size_t column_min = DAMLEVLIM_MAX_EDIT_DIST;     // Sentinels
+                static_cast<size_t >(i + DAMLEVP_MAX_EDIT_DIST/2));
+        size_t column_min = static_cast<size_t>(DAMLEVP_MAX_EDIT_DIST);
         for (size_t j = start_j; j < end_j; ++j) {
             const size_t p = temp; // p = buffer[j - 1];
             const size_t r = buffer[j];
-            /*
-            auto min = r;
-            if (p < min) min = p;
-            if (prior_temp < min) min = prior_temp;
-            min++;
-            temp = temp + (subject[i - 1] == query[j - 1] ? 0 : 1);
-            if (min < temp) temp = min;
-            */
             temp = std::min(std::min(r,  // Insertion.
                                      p   // Deletion.
                             ) + 1,
@@ -250,15 +228,15 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) ch
             std::cout << temp << "  ";
             #endif
         }
-        if (column_min >= DAMLEVLIM_MAX_EDIT_DIST) {
+        if (column_min >= DAMLEVP_MAX_EDIT_DIST) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return DAMLEVLIM_MAX_EDIT_DIST;
+            return static_cast<double>(DAMLEVP_MAX_EDIT_DIST)/max_string_length;
         }
         #ifdef PRINT_DEBUG
         std::cout << std::endl;
         #endif
     }
 
-    return buffer[end_j-1];
+    return static_cast<double>(buffer[end_j-1])/max_string_length;
 }

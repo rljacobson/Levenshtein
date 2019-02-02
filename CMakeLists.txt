@@ -13,8 +13,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 
 set(DAMLEV_SOURCES
         damlev.cpp
+        damlevp.cpp
         damlevlim.cpp
-        damlevnorm.cpp
+        damlevlimp.cpp
    )
 
 
@@ -42,7 +43,7 @@ message(STATUS "Plugin dir: ${MYSQL_PLUGIN_DIR}")
 execute_process(COMMAND mysql_config --include
         OUTPUT_VARIABLE MYSQL_INCLUDE
         OUTPUT_STRIP_TRAILING_WHITESPACE)
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${MYSQL_INCLUDE}")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${MYSQL_INCLUDE}")
 message(STATUS "Include dir: ${MYSQL_INCLUDE}")
 message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")
 

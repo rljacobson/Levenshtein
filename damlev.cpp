@@ -129,17 +129,11 @@ void damlev_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
+long long damlev(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) char *is_null,
+        __attribute__((unused)) char *error) {
     // Retrieve the arguments.
-    // Maximum edit distance.
-    long long max;
-    // In the following, args->args[2] holds a signed long long,
-    max = std::min(*((long long *)args->args[2]), DAMLEV_MAX_EDIT_DIST);
-    if (max <= 0) {
-        return 0ll;
-    }
-    if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
-            args->lengths[1] == 0) {
+    if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
+            || args->args[0] == nullptr) {
         // Either one of the strings doesn't exist, or one of the strings has
         // length zero. In either case
         return (long long)std::max(args->lengths[0], args->lengths[1]);
