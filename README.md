@@ -17,7 +17,8 @@ Does the world really need another Levenshtein edit distance function for MySQL?
 [Limitations](#limitations)<br>
 [Requirements](#requirements)<br>
 [Preparation for Use](#preparation-for-use)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[Building](#building)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Acquiring prebuilt binaries](acquiring-prebuilt-binaries)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Building from source](#building-from-source)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[Installing](#installing)<br>
 [Warning](#warning)<br>
 [Authors and License](#authors-and-license)
@@ -167,6 +168,7 @@ request!
 
 ### Acquiring prebuilt binaries
 
+This is probably the easiest and fastest way to get going. Get pre-built binaries on [the Releases page](https://github.com/rljacobson/Levenshtein/releases). There are pre-built binaries for Linux, macOS, and Windows. Download the file and put it in your MySQL plugins directory. Then procede to the [Installing](#installing) section.
 
 
 ### Building from source
