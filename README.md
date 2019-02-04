@@ -1,12 +1,39 @@
-# Damerau–Levenshtein Edit Distance UDF for MySQL 8.0+
+# Blazingly Fast Damerau–Levenshtein Edit Distance UDF for MySQL
 
-This implementation is better than most others out there. It is extremely
-fast and efficient.<br><br>
+This implementation is extremely fast and efficient, using both well-known and novel optimizations.<br><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_—R.J._
 <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_January 17, 2019_
 
+Does the world really need another Levenshtein edit distance function for MySQL? YES. The most popular versions floating around on the internet are very slow and so poorly written as to be _dangerous_. Do not use them!
 
+[FAQ](#faq)<br>
+[Functions](#functions)<br>
+[Usage](#usage)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[DAMLEV](#damlev)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[DAMLEVLIM](#damlevlim)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[DAMLEVP](#damlevp)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[DAMLEVLIMP](#damlevlimp)<br>
+[Limitations](#limitations)<br>
+[Requirements](#requirements)<br>
+[Preparation for Use](#preparation-for-use)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Building](#building)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[Installing](#installing)<br>
+[Warning](#warning)<br>
+[Authors and License](#authors-and-license)
+
+## FAQ
+**Q:** How is Damerau-Levenshtein edit distance different from Levenshtein edit distance?
+
+**A:** Levenshtein edit distance allows for insertions, deletions, and substitutions. Damerau-Levenshtein edit distance allows transposition in addition to the other three operations. Many "Levenshtein" functions are actually Damerau-Levenshtein functions. 
+
+**Q:** What are the `*LIM` versions of the functions?
+
+**A:** An optimization in which the algorithm will only perform the computation until the provided limit is reached. Then it returns the limit. This can be much more efficient if you only care about edit distance less than some known upper bound, a typical case with databases.
+
+**Q:** What are the `*P` versions of the functions?
+
+**A:** These functions return a normalized edit distance. The number returned is (edit distance)/(max string length), which is always a number in the interval `[0, 1]`. One interpretation of this is that of a percentage match. 
 
 ## Functions
 
@@ -111,7 +138,7 @@ SELECT Name, DAMLEVLIMP(Name, "Vladimir Iosifovich Levenshtein", 0.2) AS
 The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
 where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
 
-## Limitations:
+## Limitations
 
 * This implementation assumes characters are represented as 8 bit `char`'s on your platform. If you are using UTF-8 codepoints above 255 (i.e. outside of UCS-2), this function will not
 compute the correct edit distance between your strings.
@@ -138,14 +165,19 @@ request!
 
 ## Preparation for Use
 
-### Building
+### Acquiring prebuilt binaries
+
+
+
+### Building from source
 
 The usual CMake build process with `make`:
 
 ```bash
 $ mkdir build
 $ cd build
-$ cmake .. && make
+$ cmake .. 
+$ make
 $ make install
 ```
 
@@ -154,13 +186,20 @@ Alternatively, the usual CMake build process with `ninja`:
 ```bash
 $ mkdir build
 $ cd build
-$ cmake .. -G Ninja && ninja
+$ cmake .. -G Ninja 
+$ ninja
 $ ninja install
 ```
 
 This will build the shared library `libdamlev.so` (`.dll` on Windows).
 
 #### Troubleshooting the build
+
+You can pass in `MYSQL_INCLUDE` and `MYSQL_PLUGIN_DIR` to tell CMake where to find `mysql.h` and where to install the plugin respectively. This is particularly helpful on Windows machines, which tend not to have `mysql_config` in the `PATH`:
+
+```bash
+$ cmake -DMYSQL_INCLUDE="C:\Program Files\MySQL\MySQL Server 8.0\include" -DMYSQL_PLUGIN_DIR="C:\Program Files\MySQL\MySQL Server 8.0\lib\plugin" .. 
+```
 
 1. The build script tries to find the required header files with `mysql_config --include`.
 Otherwise, it takes a wild guess. Check to see if `mysql_config --plugindir` works on your command
@@ -170,7 +209,7 @@ line.
 
 ### Installing
 
-After building, install the shared library `damlev_udf.so` to the plugins directory of your MySQL
+After building, install the shared library `libdamlev.so` to the plugins directory of your MySQL
 installation:
 
 ```bash
@@ -179,29 +218,38 @@ $ mysql -u root
 ```
 
 Enter your MySQL root user password to log in as root. Then follow the "usual" instructions for
-installing a compiled UDF:
+installing a compiled UDF. Change out `.so` for `.dll` if you are on Windows:
 
 ```sql
-CREATE FUNCTION damlev RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION DAMLEV RETURNS INTEGER
+  SONAME 'libdamlev.so';
+CREATE FUNCTION DAMLEVLIM RETURNS INTEGER
+  SONAME 'libdamlev.so';
+CREATE FUNCTION DAMLEVP RETURNS REAL
+  SONAME 'libdamlev.so';
+CREATE FUNCTION DAMLEVLIMP RETURNS REAL
+  SONAME 'libdamlev.so';
 ```
 
 To uninstall:
 
 ```sql
-DROP FUNCTION damlev;
+DROP FUNCTION DAMLEV;
+DROP FUNCTION DAMLEVLIM;
+DROP FUNCTION DAMLEVP;
+DROP FUNCTION DAMLEVLIMP;
 ```
 
 Then optionally remove the library file from the plugins directory:
 
 ```bash
-$ rm /path/to/plugin/dir/damlev_udf.so
+$ rm /path/to/plugin/dir/libdamlev.so
 ```
 
 You can ask MySQL for the plugin directory:
 
 ```bash
 $ mysql_config --plugindir
-
 /path/to/directory/
 ```
 
