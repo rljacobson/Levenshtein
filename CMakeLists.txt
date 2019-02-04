@@ -43,6 +43,15 @@ message(STATUS "Plugin dir: ${MYSQL_PLUGIN_DIR}")
 execute_process(COMMAND mysql_config --include
         OUTPUT_VARIABLE MYSQL_INCLUDE
         OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(WIN64)
+	# This is not at all robust. We need a better solution.
+	if(NOT DEFINED MYSQL_INCLUDE)	
+		set(MYSQL_INCLUDE "C:\Program Files\MySQL\MySQL Server 8.0\include")
+	endif()
+	if(NOT DEFINED MYSQL_PLUGIN_DIR)
+		set(MYSQL_PLUGIN_DIR "C:\Program Files\MySQL\MySQL Server 8.0\lib\plugin")
+	endif()
+endif()
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${MYSQL_INCLUDE}")
 message(STATUS "Include dir: ${MYSQL_INCLUDE}")
 message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")

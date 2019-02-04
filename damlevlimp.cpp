@@ -65,19 +65,7 @@
     IN THE SOFTWARE.
 */
 
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <string_view>
-#include <cstring>
-#include <iterator>
-#include <numeric>
-
-#ifdef PRINT_DEBUG
-#include <iostream>
-#endif
-
-#include "mysql.h"
+#include "common.h"
 
 // Limits
 #ifndef DAMLEVLIMP_BUFFER_SIZE
@@ -144,8 +132,7 @@ void damlevlimp_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) char *is_null,
-                  __attribute__((unused)) char *error) {
+double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
     // Retrieve the arguments.
     // Maximum edit distance.
     long long max = std::min(*((long long *)args->args[2]), DAMLEVLIMP_MAX_EDIT_DIST);

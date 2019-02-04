@@ -58,19 +58,7 @@
     IN THE SOFTWARE.
 */
 
-#include <algorithm>
-#include <vector>
-#include <string>
-#include <string_view>
-#include <cstring>
-#include <iterator>
-#include <numeric>
-
-#ifdef PRINT_DEBUG
-#include <iostream>
-#endif
-
-#include "mysql.h"
+#include "common.h"
 
 // Limits
 #ifndef DAMLEVP_BUFFER_SIZE
@@ -134,8 +122,7 @@ void damlevp_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-double damlevp(UDF_INIT *initid, UDF_ARGS *args, __attribute__((unused)) char *is_null,
-               __attribute__((unused)) char *error) {
+double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
     // Check the arguments.
     if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
         || args->args[0] == nullptr) {
