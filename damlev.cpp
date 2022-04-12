@@ -91,7 +91,7 @@ void damlev_deinit(UDF_INIT *initid);
 }
 
 bool damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
-    // We require 3 arguments:
+    // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, DAMLEV_ARG_NUM_ERROR, DAMLEV_ARG_NUM_ERROR_LEN);
         return 1;

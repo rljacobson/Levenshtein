@@ -62,8 +62,10 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-
+#include <iostream>
 #include "common.h"
+
+#define PRINT_DEBUG
 
 // Limits
 #ifndef DAMLEVLIM_BUFFER_SIZE
@@ -141,6 +143,9 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     }
     if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
             args->lengths[1] == 0) {
+        #ifdef PRINT_DEBUG
+        std::cout << "String DNE, bailing" << std::endl;
+        #endif
         // Either one of the strings doesn't exist, or one of the strings has
         // length zero. In either case
         return (long long)std::max(args->lengths[0], args->lengths[1]);
@@ -159,8 +164,14 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a prefix of " << query << ", bailing" << std::endl;
+        #endif
         return (size_t)(query.length() - start_offset);
     } else if (query.length() == start_offset) {
+        #ifdef PRINT_DEBUG
+        std::cout << query << " is a prefix of " << subject << ", bailing" << std::endl;
+        #endif
         return (size_t)(subject.length() - start_offset);
     }
 
@@ -181,6 +192,9 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     }
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
+        #endif
         return query.length();
     }
 
@@ -248,5 +262,5 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
         #endif
     }
 
-    return buffer[end_j-1];
+    return buffer[end_j-1]; // why -1?
 }

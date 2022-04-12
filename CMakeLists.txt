@@ -72,6 +72,10 @@ add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testca
 		damlevconst.cpp)
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
+## This is for one-off testing for debugging purposes.
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevlim.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevlim)
+
 ## Benchmark
 add_executable(benchmark common.h tests/testharness.hpp damlevconst.cpp noop.cpp tests/benchmark.cpp)
 # Boost is only required for the benchmark target.
@@ -80,21 +84,3 @@ target_include_directories(benchmark PUBLIC /usr/local/include)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")
-
-## This custom target actually runs the benchmark.
-#add_custom_target(benchmark DEPENDS damlevconst)
-## iosifovitch2 iosifovitch_original dynamic 8bitchars
-## Set this higher for a longer run.
-#set(BENCHMARK_WORDS 1000)
-#add_custom_command(TARGET benchmark
-#		POST_BUILD
-#		COMMAND time echo ${BENCHMARK_WORDS} | ./iosifovitch_experiment
-#		COMMAND time echo ${BENCHMARK_WORDS} | ./iosifovitch
-#		#        COMMAND time echo ${BENCHMARK_WORDS} | ./iosifovitch2
-#		COMMAND time echo ${BENCHMARK_WORDS} | ./iosifovitch3
-#		#        COMMAND time echo ${BENCHMARK_WORDS} | ./iosifovitch_original
-#		#        COMMAND time echo ${BENCHMARK_WORDS} | ./dynamic
-#		# COMMAND time echo ${BENCHMARK_WORDS} | ./classic
-#		# COMMAND time echo ${BENCHMARK_WORDS} | ./8bitchars
-#		WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-#		)
