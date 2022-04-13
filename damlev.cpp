@@ -227,8 +227,8 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
                     )
             {
                 temp = std::min(
-                        temp,
-                        prior_temp + cost   // transposition
+                        temp + cost,
+                        prior_temp   // transposition
                 );
             };
 
