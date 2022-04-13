@@ -54,9 +54,10 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
+#include <iostream>
 
 #include "common.h"
-
+#define PRINT_DEBUG
 // Limits
 #ifndef DAMLEV_BUFFER_SIZE
     // 640k should be good enough for anybody.
@@ -133,15 +134,17 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     std::string_view subject{args->args[0], args->lengths[0]};
     std::string_view query{args->args[1], args->lengths[1]};
 
-    // Skip any common prefix.
+   // Skip any common prefix.
     auto[subject_begin, query_begin] =
     std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
     auto start_offset = (size_t)std::distance(subject.begin(), subject_begin);
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
+
         return (long long)(query.length() - start_offset);
     } else if (query.length() == start_offset) {
+
         return (long long)(subject.length() - start_offset);
     }
 
@@ -158,22 +161,31 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
 
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
+        #ifdef PRINT_DEBUG
+        std::cout << "WE SWAPPED" << std::endl;
+        #endif
         std::swap(subject, query);
     }
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
+        #endif
         return static_cast<long long>(query.length());
     }
-
+    #ifdef PRINT_DEBUG
+    std::cout << subject << " HELLO " << query << ", WORLD" << std::endl;
+    #endif
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
     size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
-        size_t temp = buffer[0]++;
+        size_t temp = i-1;
+        //size_t temp = buffer[0]++;
         size_t prior_temp = 0;
         #ifdef PRINT_DEBUG
-        std::cout << i << ":  " << temp << "  ";
+        std::cout << subject[buffer[0]++]<<" "<<i << ":  " << temp << "  ";
         #endif
 
         // Setup for max distance, which only needs to look in the window
@@ -184,21 +196,42 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
                                                (static_cast<long long>(i) - DAMLEV_MAX_EDIT_DIST/2)));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
                 static_cast<size_t >(i + DAMLEV_MAX_EDIT_DIST/2));
+
         size_t column_min = static_cast<size_t>(DAMLEV_MAX_EDIT_DIST);
         for (size_t j = start_j; j < end_j; ++j) {
-            const size_t p = temp; // p = buffer[j - 1];
+
+            //const size_t p = temp; //
+            const size_t p = buffer[j - 1];
             const size_t r = buffer[j];
+
+            size_t cost;
+            if (subject[i-1] == query[j-1]) {
+                 cost =0;
+            } else  cost =1;
+
+
             temp = std::min(std::min(r,  // Insertion.
                                      p   // Deletion.
                             ) + 1,
 
-                            std::min(
-                                    // Transposition.
-                                    prior_temp + 1,
+
                                     // Substitution.
-                                    temp + (subject[i - 1] == query[j - 1] ? 0 : 1)
-                            )
+                                    temp + cost
+
             );
+            // Transposition.
+            if( (i > 1) &&
+                (j > 1) &&
+                (subject[i-1] == query[j-2]) &&
+                (subject[i-2] == query[j-1])
+                    )
+            {
+                temp = std::min(
+                        temp,
+                        prior_temp + cost   // transposition
+                );
+            };
+
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
@@ -206,6 +239,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
             // Record matrix value mat[i-2][j-2].
             prior_temp = temp;
             std::swap(buffer[j], temp);
+
             #ifdef PRINT_DEBUG
             std::cout << temp << "  ";
             #endif
@@ -213,12 +247,17 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         if (column_min >= DAMLEV_MAX_EDIT_DIST) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
+            #ifdef PRINT_DEBUG
+            std::cout << "There is no way to get an edit distance > column_min" << ":  " << DAMLEV_MAX_EDIT_DIST << "  ";
+            #endif
             return DAMLEV_MAX_EDIT_DIST;
         }
+/*        #ifdef PRINT_DEBUG
+        std::cout <<"##LD AFTER LOOP =: "<<temp <<std::endl;
+        #endif*/
         #ifdef PRINT_DEBUG
         std::cout << std::endl;
         #endif
     }
-
     return buffer[end_j-1];
 }
