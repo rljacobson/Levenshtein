@@ -65,7 +65,7 @@
 
 #include <iostream>
 #include "common.h"
-
+#define PRINT_DEBUG
 // #define PRINT_DEBUG
 
 
@@ -164,7 +164,7 @@ void damlevconst_deinit(UDF_INIT *initid) {
     }
     delete[] initid->ptr;
 }
-
+//TODO: DAMLEVCONST_MAX_EDIT_DIST is not being set correctly.
 long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
 
     // Retrieve the arguments, setting maximum edit distance and the strings accordingly.
@@ -172,6 +172,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         // This is the case that the user gave 0 as max distance.
         return 0ll;
     }
+
 
     // Retrieve the persistent data.
     PersistentData &data = *(PersistentData *)initid->ptr;
@@ -184,6 +185,10 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
     // For purposes of the algorithm, set max to the smallest distance seen so far.
     max = std::min(*((long long *)args->args[2]), max);
+    #ifdef PRINT_DEBUG
+    std::cout <<max<<": max"<< std::endl;
+    const int DAMLEVCONST_MAX_EDIT_DIST = max;
+    #endif
     if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
             args->lengths[1] == 0) {
         // Either one of the strings doesn't exist, or one of the strings has
@@ -245,10 +250,11 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
     size_t end_j;
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
-        size_t temp = buffer[0]++;
+        size_t temp = i-1;
+        //size_t temp = buffer[0]++;
         size_t prior_temp = 0;
         #ifdef PRINT_DEBUG
-        std::cout << i << ":  " << temp << "  ";
+        std::cout << subject[buffer[0]++]<<" "<<i << ": " << temp << " ";
         #endif
 
         // Setup for max distance, which only needs to look in the window
@@ -261,27 +267,43 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
                          static_cast<size_t >(i + DAMLEVCONST_MAX_EDIT_DIST/2));
         size_t column_min = DAMLEVCONST_MAX_EDIT_DIST;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
-            const size_t p = temp; // p = buffer[j - 1];
+            //const size_t p = temp; //
+            const size_t p = buffer[j - 1];
             const size_t r = buffer[j];
-            /*
-            auto min = r;
-            if (p < min) min = p;
-            if (prior_temp < min) min = prior_temp;
-            min++;
-            temp = temp + (subject[i - 1] == query[j - 1] ? 0 : 1);
-            if (min < temp) temp = min;
-            */
+            size_t cost;
+            if (subject[i-1] == query[j-1]) {
+                cost =0;
+            } else  cost =1;
+
+
             temp = std::min(std::min(r,  // Insertion.
                                      p   // Deletion.
                             ) + 1,
 
-                            std::min(
-                                    // Transposition.
-                                    prior_temp + 1,
-                                    // Substitution.
-                                    temp + (subject[i - 1] == query[j - 1] ? 0 : 1)
-                            )
+
+                    // Substitution.
+                            temp + cost
+
             );
+            #ifdef PRINT_DEBUG
+            //std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
+            #endif
+            // Transposition.
+            if( (i > 1) &&
+                (j > 1) &&
+                (subject[i-1] == query[j-2]) &&
+                (subject[i-2] == query[j-1])
+
+                    )
+            {
+                temp = std::min(
+                        temp + cost,
+                        prior_temp   // transposition
+                );
+                #ifdef PRINT_DEBUG
+                //std::cout << " # In Transposition  "<<temp <<" # ";
+                #endif
+            };
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
@@ -290,13 +312,13 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
             prior_temp = temp;
             std::swap(buffer[j], temp);
             #ifdef PRINT_DEBUG
-            std::cout << temp << "  ";
+            std::cout << temp << " ";
             #endif
         }
         if (column_min >= DAMLEVCONST_MAX_EDIT_DIST) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return DAMLEVCONST_MAX_EDIT_DIST;
+            return std::max(subject.length(),query.length());//DAMLEVCONST_MAX_EDIT_DIST;
         }
         #ifdef PRINT_DEBUG
         std::cout << std::endl;
