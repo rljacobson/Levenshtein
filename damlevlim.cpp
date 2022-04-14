@@ -135,6 +135,16 @@ void damlevlim_deinit(UDF_INIT *initid) {
 long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
     // Retrieve the arguments.
     // Maximum edit distance.
+    #ifdef PRINT_DEBUG
+    std::cout << "Maximum edit distance:" <<  std::min(*((long long *)args->args[2]),
+                                                    DAMLEVLIM_MAX_EDIT_DIST)<<std::endl;
+    std::cout << "DAMLEVLIM_MAX_EDIT_DIST:" <<DAMLEVLIM_MAX_EDIT_DIST<<std::endl;
+    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
+                                                                     args->lengths[1]))<<std::endl;
+
+    #endif
+    const double max_string_length = static_cast<double>(std::max(args->lengths[0],
+                                                                  args->lengths[1]));
     long long max;
     max = std::min(*((long long *)args->args[2]),
                    DAMLEVLIM_MAX_EDIT_DIST);
@@ -205,9 +215,11 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
         size_t temp = buffer[0]++;
+        //size_t temp = i-1;
         size_t prior_temp = 0;
+
         #ifdef PRINT_DEBUG
-        std::cout << i << ":  " << temp << "  ";
+        std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
         #endif
 
         // Setup for max distance, which only needs to look in the window
@@ -218,29 +230,36 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
                 DAMLEVLIM_MAX_EDIT_DIST/2));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
                          static_cast<size_t >(i + DAMLEVLIM_MAX_EDIT_DIST/2));
-        size_t column_min = DAMLEVLIM_MAX_EDIT_DIST;     // Sentinels
+        size_t column_min = max;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
             const size_t p = temp; // p = buffer[j - 1];
             const size_t r = buffer[j];
-            /*
-            auto min = r;
-            if (p < min) min = p;
-            if (prior_temp < min) min = prior_temp;
-            min++;
-            temp = temp + (subject[i - 1] == query[j - 1] ? 0 : 1);
-            if (min < temp) temp = min;
-            */
+            size_t cost;
+            if (subject[i - 1] == query[j - 1]) {
+                cost = 0;
+            } else cost = 1;
+
+
             temp = std::min(std::min(r,  // Insertion.
                                      p   // Deletion.
                             ) + 1,
 
-                            std::min(
-                                    // Transposition.
-                                    prior_temp + 1,
-                                    // Substitution.
-                                    temp + (subject[i - 1] == query[j - 1] ? 0 : 1)
-                            )
+
+                    // Substitution.
+                            temp + cost
+
             );
+            // Transposition.
+            if ((i > 1) &&
+                (j > 1) &&
+                (subject[i - 1] == query[j - 2]) &&
+                (subject[i - 2] == query[j - 1])
+                    ) {
+                temp = std::min(
+                        temp + cost,
+                        prior_temp   // transposition
+                );
+            };
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
@@ -252,10 +271,20 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
             std::cout << temp << "  ";
             #endif
         }
-        if (column_min >= DAMLEVLIM_MAX_EDIT_DIST) {
+            #ifdef PRINT_DEBUG
+            std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
+            #endif
+
+        //TODO: BAIL OUT based on COLUMN_MIN :: THIS IS NOT WORKING CORRECTLY, IF YOU TAKE A PREFIX AND SUFFIX OFF column_min changes
+
+        if ( column_min >=max) {
+            // set to max score +1 to allow for it to find the last line
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return DAMLEVLIM_MAX_EDIT_DIST;
+            #ifdef PRINT_DEBUG
+            std::cout << "LD is longer than limit, bailed early, MAX="<<max;
+            #endif
+            return max_string_length;
         }
         #ifdef PRINT_DEBUG
         std::cout << std::endl;
