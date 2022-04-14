@@ -66,7 +66,8 @@
 */
 
 #include "common.h"
-
+#define PRINT_DEBUG
+#include "iostream"
 // Limits
 #ifndef DAMLEVLIMP_BUFFER_SIZE
     // 640k should be good enough for anybody.
@@ -197,7 +198,7 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
         size_t temp = buffer[0]++;
         size_t prior_temp = 0;
         #ifdef PRINT_DEBUG
-        std::cout << i << ":  " << temp << "  ";
+        std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
         #endif
 
         // Setup for max distance, which only needs to look in the window

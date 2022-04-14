@@ -95,7 +95,7 @@ extern "C" {
 }
 
 bool damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
-    // We require 3 arguments:
+    // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, DAMLEVP_ARG_NUM_ERROR, DAMLEVP_ARG_NUM_ERROR_LEN);
         return 1;
@@ -194,17 +194,33 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         for (size_t j = start_j; j < end_j; ++j) {
             const size_t p = temp; // p = buffer[j - 1];
             const size_t r = buffer[j];
+            size_t cost;
+            if (subject[i-1] == query[j-1]) {
+                cost =0;
+            } else  cost =1;
+
+
             temp = std::min(std::min(r,  // Insertion.
                                      p   // Deletion.
                             ) + 1,
 
-                            std::min(
-                                    // Transposition.
-                                    prior_temp + 1,
-                                    // Substitution.
-                                    temp + (subject[i - 1] == query[j - 1] ? 0 : 1)
-                            )
+
+                    // Substitution.
+                            temp + cost
+
             );
+            // Transposition.
+            if( (i > 1) &&
+                (j > 1) &&
+                (subject[i-1] == query[j-2]) &&
+                (subject[i-2] == query[j-1])
+                    )
+            {
+                temp = std::min(
+                        temp + cost,
+                        prior_temp   // transposition
+                );
+            };
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
@@ -212,9 +228,9 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
             // Record matrix value mat[i-2][j-2].
             prior_temp = temp;
             std::swap(buffer[j], temp);
-            #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
             std::cout << temp << "  ";
-            #endif
+#endif
         }
         if (column_min >= DAMLEVP_MAX_EDIT_DIST) {
             // There is no way to get an edit distance > column_min.
