@@ -65,8 +65,7 @@
 
 #include <iostream>
 #include "common.h"
-#define PRINT_DEBUG
-// #define PRINT_DEBUG
+//#define PRINT_DEBUG
 
 
 // Limits
@@ -185,10 +184,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
     // For purposes of the algorithm, set max to the smallest distance seen so far.
     max = std::min(*((long long *)args->args[2]), max);
-    #ifdef PRINT_DEBUG
-    std::cout <<max<<": max"<< std::endl;
-    const int DAMLEVCONST_MAX_EDIT_DIST = max;
-    #endif
+
     if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
             args->lengths[1] == 0) {
         // Either one of the strings doesn't exist, or one of the strings has
@@ -250,22 +246,22 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
     size_t end_j;
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
-        size_t temp = i-1;
-        //size_t temp = buffer[0]++;
+        //size_t temp = i-1;
+        size_t temp = buffer[0]++;
         size_t prior_temp = 0;
         #ifdef PRINT_DEBUG
-        std::cout << subject[buffer[0]++]<<" "<<i << ": " << temp << " ";
+        std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
         #endif
 
         // Setup for max distance, which only needs to look in the window
         // between i-max <= j <= i+max.
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
-        const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                DAMLEVCONST_MAX_EDIT_DIST/2));
+        const size_t start_j = static_cast<size_t>(std::max(1ll,
+                                                            (static_cast<long long>(i) - DAMLEVCONST_MAX_EDIT_DIST/2)));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
                          static_cast<size_t >(i + DAMLEVCONST_MAX_EDIT_DIST/2));
-        size_t column_min = DAMLEVCONST_MAX_EDIT_DIST;     // Sentinels
+        size_t column_min = static_cast<size_t>(DAMLEVCONST_MAX_EDIT_DIST);
         for (size_t j = start_j; j < end_j; ++j) {
             //const size_t p = temp; //
             const size_t p = buffer[j - 1];
@@ -286,7 +282,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
             );
             #ifdef PRINT_DEBUG
-            //std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
+            std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
             #endif
             // Transposition.
             if( (i > 1) &&
@@ -301,7 +297,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
                         prior_temp   // transposition
                 );
                 #ifdef PRINT_DEBUG
-                //std::cout << " # In Transposition  "<<temp <<" # ";
+                std::cout << " # In Transposition  "<<temp <<" # ";
                 #endif
             };
             // Keep track of column minimum.
@@ -315,10 +311,15 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
             std::cout << temp << " ";
             #endif
         }
-        if (column_min >= DAMLEVCONST_MAX_EDIT_DIST) {
+        //TODO: I DON"T THINK THIS IS WORKING CORRECTLY WITH PREFIX AND SUFFIXES
+        if (column_min >= max) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return std::max(subject.length(),query.length());//DAMLEVCONST_MAX_EDIT_DIST;
+            #ifdef PRINT_DEBUG
+            std::cout << "max exceeded"<<std::endl;
+            #endif
+            return std::max(args->lengths[0],args->lengths[1]);
+
         }
         #ifdef PRINT_DEBUG
         std::cout << std::endl;
