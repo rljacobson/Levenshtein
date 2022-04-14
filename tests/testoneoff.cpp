@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     std::string a = search_term;
     std::string b = db_return;
     //std::string b {"Martha"};
-    //std::string a {"Maratahaa"};
+    //std::string a {"Martahaa"};
     int c =10;
     long long result = 0;
 

@@ -197,7 +197,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     query = query.substr(start_offset, query.size() - end_offset - start_offset + 1);
 
     // Make "subject" the smaller one.
-    if (query.length() < subject.length()) {
+    if (query.length() > subject.length()) {
         std::swap(subject, query);
     }
     // If one of the strings is a suffix of the other.
