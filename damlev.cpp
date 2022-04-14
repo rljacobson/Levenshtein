@@ -181,11 +181,11 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
-        size_t temp = i-1;
-        //size_t temp = buffer[0]++;
+        //size_t temp = i-1;
+        size_t temp = buffer[0]++;
         size_t prior_temp = 0;
         #ifdef PRINT_DEBUG
-        std::cout << subject[buffer[0]++]<<" "<<i << ":  " << temp << "  ";
+        std::cout << subject[temp]<<" "<<i << ":  " << temp << "  ";
         #endif
 
         // Setup for max distance, which only needs to look in the window
