@@ -65,6 +65,8 @@ message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
+## Out of the Box LD function
+add_executable(boxed_example tests/editdistanceexample.cpp)
 
 ### Testing and Benchmarking ###
 ## Tests
@@ -84,3 +86,4 @@ target_include_directories(benchmark PUBLIC /usr/local/include)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")
+
