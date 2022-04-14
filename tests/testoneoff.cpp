@@ -12,15 +12,15 @@
 //#define LEV_FUNCTION demlev
 #define PRINT_DEBUG
 #include "testharness.hpp"
-//search_term='Acanthurus lineatus'
-//db_return='Acanthopagrus latus'
+std::string search_term {"Acanthurus lineatus"};
+std::string db_return {"Acanthopagrus latus"};
 
 int main(int argc, char *argv[]) {
-    // std::string a {""};
-    // std::string b {""};
-    std::string b {"Martha"};
-    std::string a {"Maratahaa"};
-    int c =4;
+    std::string a = search_term;
+    std::string b = db_return;
+    //std::string b {"Martha"};
+    //std::string a {"Maratahaa"};
+    int c =10;
     long long result = 0;
 
 
