@@ -1,3 +1,8 @@
+// HELLO LEV_ARGS needs to be adjusted if you're going to change from damlevconst
+//damlevconst INT required testharness.hpp --> LEV_ARGS->arg_count = 3;
+// damlev testharness.hpp --> LEV_ARGS->arg_count = 2;
+//damlevlimp FLOAT required testharness.hpp LEV_ARGS->arg_count = 3 A maximum percent difference (0.0 <= float < 1.0);
+
 #include <iostream>
 #include <string>
 
@@ -7,14 +12,15 @@
 //#define LEV_FUNCTION demlev
 #define PRINT_DEBUG
 #include "testharness.hpp"
-
+//search_term='Acanthurus lineatus'
+//db_return='Acanthopagrus latus'
 
 int main(int argc, char *argv[]) {
     // std::string a {""};
     // std::string b {""};
-    std::string a {"Acanthurus lineatus"};
-    std::string b {"Acanthopagrus latus"};
-    int c =3;
+    std::string b {"Martha"};
+    std::string a {"Maratahaa"};
+    int c =4;
     long long result = 0;
 
 
