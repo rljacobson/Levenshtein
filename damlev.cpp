@@ -121,6 +121,13 @@ void damlev_deinit(UDF_INIT *initid) {
 
 long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
     // Retrieve the arguments.
+
+    //set max string lenght for later
+    const double max_string_length = static_cast<double>(std::max(args->lengths[0],
+                                                                  args->lengths[1]));
+    // we don't get a LD limit, so set at max string lenght
+    const long long int max = max_string_length;
+
     if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
             || args->args[0] == nullptr) {
         // Either one of the strings doesn't exist, or one of the strings has
@@ -193,11 +200,11 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
         const size_t start_j = static_cast<size_t>(std::max(1ll,
-                                               (static_cast<long long>(i) - DAMLEV_MAX_EDIT_DIST/2)));
+                                               (static_cast<long long>(i) - max/2)));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                static_cast<size_t >(i + DAMLEV_MAX_EDIT_DIST/2));
+                static_cast<size_t >(i + max/2));
 
-        size_t column_min = static_cast<size_t>(DAMLEV_MAX_EDIT_DIST);
+        size_t column_min = static_cast<size_t>(max);
         for (size_t j = start_j; j < end_j; ++j) {
 
             //const size_t p = temp; //

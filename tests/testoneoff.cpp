@@ -14,12 +14,12 @@
 #include "testharness.hpp"
 std::string search_term {"Acanthurus lineatus"};
 std::string db_return {"Acanthopagrus latus"};
+std::string term1 {"Martha"};
+std::string term2 {"Martahaa"};
 
 int main(int argc, char *argv[]) {
-    std::string a = search_term;
-    std::string b = db_return;
-    //std::string b {"Martha"};
-    //std::string a {"Martahaa"};
+    std::string b = search_term;
+    std::string a = db_return;
     int c =10;
     long long result = 0;
 

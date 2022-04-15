@@ -195,11 +195,22 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     // Take the different part.
     subject = subject.substr(start_offset, subject.size() - end_offset - start_offset + 1);
     query = query.substr(start_offset, query.size() - end_offset - start_offset + 1);
-
+    #ifdef PRINT_DEBUG
+    std::cout << "subject : " << subject <<" query : "<<query << std::endl;
+    std::cout << "subject length: " << subject.length() <<" query length: "<<query.length() << std::endl;
+    #endif
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
+        #ifdef PRINT_DEBUG
+        std::cout << "WE SWAPPED" << std::endl;
+        #endif
         std::swap(subject, query);
+        #ifdef PRINT_DEBUG
+        std::cout << "subject" << subject <<"query:"<<query << std::endl;
+        #endif
     }
+
+
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
         #ifdef PRINT_DEBUG
@@ -227,13 +238,16 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
         const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                DAMLEVLIM_MAX_EDIT_DIST/2));
+                max/2));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + DAMLEVLIM_MAX_EDIT_DIST/2));
+                         static_cast<size_t >(i + max/2));
         size_t column_min = max;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
-            const size_t p = temp; // p = buffer[j - 1];
+
+            //const size_t p = temp; //
+            const size_t p = buffer[j - 1];
             const size_t r = buffer[j];
+
             size_t cost;
             if (subject[i - 1] == query[j - 1]) {
                 cost = 0;
@@ -250,16 +264,18 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
 
             );
             // Transposition.
-            if ((i > 1) &&
+            if( (i > 1) &&
                 (j > 1) &&
                 (subject[i - 1] == query[j - 2]) &&
                 (subject[i - 2] == query[j - 1])
-                    ) {
+                    )
+            {
                 temp = std::min(
                         temp + cost,
                         prior_temp   // transposition
                 );
             };
+
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
