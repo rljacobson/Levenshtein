@@ -65,7 +65,7 @@
 
 #include <iostream>
 #include "common.h"
-//#define PRINT_DEBUG
+#define PRINT_DEBUG
 
 
 // Limits
@@ -137,7 +137,7 @@ bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // Initialize persistent data.
     initid->ptr = (char *)data;
     data->max = DAMLEVCONST_MAX_EDIT_DIST;
-    data->buffer = new std::vector<size_t>(DAMLEVCONST_MAX_EDIT_DIST);
+    data->buffer = new std::vector<size_t>(data->max);
     data->const_string = new(std::nothrow) char[DAMLEVCONST_MAX_EDIT_DIST];
     if (nullptr == data->const_string) {
         strncpy(message, DAMLEVCONST_MEM_ERROR, DAMLEVCONST_MEM_ERROR_LEN);
@@ -191,7 +191,17 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         // length zero. In either case
         return (long long)std::max(args->lengths[0], args->lengths[1]);
     }
+    int max_string_length = static_cast<double>(std::max(args->lengths[0],args->lengths[1]));
 
+
+    #ifdef PRINT_DEBUG
+    std::cout << "Maximum edit distance:" <<  std::min(*((long long *)args->args[2]),
+                                                    DAMLEVCONST_MAX_EDIT_DIST)<<std::endl;
+    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" <<DAMLEVCONST_MAX_EDIT_DIST<<std::endl;
+    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
+                                                                     args->lengths[1]))<<std::endl;
+
+    #endif
     // Let's make some string views so we can use the STL.
     std::string_view subject{args->args[0], args->lengths[0]};
 
@@ -215,8 +225,14 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a prefix of " << query << ", bailing" << std::endl;
+        #endif
         return (size_t)(query.length() - start_offset);
     } else if (query.length() == start_offset) {
+        #ifdef PRINT_DEBUG
+        std::cout << query << " is a prefix of " << subject << ", bailing" << std::endl;
+        #endif
         return (size_t)(subject.length() - start_offset);
     }
 
@@ -228,27 +244,42 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
                                (size_t)(subject.size() - start_offset));
 
     // Take the different part.
-    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
-    query = query.substr(start_offset, query.size() - end_offset - start_offset);
-
+    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset +1);//+1 in other functions
+    query = query.substr(start_offset, query.size() - end_offset - start_offset +1);//+1 in other functions
+    #ifdef PRINT_DEBUG
+    std::cout << "subject : " << subject <<" query : "<<query << std::endl;
+    std::cout << "subject length: " << subject.length() <<" query length: "<<query.length() << std::endl;
+    #endif
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
+        #ifdef PRINT_DEBUG
+        std::cout << "WE SWAPPED" << std::endl;
+        #endif
         std::swap(subject, query);
+        #ifdef PRINT_DEBUG
+        std::cout << "subject" << subject <<"query:"<<query << std::endl;
+        #endif
     }
+
+
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
+        #endif
         return query.length();
     }
 
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
 
-    size_t end_j;
+    size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
         //size_t temp = i-1;
         size_t temp = buffer[0]++;
         size_t prior_temp = 0;
+
         #ifdef PRINT_DEBUG
         std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
         #endif
@@ -258,14 +289,16 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
         const size_t start_j = static_cast<size_t>(std::max(1ll,
-                                                            (static_cast<long long>(i) - DAMLEVCONST_MAX_EDIT_DIST/2)));
+                                                            (static_cast<long long>(i) - max/2)));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + DAMLEVCONST_MAX_EDIT_DIST/2));
-        size_t column_min = static_cast<size_t>(DAMLEVCONST_MAX_EDIT_DIST);
+                         static_cast<size_t >(i + max/2));
+        size_t column_min = max; // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
+
             //const size_t p = temp; //
             const size_t p = buffer[j - 1];
             const size_t r = buffer[j];
+
             size_t cost;
             if (subject[i-1] == query[j-1]) {
                 cost =0;
@@ -281,24 +314,23 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
                             temp + cost
 
             );
-            #ifdef PRINT_DEBUG
-            std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
-            #endif
+            //#ifdef PRINT_DEBUG
+            //std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
+            //#endif
             // Transposition.
             if( (i > 1) &&
                 (j > 1) &&
                 (subject[i-1] == query[j-2]) &&
                 (subject[i-2] == query[j-1])
-
                     )
             {
                 temp = std::min(
                         temp + cost,
                         prior_temp   // transposition
                 );
-                #ifdef PRINT_DEBUG
-                std::cout << " # In Transposition  "<<temp <<" # ";
-                #endif
+                //#ifdef PRINT_DEBUG
+                //std::cout << " # In Transposition  "<<temp <<" # ";
+                //#endif
             };
             // Keep track of column minimum.
             if (temp < column_min) {
@@ -311,14 +343,19 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
             std::cout << temp << " ";
             #endif
         }
+        #ifdef PRINT_DEBUG
+        std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
+        #endif
+
         //TODO: I DON"T THINK THIS IS WORKING CORRECTLY WITH PREFIX AND SUFFIXES
+
         if (column_min >= max) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
             #ifdef PRINT_DEBUG
-            std::cout << "max exceeded"<<std::endl;
+            std::cout << "LD is longer than limit, bailed early, MAX="<<max<<std::endl;
             #endif
-            return std::max(args->lengths[0],args->lengths[1]);
+            return max_string_length;
 
         }
         #ifdef PRINT_DEBUG
