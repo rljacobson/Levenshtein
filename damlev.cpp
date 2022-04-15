@@ -199,12 +199,13 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         // between i-max <= j <= i+max.
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
-        const size_t start_j = static_cast<size_t>(std::max(1ll,
-                                               (static_cast<long long>(i) - max/2)));
-        end_j = std::min(static_cast<size_t>(query.length() + 1),
-                static_cast<size_t >(i + max/2));
+        const long long int max = std::min(int(query.length()),int(subject.length()));
 
-        size_t column_min = static_cast<size_t>(max);
+        const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
+                                                                 max/2));
+        end_j = std::min(static_cast<size_t>(query.length() + 1),
+                         static_cast<size_t >(i + max/2));
+        size_t column_min = max;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
 
             //const size_t p = temp; //
@@ -251,13 +252,13 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
             std::cout << temp << "  ";
             #endif
         }
-        if (column_min >= DAMLEV_MAX_EDIT_DIST) {
+        if (column_min >= max_string_length) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
             #ifdef PRINT_DEBUG
-            std::cout << "There is no way to get an edit distance > column_min" << ":  " << DAMLEV_MAX_EDIT_DIST << "  ";
+            std::cout << "There is no way to get an edit distance > column_min" << ":  " << max_string_length << "  ";
             #endif
-            return DAMLEV_MAX_EDIT_DIST;
+            return max_string_length;
         }
 /*        #ifdef PRINT_DEBUG
         std::cout <<"##LD AFTER LOOP =: "<<temp <<std::endl;
