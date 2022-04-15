@@ -15,12 +15,12 @@
 std::string search_term {"Acanthurus lineatus"};
 std::string db_return {"Acanthopagrus latus"};
 std::string term1 {"aMartha"};
-std::string term2 {"bMartaha"};
+std::string term2 {"bMarbtahab"};
 
 int main(int argc, char *argv[]) {
-    std::string b = term1;
-    std::string a = term2;
-    int c =3;
+    std::string b = search_term;
+    std::string a = db_return;
+    auto c =9;
     long long result = 0;
 
 

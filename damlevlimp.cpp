@@ -136,8 +136,20 @@ void damlevlimp_deinit(UDF_INIT *initid) {
 double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
     // Retrieve the arguments.
     // Maximum edit distance.
+
+    #ifdef PRINT_DEBUG
+    std::cout <<"3rd argument:"<< args->args[2]<<std::endl;
+    std::cout << "Maximum edit distance:" <<  args->args[2]<<std::endl;
+    std::cout << "DAMLEVLIM_MAX_EDIT_DIST:" <<DAMLEVLIMP_MAX_EDIT_DIST<<std::endl;
+    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
+                                                                      args->lengths[1]))<<std::endl;
+    #endif
+    int max_string_length = static_cast<double>(std::max(args->lengths[0],
+                                                                args->lengths[1]));
+
     long long max = std::min(*((long long *)args->args[2]), DAMLEVLIMP_MAX_EDIT_DIST);
-    if (max == 0) {
+    if (max == 0.0) {
+        std::cout<<"max==0.00: "<<max;
         return 0.0;
     }
     // Check the arguments.
@@ -148,8 +160,7 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
         return 1.0;
     }
     // Save the original max string length for the normalization when we return.
-    const double max_string_length = static_cast<double>(std::max(args->lengths[0],
-            args->lengths[1]));
+
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
 
@@ -164,8 +175,14 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a prefix of " << query << ", bailing" << std::endl;
+        #endif
         return static_cast<double>(query.length() - start_offset)/max_string_length;
     } else if (query.length() == start_offset) {
+        #ifdef PRINT_DEBUG
+        std::cout << query << " is a prefix of " << subject << ", bailing" << std::endl;
+        #endif
         return static_cast<double>(subject.length() - start_offset)/max_string_length;
     }
 
@@ -179,24 +196,39 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
     // Take the different part.
     subject = subject.substr(start_offset, subject.size() - end_offset - start_offset + 1);
     query = query.substr(start_offset, query.size() - end_offset - start_offset + 1);
-
+    #ifdef PRINT_DEBUG
+    std::cout << "subject : " << subject <<" query : "<<query << std::endl;
+    std::cout << "subject length: " << subject.length() <<" query length: "<<query.length() << std::endl;
+    #endif
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
+        #ifdef PRINT_DEBUG
+        std::cout << "WE SWAPPED" << std::endl;
+        #endif
         std::swap(subject, query);
+        #ifdef PRINT_DEBUG
+        std::cout << "subject" << subject <<"query:"<<query << std::endl;
+        #endif
     }
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
+        #ifdef PRINT_DEBUG
+        std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
+        #endif
         return static_cast<double>(query.length())/max_string_length;
     }
+    max = std::min(int(query.length()),int(subject.length()));
 
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
 
-    size_t end_j;
+    size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
         // temp = i - 1;
+        //size_t temp = i-1;
         size_t temp = buffer[0]++;
         size_t prior_temp = 0;
+
         #ifdef PRINT_DEBUG
         std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
         #endif
@@ -206,32 +238,44 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
         const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                DAMLEVLIMP_MAX_EDIT_DIST/2));
+                max/2));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + DAMLEVLIMP_MAX_EDIT_DIST/2));
-        size_t column_min = DAMLEVLIMP_MAX_EDIT_DIST;     // Sentinels
+                         static_cast<size_t >(i + max/2));
+        size_t column_min = max_string_length;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
-            const size_t p = temp; // p = buffer[j - 1];
+
+            //const size_t p = temp; //
+            const size_t p = buffer[j - 1];
             const size_t r = buffer[j];
-            /*
-            auto min = r;
-            if (p < min) min = p;
-            if (prior_temp < min) min = prior_temp;
-            min++;
-            temp = temp + (subject[i - 1] == query[j - 1] ? 0 : 1);
-            if (min < temp) temp = min;
-            */
+
+            size_t cost;
+            if (subject[i - 1] == query[j - 1]) {
+                cost = 0;
+            } else cost = 1;
+
+
             temp = std::min(std::min(r,  // Insertion.
                                      p   // Deletion.
                             ) + 1,
 
-                            std::min(
-                                    // Transposition.
-                                    prior_temp + 1,
-                                    // Substitution.
-                                    temp + (subject[i - 1] == query[j - 1] ? 0 : 1)
-                            )
+
+                    // Substitution.
+                            temp + cost
+
             );
+            // Transposition.
+            if( (i > 1) &&
+                (j > 1) &&
+                (subject[i - 1] == query[j - 2]) &&
+                (subject[i - 2] == query[j - 1])
+                    )
+            {
+                temp = std::min(
+                        temp + cost,
+                        prior_temp   // transposition
+                );
+            };
+
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
@@ -243,10 +287,18 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
             std::cout << temp << "  ";
             #endif
         }
-        if (column_min >= DAMLEVLIMP_MAX_EDIT_DIST) {
+        #ifdef PRINT_DEBUG
+        std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
+        #endif
+
+
+        if (column_min > max) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return static_cast<double>(DAMLEVLIMP_MAX_EDIT_DIST)/max_string_length;
+            #ifdef PRINT_DEBUG
+            std::cout << "LD is longer than limit, bailed early, MAX="<<max;
+            #endif
+            return static_cast<double>(max)/max_string_length;
         }
         #ifdef PRINT_DEBUG
         std::cout << std::endl;

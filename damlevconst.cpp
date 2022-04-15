@@ -269,6 +269,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         #endif
         return query.length();
     }
+    max = std::min(int(query.length()),int(subject.length()));
 
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
