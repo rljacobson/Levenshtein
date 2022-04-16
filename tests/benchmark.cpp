@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     }
     boost::interprocess::mapped_region text_file_buffer(text_file, boost::interprocess::read_only);
 
-    std::cout << "Opened file " << words_file_path << "." << std::endl;
+    std::cout << "Opened file: " << words_file_path << "." << std::endl;
 
     double timediff = 0;
     unsigned line_no = 0;
@@ -110,11 +110,11 @@ int main(int argc, char *argv[]) {
         damlevconst_teardown();
     }
 breakA:
+    std::cout << "Number of words: " << line_no-1 << std::endl;
 
     std::cout << "-----------\nDAMLEVCONST\n-----------\n";
     timediff = timer.elapsed();
     std::cout << "Time elapsed:" << timediff << 's' << std::endl;
-    std::cout << "Number of words: " << line_no-1 << std::endl;
 
 
     line_no = 0;
@@ -134,11 +134,11 @@ breakA:
     }
 breakB:
 
-    std::cout << "NOOP\n-----------\n";
+    std::cout << "-----------\nNOOP\n-----------\n";
     std::cout << "Time elapsed:" << timer.elapsed() << "s\n-----------\n\n";
-
-    std::cout << "Time difference:" << timediff - timer.elapsed() << 's' << std::endl;
-    std::cout << "Number of words: " << line_no-1 << std::endl;
+    std::cout << "We took " << timediff - timer.elapsed() ;
+    std::cout << "s longer to run DAMLEVCONST than to do nothing" ;
+    std::cout << " checking " << line_no-1 << " words."<<std::endl;
 
 
 }
