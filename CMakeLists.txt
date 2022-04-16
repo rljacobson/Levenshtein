@@ -75,8 +75,8 @@ add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testca
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconst.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconst)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevlimp.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevlimp)
 
 
 ## Benchmark

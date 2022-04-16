@@ -238,13 +238,12 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
         // MUST RESET MAX TO DEAL WITH TRIMMING!!
-        max = std::min(int(query.length()),int(subject.length()));
-
+        int trimmed_max = std::max(int(query.length()),int(subject.length()));
         const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                                                                 max/2));
+                                                                 trimmed_max/2));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + max/2));
-        auto column_min = max;     // Sentinels
+                         static_cast<size_t >(i + trimmed_max/2));
+        auto column_min = trimmed_max;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
 
             //const size_t p = temp; //
@@ -293,6 +292,9 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
             #ifdef PRINT_DEBUG
             std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
             #endif
+
+        // max is the maximum edit_distance, trimmed max is the max(trimmed.subject,trimmed.query)
+        // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
         if ( column_min > max) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.

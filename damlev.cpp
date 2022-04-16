@@ -134,6 +134,14 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         // length zero. In either case
         return (long long)std::max(args->lengths[0], args->lengths[1]);
     }
+    #ifdef PRINT_DEBUG
+    std::cout << "Maximum edit distance:" <<  std::min(*((long long *)args->args[2]),
+                                                       DAMLEV_MAX_EDIT_DIST)<<std::endl;
+    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" <<DAMLEV_MAX_EDIT_DIST<<std::endl;
+    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
+                                                                      args->lengths[1]))<<std::endl;
+
+    #endif
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
 
@@ -181,7 +189,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         return static_cast<long long>(query.length());
     }
     #ifdef PRINT_DEBUG
-    std::cout << subject << " HELLO " << query << ", WORLD" << std::endl;
+    std::cout << "subject" << subject << "query" << query << std::endl;
     #endif
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
@@ -201,13 +209,13 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         // between i-max <= j <= i+max.
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
-        const long long int max = std::min(int(query.length()),int(subject.length()));
-
+        //max = std::min(int(query.length()),int(subject.length()));
+        int trimmed_max = std::max(int(query.length()),int(subject.length()));
         const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                                                                 max/2));
+                trimmed_max/2));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + max/2));
-        size_t column_min = max;     // Sentinels
+                         static_cast<size_t >(i + trimmed_max/2));
+        size_t column_min = trimmed_max;     // Sentinels
         for (size_t j = start_j; j < end_j; ++j) {
 
             //const size_t p = temp; //
@@ -254,6 +262,10 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
             std::cout << temp << "  ";
             #endif
         }
+        #ifdef PRINT_DEBUG
+        std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
+        #endif
+
         if (column_min >= max_string_length) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
