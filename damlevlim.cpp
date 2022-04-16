@@ -140,6 +140,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
                                                                 args->lengths[1]));
     auto max = std::min(*((long long *)args->args[2]),
              DAMLEVLIM_MAX_EDIT_DIST);
+
     if (max == 0) {
         return 0ll;
     }
@@ -199,6 +200,8 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     std::cout << "subject : " << subject <<" query : "<<query << std::endl;
     std::cout << "subject length: " << subject.length() <<" query length: "<<query.length() << std::endl;
     #endif
+
+    //TODO: which one should be longer? Why does it matter?  Prints a more ideal LD matrix more rows than columns
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
         #ifdef PRINT_DEBUG
