@@ -18,10 +18,10 @@ std::string term1 {"aMartha"};
 std::string term2 {"bMarbtahab"};
 
 int main(int argc, char *argv[]) {
-    std::string b = search_term;
-    std::string a = db_return;
-    auto c =9;
-    long long result = 0;
+    std::string b = term2;
+    std::string a = term1;
+    auto c =4;
+    auto result = 0;
 
 
     LEV_SETUP();

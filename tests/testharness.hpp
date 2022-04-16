@@ -135,8 +135,10 @@ void LEV_TEARDOWN(){
 }
 
 // long long LEV_CALL(std::string_view subject, std::string_view query, long long max){
+
 long long LEV_CALL(char * subject, size_t subject_len, char *query, size_t query_len, long long max){
     long long result;
+
 
     LEV_ARGS->args[0] = subject;
     LEV_ARGS->lengths[0] = subject_len;
