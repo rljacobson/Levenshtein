@@ -57,9 +57,9 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-
+#include <iostream>
 #include "common.h"
-
+#define PRINT_DEBUG
 // Limits
 #ifndef DAMLEVP_BUFFER_SIZE
     // 640k should be good enough for anybody. Make it a multiple of 64 so it's aligned on a 64
@@ -130,6 +130,13 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         // length zero. In either case
         return 1.0;
     }
+    #ifdef PRINT_DEBUG
+    std::cout << "Maximum edit distance:" <<  DAMLEVP_MAX_EDIT_DIST <<std::endl;
+    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" << DAMLEVP_MAX_EDIT_DIST<<std::endl;
+    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
+                                                                      args->lengths[1]))<<std::endl;
+
+    #endif
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
     // Save the original max string length for the normalization when we return.
@@ -170,11 +177,14 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     if (subject.length() == 0) {
         return static_cast<double>(query.length())/max_string_length;
     }
-
+    #ifdef PRINT_DEBUG
+    std::cout << "subject: " << subject << "  query: " << query << std::endl;
+    #endif
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
     size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
+
         // temp = i - 1;
         size_t temp = buffer[0]++;
         size_t prior_temp = 0;
@@ -186,14 +196,18 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         // between i-max <= j <= i+max.
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
+        int trimmed_max = std::max(int(query.length()),int(subject.length()));
         const size_t start_j = static_cast<size_t>(std::max(1ll,
-                                               (static_cast<long long>(i) - DAMLEVP_MAX_EDIT_DIST/2)));
+                                               (static_cast<long long>(i) - static_cast<long long>(trimmed_max)/2)));
         end_j = std::min(static_cast<size_t>(query.length() + 1),
-                static_cast<size_t >(i + DAMLEVP_MAX_EDIT_DIST/2));
-        size_t column_min = static_cast<size_t>(DAMLEVP_MAX_EDIT_DIST);
+                static_cast<size_t >(i + trimmed_max/2));
+        size_t column_min = trimmed_max;
         for (size_t j = start_j; j < end_j; ++j) {
-            const size_t p = temp; // p = buffer[j - 1];
+
+            //const size_t p = temp; //
+            const size_t p = buffer[j - 1];
             const size_t r = buffer[j];
+
             size_t cost;
             if (subject[i-1] == query[j-1]) {
                 cost =0;
@@ -221,6 +235,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
                         prior_temp   // transposition
                 );
             };
+
             // Keep track of column minimum.
             if (temp < column_min) {
                 column_min = temp;
@@ -228,19 +243,29 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
             // Record matrix value mat[i-2][j-2].
             prior_temp = temp;
             std::swap(buffer[j], temp);
+
 #ifdef PRINT_DEBUG
             std::cout << temp << "  ";
 #endif
         }
-        if (column_min >= DAMLEVP_MAX_EDIT_DIST) {
+        #ifdef PRINT_DEBUG
+        std::cout << "column_min & max MAX:=" << max_string_length << " column_min:" << column_min;
+        #endif
+
+        if (column_min >= max_string_length) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return static_cast<double>(DAMLEVP_MAX_EDIT_DIST)/max_string_length;
+            //return trimmed_max/max_string_length;
+            return 1;
         }
         #ifdef PRINT_DEBUG
         std::cout << std::endl;
         #endif
     }
+    #ifdef PRINT_DEBUG
+    std::cout <<"buffer: "<<(buffer[end_j-1])<< std::endl;
+    #endif
 
+    //TODO: this is not returning correct, returns a very large number  1.40462e+14
     return static_cast<double>(buffer[end_j-1])/max_string_length;
 }
