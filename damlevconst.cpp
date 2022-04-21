@@ -276,6 +276,12 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
     data.buffer->resize(trimmed_max+1);
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
+    //std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
+//    for (auto a: buffer)
+//        buffer[a]=0;
+    //for (auto a: buffer)
+    //    std::cout << a << ' ';
+//    std::cout << std::endl;
 
     size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
