@@ -57,9 +57,9 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-#include <iostream>
+//#include <iostream>
 #include "common.h"
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 // Limits
 #ifndef DAMLEVP_BUFFER_SIZE
     // 640k should be good enough for anybody. Make it a multiple of 64 so it's aligned on a 64

@@ -36,9 +36,10 @@ int editDistance(string& S1, string& S2){
 }
 
 int main() {
-
+    std::string search_term {"Chromis virojfp"};
+    std::string db_return {"Chromis verator"};
     string s1 = "horse";
     string s2 = "ros";
 
-    cout << "The minimum number of operations required is:  "<<editDistance(s1,s2);
+    cout << "The minimum number of operations required is:  "<<editDistance(db_return,search_term);
 }

@@ -66,7 +66,7 @@
 */
 
 #include "common.h"
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 #include "iostream"
 // Limits
 #ifndef DAMLEVLIMP_BUFFER_SIZE

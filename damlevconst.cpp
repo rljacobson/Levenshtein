@@ -178,6 +178,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
     // Retrieve buffer.
     std::vector<size_t> &buffer = *data.buffer; // Initialized later.
+
     // Retrieve max edit distance.
     long long &max = data.max;
 
@@ -270,18 +271,22 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         return query.length();
     }
 
+
+    int trimmed_max = std::max(int(query.length()),int(subject.length()));
+    data.buffer->resize(trimmed_max+1);
     // Init buffer.
     std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
 
     size_t end_j; // end_j is referenced after the loop.
     for (size_t i = 1; i < subject.length() + 1; ++i) {
+
         // temp = i - 1;
         //size_t temp = i-1;
         size_t temp = buffer[0]++;
         size_t prior_temp = 0;
 
         #ifdef PRINT_DEBUG
-        std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
+        std::cout << subject[temp]<<" "<<i << ":  " << temp << "  ";
         #endif
 
         // Setup for max distance, which only needs to look in the window
@@ -289,33 +294,47 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         // The result of the max is positive, but we need the second argument
         // to be allowed to be negative.
         //max must be resized to deal with trimming of strings
-        int trimmed_max = std::max(int(query.length()),int(subject.length()));
-        const size_t start_j = static_cast<size_t>(std::max(1ll,
-                                                            (static_cast<long long>(i) - trimmed_max/2)));
-        end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + trimmed_max/2));
-        size_t column_min = trimmed_max; // Sentinels
+
+        const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
+                                                                 trimmed_max/2-1));
+        end_j = std::min(static_cast<size_t>(query.length()+1),
+                         static_cast<size_t >(i + trimmed_max/2)+1);
+
+        size_t column_min = trimmed_max;     // Sentinels
+        #ifdef PRINT_DEBUG
+        //std::cout <<" ## "<<trimmed_max<<" "<< start_j <<" "<<end_j <<" "<<column_min <<" ## " ;
+        #endif
         for (size_t j = start_j; j < end_j; ++j) {
 
+            #ifdef PRINT_DEBUG
+            //std::cout <<" ## "<<end_j<<" "<< buffer[j-1] << "## " ;
+            #endif
+
             //const size_t p = temp; //
-            const size_t p = buffer[j - 1];
+
             const size_t r = buffer[j];
+            const size_t p = buffer[j-1];
 
             size_t cost;
             if (subject[i-1] == query[j-1]) {
+
                 cost =0;
             } else  cost =1;
 
 
-            temp = std::min(std::min(r,  // Insertion.
-                                     p   // Deletion.
-                            ) + 1,
+            temp = std::min(std::min(r+1,  // Insertion.
+                                     p +1   // Deletion.
+                            ),
 
 
                     // Substitution.
                             temp + cost
 
-            );
+
+                            );
+
+
+
             //#ifdef PRINT_DEBUG
             //std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
             //#endif
@@ -330,29 +349,37 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
                         temp + cost,
                         prior_temp   // transposition
                 );
-                //#ifdef PRINT_DEBUG
-                //std::cout << " # In Transposition  "<<temp <<" # ";
-                //#endif
+
             };
+
+
             // Keep track of column minimum.
             if (temp < column_min) {
+
                 column_min = temp;
             }
-            // Record matrix value mat[i-2][j-2].
             prior_temp = temp;
+            // Record matrix value mat[i-2][j-2].
             std::swap(buffer[j], temp);
             #ifdef PRINT_DEBUG
-            std::cout << temp << " ";
+            //std::cout << "column_min & max MAX:=" << trimmed_max << " column_min:" << column_min;
             #endif
+
+            #ifdef PRINT_DEBUG
+            for (auto a: buffer)
+                std::cout << a << ' ';
+            std::cout <<std::endl;
+            #endif
+
+
         }
-        #ifdef PRINT_DEBUG
-        std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
-        #endif
+
+
 
 
         // max is the maximum edit_distance, trimmed max is the max(trimmed.subject,trimmed.query)
         // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
-        if (column_min >= max) {
+        if (column_min > max) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
             #ifdef PRINT_DEBUG
@@ -362,9 +389,14 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
         }
         #ifdef PRINT_DEBUG
+        //std::cout <<" !:"<<buffer[end_j]<< std::endl;
         std::cout << std::endl;
         #endif
     }
+    #ifdef PRINT_DEBUG
+    std::cout <<end_j<<" <-- END_J - 1 #: "<<buffer[end_j-1]<< std::endl;
+    std::cout << std::endl;
+    #endif
 
     return buffer[end_j-1];
 }

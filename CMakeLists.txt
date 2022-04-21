@@ -33,7 +33,8 @@ target_compile_definitions(damlev PRIVATE MYSQL_DYNAMIC_PLUGIN)
 
 # If you know the plugin directory of your MySQL installation, you can uncomment
 # the following line and set it here.
-# set(MYSQL_PLUGIN_DIR "c:\\path\\to\\plugin\\dir")
+
+set(MYSQL_PLUGIN_DIR "set(MYSQL_PLUGIN_DIR /usr/local/mysql-8.0.17-macos10.14-x86_64/lib/plugin)")
 
 if(NOT DEFINED MYSQL_PLUGIN_DIR)
     if(INSTALL_PLUGINDIR)
@@ -70,13 +71,12 @@ add_executable(boxed_example tests/editdistanceexample.cpp)
 
 ### Testing and Benchmarking ###
 ## Tests
-add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testcases.cpp
-		damlevconst.cpp)
+add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testcases.cpp damlevconst.cpp)
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevlim.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevlim)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconst.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconst)
 
 
 ## Benchmark

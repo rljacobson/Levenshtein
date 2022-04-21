@@ -10,17 +10,20 @@
 #define str(s) #s
 
 //#define LEV_FUNCTION demlev
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 #include "testharness.hpp"
-std::string search_term {"Acanthurus lineatus"};
-std::string db_return {"Acanthopagrus latus"};
+std::string search_term {"Chromis virojfp"};
+std::string db_return {"Chromis verator"};
 std::string term1 {"aMartha"};
 std::string term2 {"bMarbtahab"};
+std::string empty1 {""};
+std::string empty2 {""};
+
 
 int main(int argc, char *argv[]) {
-    std::string b = term2;
-    std::string a = term1;
-    auto c =4;
+    std::string a = search_term;
+    std::string b = db_return;
+    auto c =6;
     auto result = 0;
 
 

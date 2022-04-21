@@ -57,7 +57,7 @@
 #include <iostream>
 
 #include "common.h"
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 // Limits
 #ifndef DAMLEV_BUFFER_SIZE
     // 640k should be good enough for anybody.
