@@ -12,18 +12,17 @@
 //#define LEV_FUNCTION demlev
 //#define PRINT_DEBUG
 #include "testharness.hpp"
-std::string search_term {"Chromis virojfp"};
-std::string db_return {"Chromis verator"};
+std::string search_term {"phzomii eldipas"};
+std::string db_return {"chromis viridis"};
 std::string term1 {"aMartha"};
 std::string term2 {"bMarbtahab"};
 std::string empty1 {""};
 std::string empty2 {""};
 
-
 int main(int argc, char *argv[]) {
     std::string a = search_term;
     std::string b = db_return;
-    auto c =6;
+    auto c =9;
     auto result = 0;
 
 

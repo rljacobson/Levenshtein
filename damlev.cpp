@@ -126,7 +126,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     const double max_string_length = static_cast<double>(std::max(args->lengths[0],
                                                                   args->lengths[1]));
     // we don't get a LD limit, so set at max string lenght
-    const long long int max = max_string_length;
+    //const long long int max = max_string_length;
 
     if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
             || args->args[0] == nullptr) {

@@ -65,7 +65,7 @@
 
 #include <iostream>
 #include "common.h"
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 
 
 // Limits
@@ -284,12 +284,18 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 //    std::cout << std::endl;
 
     size_t end_j; // end_j is referenced after the loop.
-    for (size_t i = 1; i < subject.length() + 1; ++i) {
+    for (size_t i = 1; i < (subject.length() + 1); ++i) {
+        #ifdef PRINT_DEBUG
+        std::cout <<"WHERE AM I ==  "<<i<<" "<<std::endl;
+        #endif
 
         // temp = i - 1;
         //size_t temp = i-1;
         size_t temp = buffer[0]++;
-        size_t prior_temp = 0;
+        size_t prior_temp;
+        if (i == 1) {
+        prior_temp = 0;}
+        else prior_temp = buffer[i-1];
 
         #ifdef PRINT_DEBUG
         std::cout << subject[temp]<<" "<<i << ":  " << temp << "  ";
@@ -312,6 +318,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
         #endif
         for (size_t j = start_j; j < end_j; ++j) {
 
+
             #ifdef PRINT_DEBUG
             //std::cout <<" ## "<<end_j<<" "<< buffer[j-1] << "## " ;
             #endif
@@ -323,27 +330,34 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
             size_t cost;
             if (subject[i-1] == query[j-1]) {
-
+                temp = prior_temp;
                 cost =0;
-            } else  cost =1;
+                #ifdef PRINT_DEBUG
+                std::cout<<"SAME upper left --> " <<prior_temp<<" upper--> "<<r<<" left--> "<<p<<std::endl;
+                std::cout<<"subject -->"<<i<<" "<<subject[i-1]<<" query-->"<<j<<" "<<query[j-1]<<std::endl;
+                #endif
+            } else  {
+                cost =1;
+            size_t temp1 = temp;
+            #ifdef PRINT_DEBUG
+            std::cout<<"DIFF upper left --> " <<prior_temp<<" upper--> "<<r<<" left--> "<<p<<std::endl;
+            std::cout<<"subject -->"<<i<<" "<<subject[i-1]<<" query-->"<<j<<" "<<query[j-1]<<std::endl;
+            #endif
 
-
-            temp = std::min(std::min(r+1,  // Insertion.
-                                     p +1   // Deletion.
+            temp = std::min(std::min(r+ 1,  // Insertion.
+                                     p + 1   // Deletion.
                             ),
 
 
                     // Substitution.
-                            temp + cost
+                            prior_temp + 1
 
 
-                            );
+                            );}
 
 
 
-            //#ifdef PRINT_DEBUG
-            //std::cout << " # min  temp:"<<temp <<"  r:"<< r <<" p:"<<p<<"#";
-            //#endif
+
             // Transposition.
             if( (i > 1) &&
                 (j > 1) &&
@@ -364,9 +378,10 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
                 column_min = temp;
             }
-            prior_temp = temp;
             // Record matrix value mat[i-2][j-2].
-            std::swap(buffer[j], temp);
+            prior_temp = buffer[j];
+            buffer[j] = temp;
+            //std::swap( temp,buffer[j]);
             #ifdef PRINT_DEBUG
             //std::cout << "column_min & max MAX:=" << trimmed_max << " column_min:" << column_min;
             #endif
@@ -376,8 +391,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
                 std::cout << a << ' ';
             std::cout <<std::endl;
             #endif
-
-
+            //std::cout <<"WHERE AM J ==  "<<j<<" "<<std::endl;
         }
 
 
@@ -403,6 +417,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
     std::cout <<end_j<<" <-- END_J - 1 #: "<<buffer[end_j-1]<< std::endl;
     std::cout << std::endl;
     #endif
-
-    return buffer[end_j-1];
+    int ld = buffer[end_j-1];
+    data.buffer->resize(DAMLEVCONST_MAX_EDIT_DIST);
+    return ld;
 }
