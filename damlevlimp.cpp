@@ -169,6 +169,7 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
     std::string_view subject{args->args[0], args->lengths[0]};
     std::string_view query{args->args[1], args->lengths[1]};
 
+
     // Skip any common prefix.
     auto[subject_begin, query_begin] =
     std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
@@ -176,17 +177,16 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
-        #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
         std::cout << subject << " is a prefix of " << query << ", bailing" << std::endl;
-        #endif
-        return static_cast<double>(query.length() - start_offset)/max_string_length;
+#endif
+        return (size_t)(query.length() - start_offset);
     } else if (query.length() == start_offset) {
-        #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
         std::cout << query << " is a prefix of " << subject << ", bailing" << std::endl;
-        #endif
-        return static_cast<double>(subject.length() - start_offset)/max_string_length;
+#endif
+        return (size_t)(subject.length() - start_offset);
     }
-
     // Skip any common suffix.
     auto[subject_end, query_end] = std::mismatch(
             subject.rbegin(), static_cast<decltype(subject.rend())>(subject_begin - 1),
@@ -195,118 +195,209 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
                                (size_t)(subject.size() - start_offset));
 
     // Take the different part.
-    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset + 1);
-    query = query.substr(start_offset, query.size() - end_offset - start_offset + 1);
-    #ifdef PRINT_DEBUG
-    std::cout << "subject : " << subject <<" query : "<<query << std::endl;
-    std::cout << "subject length: " << subject.length() <<" query length: "<<query.length() << std::endl;
-    #endif
+    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
+    query = query.substr(start_offset, query.size() - end_offset - start_offset);
+
+    int trimmed_max = std::max(int(query.length()),int(subject.length()));
+#ifdef PRINT_DEBUG
+    std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
+    std::cout << "trimmed subject= " <<subject <<std::endl;
+    std::cout <<"trimmed constant query= " <<query<<std::endl;
+#endif
+
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
-        #ifdef PRINT_DEBUG
-        std::cout << "WE SWAPPED" << std::endl;
-        #endif
+
         std::swap(subject, query);
-        #ifdef PRINT_DEBUG
-        std::cout << "subject" << subject <<"query:"<<query << std::endl;
-        #endif
+
     }
+
+
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
-        #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
         std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
-        #endif
-        return static_cast<double>(query.length())/max_string_length;
+#endif
+        return query.length();
     }
 
+
+    buffer.resize(trimmed_max+1);
+
+
+
     // Init buffer.
-    std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
+    std::iota(buffer.begin(), buffer.begin() + query.length() +1, 0);
 
+#ifdef PRINT_DEBUG
+    unsigned i = 0;
+    std::cout <<"    ";
+    for (auto a: query){
+        if (i <10) std::cout << a << " ";
+        else std::cout <<" "<< a<<" ";
+        i++;
+    }
+    std::cout <<std::endl;
+    std::cout <<"  ";
+    for (auto a: buffer)
+        std::cout << a << ' ';
+    std::cout <<std::endl;
+#endif
     size_t end_j; // end_j is referenced after the loop.
-    for (size_t i = 1; i < subject.length() + 1; ++i) {
-        // temp = i - 1;
-        //size_t temp = i-1;
-        size_t temp = buffer[0]++;
-        size_t prior_temp = 0;
+    size_t j;
+    //this for makes the vertical direction.
+    for (size_t i = 1; i < (subject.length() + 1); ++i) {
 
-        #ifdef PRINT_DEBUG
-        std::cout << subject[temp]<<" "<<i << ": " << temp << " ";
-        #endif
 
-        // Setup for max distance, which only needs to look in the window
-        // between i-max <= j <= i+max.
-        // The result of the max is positive, but we need the second argument
-        // to be allowed to be negative.
-        //max must be resized to deal with trimming of strings
-        int trimmed_max = std::min(int(query.length()),int(subject.length()));
+        // temp is what we're calling the current value.
+        size_t temp = buffer[0]++; // counts up 1,2,3 ....
+
+
+        // prior_temp is used to give us the UP-LEFT value.
+        // The first UP-LEFT is always 0.
+        size_t prior_temp;
+        if (i ==1) {
+            prior_temp = 0 ;}
+
+
+
+
+        /* We don't need all the row data. We only needs to look in a window around answer it is
+         * between i-max <= j <= i+max
+         * The result of the max is positive,
+         * but we need the second argument to be allowed to be negative.
+         * Recall all the trimming we did, variable 'max' = trimmed_max
+         */
+
         const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                trimmed_max/2));
-        end_j = std::min(static_cast<size_t>(query.length() + 1),
-                         static_cast<size_t >(i + trimmed_max/2));
+                                                                 trimmed_max/2-1));
+        end_j = std::min(static_cast<size_t>(query.length()+1),
+                         static_cast<size_t >(i + trimmed_max/2)+1);
+
         size_t column_min = trimmed_max;     // Sentinels
+
+        // this loop makes the horizontal data.
         for (size_t j = start_j; j < end_j; ++j) {
-
-            //const size_t p = temp; //
-            const size_t p = buffer[j - 1];
-            const size_t r = buffer[j];
-
-            size_t cost;
-            if (subject[i - 1] == query[j - 1]) {
-                cost = 0;
-            } else cost = 1;
+            //for (size_t j = 1; j < 6; ++j) {
 
 
-            temp = std::min(std::min(r,  // Insertion.
-                                     p   // Deletion.
-                            ) + 1,
+            /*          a b c d
+             *       0  1 2 3 4
+             *    a  1  0 1 2 3
+             *    b  2  1 0 1 2
+             *    c  3  2 1 0 1
+             *    d  4  3 2 1 0
+             *
+             * We only need three items to calculate the edit_distance.
+             *
+             * LEFT, UP, UP-LEFT (Diagonal up to the left).
+             *
+             * By rule, if the letters are the same  a = a then the answer is always UP-LEFT.
+             *
+             * Robert has decided to accomplish this with a single vector called: buffer.
+             * Most edit_distance methods use the entire matrix or two rows.  This is a single row approach.
+             * We can access the previous rows' data that hasn't been overwritten yet.
+             *
+             * UP: buffer[j] is the previous rows' data directly above the current
+             * position, j
+             *
+             * LEFT: buffer[j-1] is the previous value to the left, same row,
+             * of the current position j.
+             *
+             * UP-LEFT prior_temp is from the previous row left, we set it at the first for loop.
+             * This gives us the left position of the previous rows, which is upper left from the current.
+             *
+             *
+             */
+
+            const size_t r = buffer[j]; // UP
+            const size_t p = buffer[j-1]; // LEFT
+
+            //std::cout <<"prior_temp: "<<prior_temp<<" r: "<<r<<" sub: "<<subject[i-1] <<" #";
+
+            size_t cost; // need to set a cost of a mistake for transposition below.
+            // are the values the same?
+            if (subject[i-1] == query[j-1]) {
+                temp = prior_temp; //UPPER LEFT
+                cost =0;  // same, zero cost
 
 
-                    // Substitution.
-                            temp + cost
+            }
 
-            );
-            // Transposition.
+            else  {
+                cost =1; // different cost of 1, this could be set to be something else.
+
+                // answer is always the min of the three values we have.
+                temp = std::min(std::min(r+ 1,   //  UP
+                                         p + 1   // LEFT
+                                ),
+                                prior_temp + 1  //UPPER LEFT
+                );
+            }
+
+
+
+
+            // We consider transposition,
+            // flipping of a pair of letters to be a cost of error not two
             if( (i > 1) &&
                 (j > 1) &&
-                (subject[i - 1] == query[j - 2]) &&
-                (subject[i - 2] == query[j - 1])
+                (subject[i-1] == query[j-2]) &&
+                (subject[i-2] == query[j-1])
                     )
             {
                 temp = std::min(
                         temp + cost,
                         prior_temp   // transposition
                 );
+
             };
 
-            // Keep track of column minimum.
+            // Keep track of minimum value in each row. why is it called 'column_min'
+            // This will give us the ability to return if the edit distance is larger than the max
             if (temp < column_min) {
+
                 column_min = temp;
             }
-            // Record matrix value mat[i-2][j-2].
-            prior_temp = temp;
-            std::swap(buffer[j], temp);
-            #ifdef PRINT_DEBUG
-            std::cout << temp << "  ";
-            #endif
+            // this sets UPPER LEFT for next loop
+            // this is not UPPER LEFT at the beginning of the loop
+            prior_temp = buffer[j];
+            buffer[j] = temp; // this sets UP for the next loop
+
+
+
         }
-        #ifdef PRINT_DEBUG
-        std::cout << "column_min & max MAX:=" << max << " column_min:" << column_min;
-        #endif
+
+
+
+
 
         // max is the maximum edit_distance, trimmed max is the max(trimmed.subject,trimmed.query)
         // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
         if (column_min > max) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            #ifdef PRINT_DEBUG
-            std::cout << "LD is longer than limit, bailed early, MAX="<<max;
-            #endif
-            return static_cast<double>(max)/max_string_length;
+
+            return max_string_length;
+
+
         }
-        #ifdef PRINT_DEBUG
-        std::cout << std::endl;
-        #endif
+        // print out the row data,
+#ifdef PRINT_DEBUG
+
+        std::cout <<subject[i-1]<<" ";
+
+
+        for (auto a: buffer) {
+            std::cout << a << ' ';
+        }
+        std::cout <<std::endl;
+#endif
+
     }
-    //TODO: this is not returning correct, returns a very large number  1.40462e+14
-    return static_cast<double>(buffer[end_j-1])/max_string_length;
+
+
+    auto ld = (buffer[end_j-1]/  (max_string_length));
+    buffer.resize(DAMLEVLIMP_MAX_EDIT_DIST);
+    return ld;
 }
