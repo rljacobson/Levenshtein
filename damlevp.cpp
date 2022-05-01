@@ -25,7 +25,7 @@
     Example Usage:
 
         SELECT Name, DAMLEVP(Name, "Vladimir Iosifovich Levenshtein") AS
-            EditDist FROM CUSTOMERS WHERE EditDist < 0.2;
+            EditDist FROM CUSTOMERS WHERE DAMLEVP(Name, "Vladimir Iosifovich Levenshtein")  <= 0.2;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
     where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".

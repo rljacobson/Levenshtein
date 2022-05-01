@@ -30,7 +30,7 @@
     Example Usage:
 
         SELECT Name, DAMLEVCONST(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE EditDist < 6;
+            EditDist FROM CUSTOMERS WHERE DAMLEVCONST(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
     where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".

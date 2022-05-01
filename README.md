@@ -13,7 +13,7 @@ Does the world really need another Levenshtein edit distance function for MySQL?
 &nbsp;&nbsp;&nbsp;&nbsp;[DAMLEV](#damlev)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[DAMLEVLIM](#damlevlim)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;[DAMLEVP](#damlevp)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;[DAMLEVLIMP](#damlevlimp)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;[DAMLEV2D](#damlevlimp)<br>
 [Limitations](#limitations)<br>
 [Requirements](#requirements)<br>
 [Preparation for Use](#preparation-for-use)<br>
@@ -38,12 +38,13 @@ Does the world really need another Levenshtein edit distance function for MySQL?
 
 ## Functions
 
-| Function                                      | Description  |
-|:--------------------------------------------|:------------|
-| `DAMLEV(STRING, STRING)`                      | Computes the Damerau-Levenshtein edit distance between two strings. |
-| `DAMLEVP(STRING, STRING)`                     | Computes a _normalized_ Damerau-Levenshtein edit distance between two strings. |
-| `DAMLEVLIM(STRING, STRING, INT)`              | Computes the Damerau-Levenshtein edit distance between two strings up to a given max distance. Providing a max can significantly increase efficiency. |
-| `DAMLEVCONST(STRING, CONSTANT STRING, FLOAT)` | Computes the Damerau-Levenshtein edit distance between a string and a constant string up to a given max distance. Significant efficiency can result from the assumption that the second argument is constant. |
+| Function                                    | Description                                                                                                                                                                                                   |
+|:--------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DAMLEV(STRING, STRING)`                    | Computes the Damerau-Levenshtein edit distance between two strings.                                                                                                                                           |
+| `DAMLEVP(STRING, STRING)`                   | Computes a _normalized_ Damerau-Levenshtein edit distance between two strings.                                                                                                                                |
+| `DAMLEVLIM(STRING, STRING, INT)`            | Computes the Damerau-Levenshtein edit distance between two strings up to a given max distance. Providing a max can significantly increase efficiency.                                                         |
+| `DAMLEV2D(STRING, STRING)`                  | Computes the Levenshtein edit distance between two strings using a two row approach with optimization of vector length based on string lenght.                                                                |
+| `DAMLEVCONST(STRING, CONSTANT STRING, INT)` | Computes the Damerau-Levenshtein edit distance between a string and a constant string up to a given max distance. Significant efficiency can result from the assumption that the second argument is constant. |
 
 ## Usage
 
@@ -57,7 +58,6 @@ SELECT DAMLEV(String1, String2);
 |----------:|:----------------------------------------------|
 | `String1` | A string                                      |
 | `String2` | A string which will be compared to `String1`. |
-|    `PosInt` | A positive integer. If the distance between `String1` and `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its computation at `PosInt` and return `PosInt`. Make `PosInt` as small as you can to improve speed and efficiency. For example, if you put `WHERE DAMLEVLIM(...) < k` in a `WHERE`-clause, make `PosInt` be `k`. |
 | **Returns** | Either an integer equal to the edit distance between `String1` and `String2` or `PosInt`, whichever is smaller. |
 
 **Example Usage:**
@@ -118,7 +118,7 @@ where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
 #### DAMLEVCONST
 
 ```sql
-DAMLEVLIMP(String1, ConstString, PosInt);
+DAMLEVCONST(String1, ConstString, PosInt);
 ```
 
 |      Argument | Meaning                                                                 |
@@ -134,6 +134,34 @@ DAMLEVLIMP(String1, ConstString, PosInt);
 ```sql
 SELECT Name, DAMLEVCONST(Name, "Vladimir Iosifovich Levenshtein", 8) AS EditDist 
 FROM CUSTOMERS WHERE DAMLEV(Name, "Vladimir Iosifovich Levenshtein", 8) < 8;
+```
+
+The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
+where `Name` has edit distance within 8 of "Vladimir Iosifovich Levenshtein".
+
+
+#### DAMLEV2D
+
+This is a two row approach that is space optimized but does not calculate transpositions.
+You can read about this approach here. 
+
+https://takeuforward.org/data-structure/edit-distance-dp-33/
+```sql
+DAMLEV2D(String1, String2);
+```
+
+|    Argument | Meaning                                                                       |
+|------------:|:------------------------------------------------------------------------------|
+|   `String1` | A string                                                                      |
+|   `String2` | A string which will be compared to `String1`.                                 |
+| **Returns** | Either an integer equal to the edit distance between `String1` and `String2`. |
+
+
+#### Example Usage:
+
+```sql
+SELECT Name, DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") AS EditDist 
+FROM CUSTOMERS WHERE DAMLEV(Name, "Vladimir Iosifovich Levenshtein") < 8;
 ```
 
 The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
@@ -232,7 +260,7 @@ CREATE FUNCTION damlevconst RETURNS INTEGER
   SONAME 'libdamlev.so';
 CREATE FUNCTION damlevp RETURNS REAL
   SONAME 'libdamlev.so';
-CREATE FUNCTION damlevlimp RETURNS REAL
+CREATE FUNCTION damlev2D RETURNS REAL
   SONAME 'libdamlev.so';
 ```
 
@@ -242,7 +270,7 @@ To uninstall:
 DROP FUNCTION damlev;
 DROP FUNCTION damlevlim;
 DROP FUNCTION damlevp;
-DROP FUNCTION damlevlimp;
+DROP FUNCTION damlev2D;
 DROP FUNCTION damlevconst;
 ```
 

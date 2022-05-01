@@ -8,11 +8,11 @@
             __—R.__
 
     <hr>
-    `DAMLEV()` computes the Damarau Levenshtein edit distance between two strings.
+    `DAMLEV2D()` computes the Levenshtein edit distance between two strings.
 
     Syntax:
 
-        DAMLEV(String1, String2, PosInt);
+        DAMLEV2D(String1, String2);
 
     `String1`:  A string constant or column.
     `String2`:  A string constant or column to be compared to `String1`.
@@ -21,8 +21,8 @@
 
     Example Usage:
 
-        SELECT Name, DAMLEV(Name, "Vladimir Iosifovich Levenshtein") AS
-            EditDist FROM CUSTOMERS WHERE EditDist < 6;
+        SELECT Name, DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") AS
+            EditDist FROM CUSTOMERS WHERE DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") < 6;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
     where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
@@ -30,6 +30,9 @@
     <hr>
 
     Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
+
+    The 2 row approach used to compute edit-distance can be found here:
+    https://takeuforward.org/data-structure/edit-distance-dp-33/
 
     Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
     licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
