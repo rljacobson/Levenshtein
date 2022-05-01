@@ -1,4 +1,5 @@
 //good example of a standard C++ LD edit-distance
+//great tutorial on edit distance
 //https://takeuforward.org/data-structure/edit-distance-dp-33/
 
 #include <vector>
@@ -8,6 +9,7 @@ using namespace std;
 
 
 int editDistance(string& S1, string& S2){
+
 
     int n = S1.size();
     int m = S2.size();
@@ -53,11 +55,11 @@ int editDistance(string& S1, string& S2){
     return prev[m];
 
 }
-
+/*
 int main() {
 
     string s1 = "hromisviridis";
     string s2 = "vromniigyidsi";
 
     cout << editDistance(s1,s2);
-}
+}*/

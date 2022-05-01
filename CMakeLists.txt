@@ -15,8 +15,9 @@ set(DAMLEV_SOURCES
         damlev.cpp
         damlevp.cpp
         damlevlim.cpp
-        damlevlimp.cpp
+#       damlevlimp.cpp   ## removed no reason to have a percent as a limit.
 		damlevconst.cpp
+		damlev2D.cpp
 		noop.cpp
    )
 
@@ -67,7 +68,9 @@ message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")
 install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
 ## Out of the Box LD function
-add_executable(boxed_example tests/editdistanceexample.cpp)
+add_executable(damlev2D common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
+target_compile_definitions(damlev2D PRIVATE LEV_FUNCTION=damlev2D)
+
 
 ### Testing and Benchmarking ###
 ## Tests
@@ -75,12 +78,12 @@ add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testca
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevp.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevp)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev2D)
 
 
 ## Benchmark
-add_executable(benchmark common.h tests/testharness.hpp damlevconst.cpp noop.cpp tests/benchmark.cpp)
+add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlev2D.cpp noop.cpp tests/benchmark.cpp)
 # Boost is only required for the benchmark target.
 # ToDo: Use FindPackage.
 target_include_directories(benchmark PUBLIC /usr/local/include)

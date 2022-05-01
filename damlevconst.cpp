@@ -63,10 +63,11 @@
     IN THE SOFTWARE.
 */
 
-#include <iostream>
 #include "common.h"
 //#define PRINT_DEBUG
-
+#ifdef PRINT_DEBUG
+#include <iostream>
+#endif
 
 // Limits
 #ifndef DAMLEVCONST_BUFFER_SIZE
@@ -100,7 +101,7 @@ constexpr const auto DAMLEVCONST_ARG_TYPE_ERROR_LEN = std::size(DAMLEVCONST_ARG_
 // Use a "C" calling convention.
 extern "C" {
 bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void damlevconst_deinit(UDF_INIT *initid);
 }
 
@@ -163,8 +164,7 @@ void damlevconst_deinit(UDF_INIT *initid) {
     }
     delete[] initid->ptr;
 }
-//TODO: DAMLEVCONST_MAX_EDIT_DIST is not being set correctly.
-long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
+int damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
 
     // Retrieve the arguments, setting maximum edit distance and the strings accordingly.
     if ((long long *)args->args[2] == 0) {
@@ -347,7 +347,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
              * By rule, if the letters are the same  a = a then the answer is always UP-LEFT.
              *
              * Robert has decided to accomplish this with a single vector called: buffer.
-             * Most edit_distance methods use the entire matrix or two rows.  This is a single row approach.
+             * Most damlev2D methods use the entire matrix or two rows.  This is a single row approach.
              * We can access the previous rows' data that hasn't been overwritten yet.
              *
              * UP: buffer[j] is the previous rows' data directly above the current
@@ -424,7 +424,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UN
 
 
 
-        // max is the maximum edit_distance, trimmed max is the max(trimmed.subject,trimmed.query)
+        // max is the maximum damlev2D, trimmed max is the max(trimmed.subject,trimmed.query)
         // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
         if (column_min > max) {
             // There is no way to get an edit distance > column_min.

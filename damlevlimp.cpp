@@ -66,8 +66,12 @@
 */
 
 #include "common.h"
+
 //#define PRINT_DEBUG
-#include "iostream"
+#ifdef PRINT_DEBUG
+#include <iostream>
+#endif
+
 // Limits
 #ifndef DAMLEVLIMP_BUFFER_SIZE
     // 640k should be good enough for anybody.
@@ -138,16 +142,23 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
     // Maximum edit distance.
     //TODO 3rd argument: args->args[2] is not being inputted.
     #ifdef PRINT_DEBUG
-    std::cout <<"3rd argument:"<< args->args[2]<<std::endl;
-    std::cout << "Maximum edit distance:" <<  args->args[2]<<std::endl;
+
+    std::cout <<" 3rd argument:"<< *(double *)(args->args[2])<<std::endl;
+    std::cout << "Maximum edit distance:" <<  (int *)args->args[2]<<std::endl;
     std::cout << "DAMLEVLIM_MAX_EDIT_DIST:" <<DAMLEVLIMP_MAX_EDIT_DIST<<std::endl;
     std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
                                                                       args->lengths[1]))<<std::endl;
     #endif
-    int max_string_length = static_cast<double>(std::max(args->lengths[0],
-                                                                args->lengths[1]));
+    long long max_string_length = static_cast<double>(std::max(args->lengths[0],
+                                                                  args->lengths[1]));
+    auto max_p = *((double *)args->args[2]);
+    std::cout << "max_p: " << max_p << std::endl;
+    //auto max = roundl(max_p*max_string_length);
 
-    double max = std::min(*((long long *)args->args[2]), DAMLEVLIMP_MAX_EDIT_DIST);
+    auto max = std::min(static_cast<long long>(roundl(max_p*max_string_length)), DAMLEVLIMP_MAX_EDIT_DIST);
+
+    std::cout << "max: " << max << std::endl;
+
     if (max == 0.0) {
         std::cout<<"max is 0.0, therefore returning: "<<static_cast<double>(max)<<std::endl;
         //TODO: this is not returning correct, returns a very large number  1.40462e+14
@@ -378,7 +389,7 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
 
-            return max_string_length;
+            return 1.0;
 
 
         }
@@ -397,7 +408,9 @@ double damlevlimp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED
     }
 
 
-    auto ld = (buffer[end_j-1]/  (max_string_length));
+    double ld =static_cast<double> (buffer[end_j-1])/static_cast<double> (max_string_length);
+
+
     buffer.resize(DAMLEVLIMP_MAX_EDIT_DIST);
     return ld;
 }

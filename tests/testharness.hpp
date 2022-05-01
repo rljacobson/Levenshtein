@@ -98,8 +98,8 @@ void LEV_SETUP(){
     LEV_ARGS->arg_count = 2;
     LEV_ARGS->arg_type[0] = STRING_RESULT;
     LEV_ARGS->arg_type[1] = STRING_RESULT;
-    //LEV_ARGS->arg_type[2] = INT_RESULT;
-    LEV_ARGS->arg_type[2] = DECIMAL_RESULT;
+    LEV_ARGS->arg_type[2] = INT_RESULT;
+    //LEV_ARGS->arg_type[2] = DECIMAL_RESULT;
 
     // Don't forget to set args and lengths;
 

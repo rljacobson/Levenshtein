@@ -57,9 +57,12 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-//#include <iostream>
 #include "common.h"
 //#define PRINT_DEBUG
+//#define PRINT_DEBUG
+#ifdef PRINT_DEBUG
+#include <iostream>
+#endif
 // Limits
 #ifndef DAMLEVP_BUFFER_SIZE
     // 640k should be good enough for anybody. Make it a multiple of 64 so it's aligned on a 64
@@ -272,7 +275,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
              * By rule, if the letters are the same  a = a then the answer is always UP-LEFT.
              *
              * Robert has decided to accomplish this with a single vector called: buffer.
-             * Most edit_distance methods use the entire matrix or two rows.  This is a single row approach.
+             * Most damlev2D methods use the entire matrix or two rows.  This is a single row approach.
              * We can access the previous rows' data that hasn't been overwritten yet.
              *
              * UP: buffer[j] is the previous rows' data directly above the current
@@ -349,7 +352,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
 
 
 
-        // max is the maximum edit_distance, trimmed max is the max(trimmed.subject,trimmed.query)
+        // max is the maximum damlev2D, trimmed max is the max(trimmed.subject,trimmed.query)
         // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
         if (column_min > max_string_length) {
             // There is no way to get an edit distance > column_min.
