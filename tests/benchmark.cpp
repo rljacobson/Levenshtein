@@ -17,11 +17,11 @@
 #ifndef BENCH_FUNCTION
     #define LEV_FUNCTION BENCH_FUNCTION
 #else
-    #define LEV_FUNCTION damlevconst
+    #define LEV_FUNCTION damlev
 #endif
 #include "testharness.hpp"
 
-#define LEV_FUNCTION noop
+#define LEV_FUNCTION damlev2D
 #include "testharness.hpp"
 
 #include "benchtime.hpp"
@@ -91,54 +91,56 @@ int main(int argc, char *argv[]) {
     }
     boost::interprocess::mapped_region text_file_buffer(text_file, boost::interprocess::read_only);
 
-    std::cout << "Opened file " << words_file_path << "." << std::endl;
+    std::cout << "Opened file: " << words_file_path << "." << std::endl;
 
     double timediff = 0;
     unsigned line_no = 0;
     Timer timer = Timer();
 
     for(auto a : crange(text_file_buffer)){
-        damlevconst_setup();
+        damlev_setup();
         for(auto b : crange(text_file_buffer)){
-            if(a==b)
+            if (a==b)
                 continue;
             ++line_no;
-            if(line_no > maximum_size) goto breakA;
-            // std::cout << line_no << '\n';
-            damlevconst_call((char *)b.begin(), b.size(), (char *)a.begin(), a.size(), 17);
+            damlev_call((char *)b.begin(), b.size(), (char *)a.begin(), a.size(), 1);
+            //std::cout <<a<<" : "<<b;
         }
-        damlevconst_teardown();
+        damlev_teardown();
+
+        if(line_no > maximum_size) goto breakA;
+
     }
 breakA:
+    std::cout << "Number of words: " << line_no-1 << std::endl;
 
-    std::cout << "-----------\nDAMLEVCONST\n-----------\n";
+    std::cout << "-----------\nDAMLEV\n-----------\n";
     timediff = timer.elapsed();
     std::cout << "Time elapsed:" << timediff << 's' << std::endl;
-    std::cout << "Number of words: " << line_no-1 << std::endl;
 
 
     line_no = 0;
     timer.reset();
 
     for(auto a : crange(text_file_buffer)){
-        noop_setup();
+        damlev2D_setup();
         for(auto b : crange(text_file_buffer)){
             if(a==b)
                 continue;
             ++line_no;
-            if(line_no > maximum_size) goto breakB;
-            // std::cout << line_no << '\n';
-            noop_call((char *)b.begin(), b.size(), (char *)a.begin(), a.size(), 17);
+            damlev2D_call((char *)b.begin(), b.size(), (char *)a.begin(), a.size(), 1);
         }
-        noop_teardown();
+        damlev2D_teardown();
+        if(line_no > maximum_size) goto breakB;
+
     }
 breakB:
 
-    std::cout << "NOOP\n-----------\n";
+    std::cout << "-----------\n2 row approach\n-----------\n";
     std::cout << "Time elapsed:" << timer.elapsed() << "s\n-----------\n\n";
-
-    std::cout << "Time difference:" << timediff - timer.elapsed() << 's' << std::endl;
-    std::cout << "Number of words: " << line_no-1 << std::endl;
+    std::cout << "We took " << timediff - timer.elapsed() ;
+    std::cout << "s longer to run DAMLEVCONST than use a 2 row approach" ;
+    std::cout << " checking " << line_no-1 << " words."<<std::endl;
 
 
 }

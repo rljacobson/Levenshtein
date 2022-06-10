@@ -25,7 +25,7 @@
     Example Usage:
 
         SELECT Name, DAMLEVP(Name, "Vladimir Iosifovich Levenshtein") AS
-            EditDist FROM CUSTOMERS WHERE EditDist < 0.2;
+            EditDist FROM CUSTOMERS WHERE DAMLEVP(Name, "Vladimir Iosifovich Levenshtein")  <= 0.2;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
     where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
@@ -57,9 +57,12 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-
 #include "common.h"
-
+//#define PRINT_DEBUG
+//#define PRINT_DEBUG
+#ifdef PRINT_DEBUG
+#include <iostream>
+#endif
 // Limits
 #ifndef DAMLEVP_BUFFER_SIZE
     // 640k should be good enough for anybody. Make it a multiple of 64 so it's aligned on a 64
@@ -95,7 +98,7 @@ extern "C" {
 }
 
 bool damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
-    // We require 3 arguments:
+    // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, DAMLEVP_ARG_NUM_ERROR, DAMLEVP_ARG_NUM_ERROR_LEN);
         return 1;
@@ -130,6 +133,13 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         // length zero. In either case
         return 1.0;
     }
+    #ifdef PRINT_DEBUG
+    std::cout << "Maximum edit distance:" <<  DAMLEVP_MAX_EDIT_DIST <<std::endl;
+    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" << DAMLEVP_MAX_EDIT_DIST<<std::endl;
+    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
+                                                                      args->lengths[1]))<<std::endl;
+
+    #endif
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
     // Save the original max string length for the normalization when we return.
@@ -146,9 +156,15 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
-        return static_cast<double>(query.length() - start_offset)/max_string_length;
+#ifdef PRINT_DEBUG
+        std::cout << subject << " is a prefix of " << query << ", bailing" << std::endl;
+#endif
+        return (size_t)(query.length() - start_offset);
     } else if (query.length() == start_offset) {
-        return static_cast<double>(subject.length() - start_offset)/max_string_length;
+#ifdef PRINT_DEBUG
+        std::cout << query << " is a prefix of " << subject << ", bailing" << std::endl;
+#endif
+        return (size_t)(subject.length() - start_offset);
     }
 
     // Skip any common suffix.
@@ -158,73 +174,211 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     auto end_offset = std::min((size_t)std::distance(subject.rbegin(), subject_end),
                                (size_t)(subject.size() - start_offset));
 
-    // Only look at the different part in the middle.
-    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset + 1);
-    query = query.substr(start_offset, query.size() - end_offset - start_offset + 1);
+    // Take the different part.
+    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
+    query = query.substr(start_offset, query.size() - end_offset - start_offset);
+
+    int trimmed_max = std::max(int(query.length()),int(subject.length()));
+#ifdef PRINT_DEBUG
+    std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
+    std::cout << "trimmed subject= " <<subject <<std::endl;
+    std::cout <<"trimmed constant query= " <<query<<std::endl;
+#endif
 
     // Make "subject" the smaller one.
     if (query.length() < subject.length()) {
+
         std::swap(subject, query);
+
     }
+
+
     // If one of the strings is a suffix of the other.
     if (subject.length() == 0) {
-        return static_cast<double>(query.length())/max_string_length;
+#ifdef PRINT_DEBUG
+        std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
+#endif
+        return query.length();
     }
+
+
+    buffer.resize(trimmed_max+1);
+
+
 
     // Init buffer.
-    std::iota(buffer.begin(), buffer.begin() + query.length() + 1, 0);
+    std::iota(buffer.begin(), buffer.begin() + query.length() +1, 0);
+
+#ifdef PRINT_DEBUG
+    unsigned i = 0;
+    std::cout <<"    ";
+    for (auto a: query){
+        if (i <10) std::cout << a << " ";
+        else std::cout <<" "<< a<<" ";
+        i++;
+    }
+    std::cout <<std::endl;
+    std::cout <<"  ";
+    for (auto a: buffer)
+        std::cout << a << ' ';
+    std::cout <<std::endl;
+#endif
     size_t end_j; // end_j is referenced after the loop.
-    for (size_t i = 1; i < subject.length() + 1; ++i) {
-        // temp = i - 1;
-        size_t temp = buffer[0]++;
-        size_t prior_temp = 0;
-        #ifdef PRINT_DEBUG
-        std::cout << i << ":  " << temp << "  ";
-        #endif
+    size_t j;
+    //this for makes the vertical direction.
+    for (size_t i = 1; i < (subject.length() + 1); ++i) {
 
-        // Setup for max distance, which only needs to look in the window
-        // between i-max <= j <= i+max.
-        // The result of the max is positive, but we need the second argument
-        // to be allowed to be negative.
-        const size_t start_j = static_cast<size_t>(std::max(1ll,
-                                               (static_cast<long long>(i) - DAMLEVP_MAX_EDIT_DIST/2)));
-        end_j = std::min(static_cast<size_t>(query.length() + 1),
-                static_cast<size_t >(i + DAMLEVP_MAX_EDIT_DIST/2));
-        size_t column_min = static_cast<size_t>(DAMLEVP_MAX_EDIT_DIST);
+
+        // temp is what we're calling the current value.
+        size_t temp = buffer[0]++; // counts up 1,2,3 ....
+
+
+        // prior_temp is used to give us the UP-LEFT value.
+        // The first UP-LEFT is always 0.
+        size_t prior_temp;
+        if (i ==1) {
+            prior_temp = 0 ;}
+
+
+
+
+        /* We don't need all the row data. We only needs to look in a window around answer it is
+         * between i-max <= j <= i+max
+         * The result of the max is positive,
+         * but we need the second argument to be allowed to be negative.
+         * Recall all the trimming we did, variable 'max' = trimmed_max
+         */
+
+        const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
+                                                                 trimmed_max/2-1));
+        end_j = std::min(static_cast<size_t>(query.length()+1),
+                         static_cast<size_t >(i + trimmed_max/2)+1);
+
+        size_t column_min = trimmed_max;     // Sentinels
+
+        // this loop makes the horizontal data.
         for (size_t j = start_j; j < end_j; ++j) {
-            const size_t p = temp; // p = buffer[j - 1];
-            const size_t r = buffer[j];
-            temp = std::min(std::min(r,  // Insertion.
-                                     p   // Deletion.
-                            ) + 1,
+            //for (size_t j = 1; j < 6; ++j) {
 
-                            std::min(
-                                    // Transposition.
-                                    prior_temp + 1,
-                                    // Substitution.
-                                    temp + (subject[i - 1] == query[j - 1] ? 0 : 1)
-                            )
-            );
-            // Keep track of column minimum.
+
+            /*          a b c d
+             *       0  1 2 3 4
+             *    a  1  0 1 2 3
+             *    b  2  1 0 1 2
+             *    c  3  2 1 0 1
+             *    d  4  3 2 1 0
+             *
+             * We only need three items to calculate the edit_distance.
+             *
+             * LEFT, UP, UP-LEFT (Diagonal up to the left).
+             *
+             * By rule, if the letters are the same  a = a then the answer is always UP-LEFT.
+             *
+             * Robert has decided to accomplish this with a single vector called: buffer.
+             * Most damlev2D methods use the entire matrix or two rows.  This is a single row approach.
+             * We can access the previous rows' data that hasn't been overwritten yet.
+             *
+             * UP: buffer[j] is the previous rows' data directly above the current
+             * position, j
+             *
+             * LEFT: buffer[j-1] is the previous value to the left, same row,
+             * of the current position j.
+             *
+             * UP-LEFT prior_temp is from the previous row left, we set it at the first for loop.
+             * This gives us the left position of the previous rows, which is upper left from the current.
+             *
+             *
+             */
+
+            const size_t r = buffer[j]; // UP
+            const size_t p = buffer[j-1]; // LEFT
+
+            //std::cout <<"prior_temp: "<<prior_temp<<" r: "<<r<<" sub: "<<subject[i-1] <<" #";
+
+            size_t cost; // need to set a cost of a mistake for transposition below.
+            // are the values the same?
+            if (subject[i-1] == query[j-1]) {
+                temp = prior_temp; //UPPER LEFT
+                cost =0;  // same, zero cost
+
+
+            }
+
+            else  {
+                cost =1; // different cost of 1, this could be set to be something else.
+
+                // answer is always the min of the three values we have.
+                temp = std::min(std::min(r+ 1,   //  UP
+                                         p + 1   // LEFT
+                                ),
+                                prior_temp + 1  //UPPER LEFT
+                );
+            }
+
+
+
+
+            // We consider transposition,
+            // flipping of a pair of letters to be a cost of error not two
+            if( (i > 1) &&
+                (j > 1) &&
+                (subject[i-1] == query[j-2]) &&
+                (subject[i-2] == query[j-1])
+                    )
+            {
+                temp = std::min(
+                        temp + cost,
+                        prior_temp   // transposition
+                );
+
+            };
+
+            // Keep track of minimum value in each row. why is it called 'column_min'
+            // This will give us the ability to return if the edit distance is larger than the max
             if (temp < column_min) {
+
                 column_min = temp;
             }
-            // Record matrix value mat[i-2][j-2].
-            prior_temp = temp;
-            std::swap(buffer[j], temp);
-            #ifdef PRINT_DEBUG
-            std::cout << temp << "  ";
-            #endif
+            // this sets UPPER LEFT for next loop
+            // this is not UPPER LEFT at the beginning of the loop
+            prior_temp = buffer[j];
+            buffer[j] = temp; // this sets UP for the next loop
+
+
+
         }
-        if (column_min >= DAMLEVP_MAX_EDIT_DIST) {
+
+
+
+
+
+        // max is the maximum damlev2D, trimmed max is the max(trimmed.subject,trimmed.query)
+        // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
+        if (column_min > max_string_length) {
             // There is no way to get an edit distance > column_min.
             // We can bail out early.
-            return static_cast<double>(DAMLEVP_MAX_EDIT_DIST)/max_string_length;
+
+            return max_string_length;
+
+
         }
-        #ifdef PRINT_DEBUG
-        std::cout << std::endl;
-        #endif
+        // print out the row data,
+#ifdef PRINT_DEBUG
+
+        std::cout <<subject[i-1]<<" ";
+
+
+        for (auto a: buffer) {
+            std::cout << a << ' ';
+        }
+        std::cout <<std::endl;
+#endif
+
     }
 
-    return static_cast<double>(buffer[end_j-1])/max_string_length;
+
+    double ld =static_cast<double> (buffer[end_j-1]/max_string_length);
+    buffer.resize(DAMLEVP_MAX_EDIT_DIST);
+    return ld;
 }
+

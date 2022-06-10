@@ -15,8 +15,9 @@ set(DAMLEV_SOURCES
         damlev.cpp
         damlevp.cpp
         damlevlim.cpp
-        damlevlimp.cpp
+#       damlevlimp.cpp   ## removed no reason to have a percent as a limit.
 		damlevconst.cpp
+		damlev2D.cpp
 		noop.cpp
    )
 
@@ -33,7 +34,8 @@ target_compile_definitions(damlev PRIVATE MYSQL_DYNAMIC_PLUGIN)
 
 # If you know the plugin directory of your MySQL installation, you can uncomment
 # the following line and set it here.
-# set(MYSQL_PLUGIN_DIR "c:\\path\\to\\plugin\\dir")
+
+set(MYSQL_PLUGIN_DIR "set(MYSQL_PLUGIN_DIR /usr/local/mysql/lib/plugin)")
 
 if(NOT DEFINED MYSQL_PLUGIN_DIR)
     if(INSTALL_PLUGINDIR)
@@ -65,22 +67,27 @@ message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
+## Out of the Box LD function
+add_executable(damlev2D common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
+target_compile_definitions(damlev2D PRIVATE LEV_FUNCTION=damlev2D)
+
 
 ### Testing and Benchmarking ###
 ## Tests
-add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testcases.cpp
-		damlevconst.cpp)
+add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testcases.cpp damlevconst.cpp)
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevlim.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevlim)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev2D)
+
 
 ## Benchmark
-add_executable(benchmark common.h tests/testharness.hpp damlevconst.cpp noop.cpp tests/benchmark.cpp)
+add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlev2D.cpp noop.cpp tests/benchmark.cpp)
 # Boost is only required for the benchmark target.
 # ToDo: Use FindPackage.
 target_include_directories(benchmark PUBLIC /usr/local/include)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")
+

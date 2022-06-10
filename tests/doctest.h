@@ -5257,7 +5257,21 @@ void DOCTEST_FIX_FOR_MACOS_LIBCPP_IOSFWD_STRING_LINK_ERRORS() { std::cout << std
 #endif // DOCTEST_CONFIG_DISABLE
 
 #ifdef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-int main(int argc, char** argv) { return doctest::Context(argc, argv).run(); }
+int main(int argc, char **argv) {
+    doctest::Context context;
+    context.applyCommandLine(argc, argv);
+    int res = context.run(); // run doctest
+
+    // important - query flags (and --exit) rely on the user doing this
+    if (context.shouldExit()) {
+        // propagate the result of the tests
+        return res;
+    }
+
+    printf("%s\n", "Hello, World!");
+}
+
+
 #endif // DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 DOCTEST_CLANG_SUPPRESS_WARNING_POP

@@ -50,9 +50,7 @@
 */
 
 
-#ifndef LEV_FUNCTION
 #define LEV_FUNCTION damlevconst
-#endif
 
 #include "testharness.hpp"
 
@@ -63,132 +61,11 @@
 
 TEST_CASE("empty strings are distance 0")
 {
-	REQUIRE(LEV_CALL("", "") == 0);
+    REQUIRE(LEV_CALL("",2,"",2,2));
+
+
 }
 
 
-TEST_CASE("identical strings are distance 0")
-{
-	REQUIRE(LEV_CALL("", "") == 0);
-	REQUIRE(LEV_CALL("-", "-") == 0);
-	REQUIRE(LEV_CALL("--", "--") == 0);
-	REQUIRE(LEV_CALL("---", "---") == 0);
-	REQUIRE(LEV_CALL("----", "----") == 0);
-	REQUIRE(LEV_CALL("-----", "-----") == 0);
-}
-
-
-TEST_CASE("empty strings are distance n from strings of length n")
-{
-	REQUIRE(LEV_CALL("", "-") == 1);
-	REQUIRE(LEV_CALL("", "--") == 2);
-	REQUIRE(LEV_CALL("", "---") == 3);
-	REQUIRE(LEV_CALL("", "----") == 4);
-	REQUIRE(LEV_CALL("", "-----") == 5);
-	
-	
-	REQUIRE(LEV_CALL("-", "") == 1);
-	REQUIRE(LEV_CALL("--", "") == 2);
-	REQUIRE(LEV_CALL("---", "") == 3);
-	REQUIRE(LEV_CALL("----", "") == 4);
-	REQUIRE(LEV_CALL("-----", "") == 5);
-}
-
-
-TEST_CASE("strings with one inserted character has a distance of one")
-{
-	REQUIRE(LEV_CALL("", "-") == 1);
-	REQUIRE(LEV_CALL("-", "-x") == 1);
-	REQUIRE(LEV_CALL("--", "-x-") == 1);
-	REQUIRE(LEV_CALL("---", "-x--") == 1);
-	REQUIRE(LEV_CALL("----", "--x--") == 1);
-	
-	
-	REQUIRE(LEV_CALL("-", "") == 1);
-	REQUIRE(LEV_CALL("-x", "-") == 1);
-	REQUIRE(LEV_CALL("-x-", "--") == 1);
-	REQUIRE(LEV_CALL("-x--", "---") == 1);
-	REQUIRE(LEV_CALL("--x--", "----") == 1);
-}
-
-
-TEST_CASE("strings with one prepended character has a distance of 1")
-{
-	REQUIRE(LEV_CALL("x", "") == 1);
-	REQUIRE(LEV_CALL("x-", "-") == 1);
-	REQUIRE(LEV_CALL("x--", "--") == 1);
-	REQUIRE(LEV_CALL("x---", "---") == 1);
-	REQUIRE(LEV_CALL("x----", "----") == 1);
-	
-	REQUIRE(LEV_CALL("", "x") == 1);
-	REQUIRE(LEV_CALL("-", "x-") == 1);
-	REQUIRE(LEV_CALL("--", "x--") == 1);
-	REQUIRE(LEV_CALL("---", "x---") == 1);
-	REQUIRE(LEV_CALL("----", "x----") == 1);
-}
-
-
-TEST_CASE("strings with one appended character has a distance of 1")
-{
-	REQUIRE(LEV_CALL("x", "") == 1);
-	REQUIRE(LEV_CALL("-x", "-") == 1);
-	REQUIRE(LEV_CALL("--x", "--") == 1);
-	REQUIRE(LEV_CALL("---x", "---") == 1);
-	REQUIRE(LEV_CALL("----x", "----") == 1);
-	
-	REQUIRE(LEV_CALL("", "x") == 1);
-	REQUIRE(LEV_CALL("-", "-x") == 1);
-	REQUIRE(LEV_CALL("--", "--x") == 1);
-	REQUIRE(LEV_CALL("---", "---x") == 1);
-	REQUIRE(LEV_CALL("----", "----x") == 1);
-}
-
-
-TEST_CASE("strings with two appended character has a distance of 2")
-{
-	REQUIRE(LEV_CALL("xx", "") == 2);
-	REQUIRE(LEV_CALL("-xx", "-") == 2);
-	REQUIRE(LEV_CALL("--xx", "--") == 2);
-	REQUIRE(LEV_CALL("---xx", "---") == 2);
-	REQUIRE(LEV_CALL("----xx", "----") == 2);
-	
-	REQUIRE(LEV_CALL("", "xx") == 2);
-	REQUIRE(LEV_CALL("-", "-xx") == 2);
-	REQUIRE(LEV_CALL("--", "--xx") == 2);
-	REQUIRE(LEV_CALL("---", "---xx") == 2);
-	REQUIRE(LEV_CALL("----", "----xx") == 2);
-}
-
-
-TEST_CASE("strings with one appended and one prepended character has a distance of 2")
-{
-	REQUIRE(LEV_CALL("xx", "") == 2);
-	REQUIRE(LEV_CALL("x-x", "-") == 2);
-	REQUIRE(LEV_CALL("x--x", "--") == 2);
-	REQUIRE(LEV_CALL("x---x", "---") == 2);
-	REQUIRE(LEV_CALL("x----x", "----") == 2);
-
-	REQUIRE(LEV_CALL("", "xx") == 2);
-	REQUIRE(LEV_CALL("-", "x-x") == 2);
-	REQUIRE(LEV_CALL("--", "x--x") == 2);
-	REQUIRE(LEV_CALL("---", "x---x") == 2);
-	REQUIRE(LEV_CALL("----", "x----x") == 2);
-}
-
-
-TEST_CASE("strings with one appended, one inserted and one prepended character has a distance of 3")
-{
-	REQUIRE(LEV_CALL("xxx", "") == 3);
-	REQUIRE(LEV_CALL("x-xx", "-") == 3);
-	REQUIRE(LEV_CALL("x-x-x", "--") == 3);
-	REQUIRE(LEV_CALL("x-x--x", "---") == 3);
-	REQUIRE(LEV_CALL("x--x--x", "----") == 3);
-
-	REQUIRE(LEV_CALL("", "xxx") == 3);
-	REQUIRE(LEV_CALL("-", "x-xx") == 3);
-	REQUIRE(LEV_CALL("--", "x-x-x") == 3);
-	REQUIRE(LEV_CALL("---", "x-x--x") == 3);
-	REQUIRE(LEV_CALL("----", "x--x--x") == 3);
-}
 
 
