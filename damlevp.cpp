@@ -169,15 +169,16 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
 
     // Skip any common suffix.
     auto[subject_end, query_end] = std::mismatch(
-            subject.rbegin(), static_cast<decltype(subject.rend())>(subject_begin - 1),
-            query.rbegin(), static_cast<decltype(query.rend())>(query_begin - 1));
+            subject.rbegin(), static_cast<decltype(subject.rend())>(subject_begin),
+            query.rbegin(), static_cast<decltype(query.rend())>(query_begin));
     auto end_offset = std::min((size_t)std::distance(subject.rbegin(), subject_end),
                                (size_t)(subject.size() - start_offset));
 
     // Take the different part.
-    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
-    query = query.substr(start_offset, query.size() - end_offset - start_offset);
-
+    if (start_offset > 2 && end_offset > 2) {
+        subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
+        query = query.substr(start_offset, query.size() - end_offset - start_offset);
+    }
     int trimmed_max = std::max(int(query.length()),int(subject.length()));
 #ifdef PRINT_DEBUG
     std::cout << "trimmed max length:" <<trimmed_max<<std::endl;

@@ -54,7 +54,9 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
+#include <iostream>
 #include "common.h"
+//#define PRINT_DEBUG
 #ifdef PRINT_DEBUG
 #include <iostream>
 #endif
@@ -138,8 +140,8 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     }
     #ifdef PRINT_DEBUG
     std::cout << "Maximum edit distance:" <<  std::min(*((long long *)args->args[2]),
-                                                       MAX_EDIT_DIST)<<std::endl;
-    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" <<MAX_EDIT_DIST<<std::endl;
+                                                       DAMLEV_MAX_EDIT_DIST)<<std::endl;
+    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" <<DAMLEV_MAX_EDIT_DIST<<std::endl;
     std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
                                                                       args->lengths[1]))<<std::endl;
 
@@ -171,14 +173,31 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
 
     // Skip any common suffix.
     auto[subject_end, query_end] = std::mismatch(
-            subject.rbegin(), static_cast<decltype(subject.rend())>(subject_begin - 1),
-            query.rbegin(), static_cast<decltype(query.rend())>(query_begin - 1));
+            subject.rbegin(), static_cast<decltype(subject.rend())>(subject_begin),
+            query.rbegin(), static_cast<decltype(query.rend())>(query_begin));
     auto end_offset = std::min((size_t)std::distance(subject.rbegin(), subject_end),
                                (size_t)(subject.size() - start_offset));
 
+#ifdef PRINT_DEBUG
+    // Printing before trimming
+    std::cout << "Before Trimming:\n";
+    std::cout << "subject (original): " << subject << std::endl;
+    std::cout << "query (original): " << query << std::endl;
+    std::cout << "start_offset: " << start_offset << std::endl;
+    std::cout << "end_offset: " << end_offset << std::endl;
+    std::cout << "subject.size(): " << subject.size() << std::endl;
+    std::cout << "query.size(): " << query.size() << std::endl;
+#endif
+
     // Take the different part.
-    subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
-    query = query.substr(start_offset, query.size() - end_offset - start_offset);
+    //subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
+    //query = query.substr(start_offset, query.size() - end_offset - start_offset);
+
+    if (start_offset > 2 && end_offset > 2) {
+        subject = subject.substr(start_offset, subject.size() - end_offset - start_offset);
+        query = query.substr(start_offset, query.size() - end_offset - start_offset);
+    }
+
 
     int trimmed_max = std::max(int(query.length()),int(subject.length()));
 #ifdef PRINT_DEBUG
@@ -295,7 +314,9 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
             const size_t r = buffer[j]; // UP
             const size_t p = buffer[j-1]; // LEFT
 
-            //std::cout <<"prior_temp: "<<prior_temp<<" r: "<<r<<" sub: "<<subject[i-1] <<" #";
+            #ifdef PRINT_DEBUG
+            std::cout  <<"prior_temp: "<<prior_temp<<" r: "<<r<<" sub: "<<subject[i-1] <<" #";
+            #endif
 
             size_t cost; // need to set a cost of a mistake for transposition below.
             // are the values the same?
@@ -332,6 +353,8 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
                         temp + cost,
                         prior_temp   // transposition
                 );
+
+
 
             };
 

@@ -22,7 +22,7 @@ set(DAMLEV_SOURCES
    )
 
 
-add_library(damlev MODULE ${DAMLEV_SOURCES})
+add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)
 target_compile_definitions(damlev PRIVATE WORDS_PATH="/usr/share/dict/words")
 target_compile_definitions(damlev PRIVATE MYSQL_DYNAMIC_PLUGIN)
 # Uncomment the following to set the buffer size to something other than 512
@@ -78,8 +78,11 @@ add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testca
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev2D)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev)
+
+add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlev.cpp)
+target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlev)
 
 
 ## Benchmark
