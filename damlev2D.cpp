@@ -169,12 +169,6 @@ long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSE
                 );
             }
         } prev = cur;
-#ifdef PRINT_DEBUG
-        for (auto a: prev)
-            std::cout << a << ' ';
-        std::cout <<std::endl;
-
-#endif
     }
 
     return prev[m];

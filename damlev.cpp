@@ -200,6 +200,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
 
 
     int trimmed_max = std::max(int(query.length()),int(subject.length()));
+    int max = trimmed_max;
 #ifdef PRINT_DEBUG
     std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
     std::cout << "trimmed subject= " <<subject <<std::endl;
@@ -223,12 +224,13 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     }
 
 
-    buffer.resize(trimmed_max+1);
+// Resize the buffer for the 2D approach.
+    std::vector<int> prev(query.length() + 1, 0);
+    std::vector<int> cur(query.length() + 1, 0);
 
+// Initialize the first row.
+    std::iota(prev.begin(), prev.end(), 0);
 
-
-    // Init buffer.
-    std::iota(buffer.begin(), buffer.begin() + query.length() +1, 0);
 
 #ifdef PRINT_DEBUG
     unsigned i = 0;
@@ -246,163 +248,39 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
 #endif
     size_t end_j; // end_j is referenced after the loop.
     size_t j;
-    //this for makes the vertical direction.
-    for (size_t i = 1; i < (subject.length() + 1); ++i) {
+// Main loop for calculating Levenshtein Distance.
+    for (int i = 1; i <= subject.length(); ++i) {
+        cur[0] = i;
+        int column_min = cur[0]; // Initialize column minimum for each row
 
+        for (int j = 1; j <= query.length(); ++j) {
+            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1; // Cost calculation
 
-        // temp is what we're calling the current value.
-        size_t temp = buffer[0]++; // counts up 1,2,3 ....
+            // Calculate minimum operation cost for current position.
+            cur[j] = std::min({ prev[j - 1] + cost,   // Substitution (or matching)
+                                cur[j - 1] + 1,      // Insertion
+                                prev[j] + 1 });      // Deletion
 
-
-        // prior_temp is used to give us the UP-LEFT value.
-        // The first UP-LEFT is always 0.
-        size_t prior_temp;
-        if (i ==1) {
-            prior_temp = 0 ;}
-
-
-
-
-        /* We don't need all the row data. We only needs to look in a window around answer it is
-         * between i-max <= j <= i+max
-         * The result of the max is positive,
-         * but we need the second argument to be allowed to be negative.
-         * Recall all the trimming we did, variable 'max' = trimmed_max
-         */
-
-        const size_t start_j = static_cast<size_t>(std::max(1ll, static_cast<long long>(i) -
-                                                                 trimmed_max/2-1));
-        end_j = std::min(static_cast<size_t>(query.length()+1),
-                         static_cast<size_t >(i + trimmed_max/2)+1);
-
-        size_t column_min = trimmed_max;     // Sentinels
-
-        // this loop makes the horizontal data.
-        for (size_t j = start_j; j < end_j; ++j) {
-            //for (size_t j = 1; j < 6; ++j) {
-
-
-            /*          a b c d
-             *       0  1 2 3 4
-             *    a  1  0 1 2 3
-             *    b  2  1 0 1 2
-             *    c  3  2 1 0 1
-             *    d  4  3 2 1 0
-             *
-             * We only need three items to calculate the edit_distance.
-             *
-             * LEFT, UP, UP-LEFT (Diagonal up to the left).
-             *
-             * By rule, if the letters are the same  a = a then the answer is always UP-LEFT.
-             *
-             * Robert has decided to accomplish this with a single vector called: buffer.
-             * Most damlev2D methods use the entire matrix or two rows.  This is a single row approach.
-             * We can access the previous rows' data that hasn't been overwritten yet.
-             *
-             * UP: buffer[j] is the previous rows' data directly above the current
-             * position, j
-             *
-             * LEFT: buffer[j-1] is the previous value to the left, same row,
-             * of the current position j.
-             *
-             * UP-LEFT prior_temp is from the previous row left, we set it at the first for loop.
-             * This gives us the left position of the previous rows, which is upper left from the current.
-             *
-             *
-             */
-
-            const size_t r = buffer[j]; // UP
-            const size_t p = buffer[j-1]; // LEFT
-
-            #ifdef PRINT_DEBUG
-            std::cout  <<"prior_temp: "<<prior_temp<<" r: "<<r<<" sub: "<<subject[i-1] <<" #";
-            #endif
-
-            size_t cost; // need to set a cost of a mistake for transposition below.
-            // are the values the same?
-            if (subject[i-1] == query[j-1]) {
-                temp = prior_temp; //UPPER LEFT
-                cost =0;  // same, zero cost
-
-
+            // Check and handle transpositions.
+            if (i > 1 && j > 1 &&
+                subject[i - 1] == query[j - 2] &&
+                subject[i - 2] == query[j - 1]) {
+                cur[j] = std::min(cur[j], prev[j - 2] + 1); // Correct handling of transposition cost
             }
 
-            else  {
-                cost =1; // different cost of 1, this could be set to be something else.
-
-                // answer is always the min of the three values we have.
-                temp = std::min(std::min(r+ 1,   //  UP
-                                         p + 1   // LEFT
-                                ),
-                                prior_temp + 1  //UPPER LEFT
-                );
-            }
-
-
-
-
-            // We consider transposition,
-            // flipping of a pair of letters to be a cost of error not two
-            if( (i > 1) &&
-                (j > 1) &&
-                (subject[i-1] == query[j-2]) &&
-                (subject[i-2] == query[j-1])
-                    )
-            {
-                temp = std::min(
-                        temp + cost,
-                        prior_temp   // transposition
-                );
-
-
-
-            };
-
-            // Keep track of minimum value in each row. why is it called 'column_min'
-            // This will give us the ability to return if the edit distance is larger than the max
-            if (temp < column_min) {
-
-                column_min = temp;
-            }
-            // this sets UPPER LEFT for next loop
-            // this is not UPPER LEFT at the beginning of the loop
-            prior_temp = buffer[j];
-            buffer[j] = temp; // this sets UP for the next loop
-
-
-
+            // Update column minimum for potential early bailout.
+            column_min = std::min(column_min, cur[j]);
         }
 
-
-
-
-
-        // max is the maximum damlev2D, trimmed max is the max(trimmed.subject,trimmed.query)
-        // the max could be longer than the possible edit distance, so it would never bail early, likely not an issue, but..
-        if (column_min > max_string_length) {
-            // There is no way to get an edit distance > column_min.
-            // We can bail out early.
-
-            return max_string_length;
-
-
+        // Check for early bailout if column minimum exceeds max.
+        if (column_min > max) {
+            return max;
         }
-        // print out the row data,
-#ifdef PRINT_DEBUG
 
-        std::cout <<subject[i-1]<<" ";
-
-
-        for (auto a: buffer) {
-            std::cout << a << ' ';
-        }
-        std::cout <<std::endl;
-#endif
-
+        std::swap(prev, cur); // Prepare for next iteration.
     }
 
-
-    int ld = buffer[end_j-1];
-    buffer.resize(DAMLEV_MAX_EDIT_DIST);
+    int ld = prev[query.length()]; // Final edit distance.
     return ld;
+
 }

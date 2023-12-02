@@ -85,12 +85,13 @@ add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damle
 target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlev)
 
 
-## Benchmark
+# Benchmark
+find_package(Boost REQUIRED)
+if(Boost_FOUND)
+	include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlev2D.cpp noop.cpp tests/benchmark.cpp)
-# Boost is only required for the benchmark target.
-# ToDo: Use FindPackage.
-target_include_directories(benchmark PUBLIC /usr/local/include)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")
-
