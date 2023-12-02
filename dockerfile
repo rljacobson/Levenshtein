@@ -1,7 +1,7 @@
 # Use Ubuntu 18.04 (Bionic) as the base image
 FROM ubuntu:bionic
 
-# Essential packages for remote debugging, login, and other development tools
+# Update the package repository and install essential packages
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     apt-utils \
     gcc \
@@ -14,16 +14,15 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     rsync \
     vim \
     libmysqlclient-dev \
-    libboost-all-dev # Add Boost libraries
+    libboost-all-dev \
+    && rm -rf /var/lib/apt/lists/* # Clean up the package list to reduce image size
+
 
 # Add your code to the container
 ADD . /code
 
-# Set your working directory inside the container
+# Set your working directory inside the container to /code
 WORKDIR /code
 
-# Optional: Expose ports for SSH, gdbserver, or other services
-# EXPOSE 22 12345
-
-# Optional: Set a default command or entry point, like launching a server or running a script
-# CMD ["./your_script.sh"]
+# Default command or entry point for the container
+CMD ["bash"]

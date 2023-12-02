@@ -1,0 +1,11 @@
+version: ''
+
+services:
+  udf:
+    container_name: damlev_udf
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/code
+    command: tail -f /dev/null
