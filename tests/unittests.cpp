@@ -154,19 +154,21 @@ int main() {
 
 
 
-    long long maxDistance = 9; // Maximum edit distance
+    long long maxDistance = 25; // Maximum edit distance
     LEV_SETUP();
 
-    // Run tests
+// Run tests
     for (const auto& testCase : testCases) {
         long long result = LEV_CALL(const_cast<char*>(testCase.a.c_str()), testCase.a.size(),
                                     const_cast<char*>(testCase.b.c_str()), testCase.b.size(),
                                     maxDistance);
 
         bool testPassed = result == testCase.expectedDistance;
-        std::cout << testCase.functionName << ": " << testCase.a << " vs " << testCase.b
-                  << " (LD: " << result << ") - " << " (Expected: " << testCase.expectedDistance << ") - "
-                  << (testPassed ? "PASS" : "FAIL") << std::endl;
+
+        if (!testPassed) { // Print only if the test failed
+            std::cout << testCase.functionName << ": " << testCase.a << " vs " << testCase.b
+                      << " (LD: " << result << ") - " << " (Expected: " << testCase.expectedDistance << ") - FAIL" << std::endl;
+        }
     }
 
     LEV_TEARDOWN();

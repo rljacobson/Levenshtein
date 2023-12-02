@@ -11,8 +11,8 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"aMartha"};
-std::string db_return {"bMarbtahab"};
+std::string search_term {"word"};
+std::string db_return {"orwd"};
 
 int main(int argc, char *argv[]) {
     std::string a = search_term;
