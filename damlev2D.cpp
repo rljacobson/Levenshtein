@@ -103,38 +103,38 @@ bool damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, EDIT_DISTANCE_ARG_NUM_ERROR, EDIT_DISTANCE_ARG_NUM_ERROR_LEN);
-        return 1;
+        return int(1);
     }
         // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
         strncpy(message, EDIT_DISTANCE_ARG_TYPE_ERROR, EDIT_DISTANCE_ARG_TYPE_ERROR_LEN);
-        return 1;
+        return int(1);
     }
 
     // Attempt to allocate a buffer.
     initid->ptr = (char *)new(std::nothrow) std::vector<size_t>((EDIT_DISTANCE_MAX_EDIT_DIST));
     if (initid->ptr == nullptr) {
         strncpy(message, EDIT_DISTANCE_MEM_ERROR, EDIT_DISTANCE_MEM_ERROR_LEN);
-        return 1;
+        return int(1);
     }
 
     // damlev2D does not return null.
     initid->maybe_null = 0;
-    return 0;
+    return int(0);
 }
 
 void damlev2D_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
+long long damlev2D(UDF_INIT, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
 
     std::string_view S1{args->args[0], args->lengths[0]};
     std::string_view S2{args->args[1], args->lengths[1]};
 
     //https://takeuforward.org/data-structure/edit-distance-dp-33/
-    int n = S1.size();
-    int m = S2.size();
+    int n = static_cast<int>(S1.size());
+    int m = static_cast<int>(S2.size());
 
     std::vector<int> prev(m+1,0);
     std::vector<int> cur(m+1,0);

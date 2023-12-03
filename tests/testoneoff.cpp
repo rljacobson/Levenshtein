@@ -11,13 +11,13 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"paragraph"};
-std::string db_return {"agap"};
+std::string search_term {"Anguila rostrata"};
+std::string db_return {"Anguilla rostrata"};
 
 int main(int argc, char *argv[]) {
     std::string a = search_term;
     std::string b = db_return;
-    long long c =3;
+    long long c =25;
     long long result = 0;
 
 

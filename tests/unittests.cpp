@@ -3,8 +3,13 @@
 #include <vector>
 #include <random>
 #include <algorithm>
+#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/file_mapping.hpp>
+#include <sstream>
 #include "testharness.hpp"
-
+#ifndef WORD_COUNT
+#define WORD_COUNT 10000ul
+#endif
 // Random Number Generator
 std::random_device rd;
 std::mt19937 gen(rd());
@@ -16,7 +21,25 @@ struct TestCase {
     std::string functionName;
 };
 
-long long calculateDamLevDistance(const std::string& S1, const std::string& S2) {
+int LOOP =1000000;
+int FAILED =1;
+
+std::vector<std::string> readWordsFromMappedFile(const boost::interprocess::mapped_region& region, unsigned maximumWords) {
+    const char* begin = static_cast<const char*>(region.get_address());
+    const char* end = begin + region.get_size();
+    std::string fileContent(begin, end);
+
+    std::istringstream iss(fileContent);
+    std::vector<std::string> words;
+    std::string word;
+    while (iss >> word && words.size() < maximumWords) {
+        words.push_back(word);
+    }
+
+    return words;
+}
+
+int calculateDamLevDistance(const std::string& S1, const std::string& S2) {
     int n = S1.size();
     int m = S2.size();
 
@@ -108,16 +131,58 @@ std::string applySubstitution(const std::string& str, int editCount) {
     return result;
 }
 
+std::string getRandomStringOfLength(int length) {
+    std::string result;
+    result.reserve(length);
+    for (int i = 0; i < length; ++i) {
+        result += getRandomChar(); // Reuse the existing getRandomChar function
+    }
+    return result;
+}
+
 std::string getRandomString(const std::vector<std::string>& wordList) {
     if (wordList.empty()) return "";
     int index = getRandomInt(0, wordList.size() - 1);
     return wordList[index];
 }
+std::string applyCommonPrefix(std::string str, const std::string& prefix) {
+    return prefix + str;
+}
+
+std::string applyCommonSuffix(std::string str, const std::string& suffix) {
+    return str + suffix;
+}
+
+std::string applyBothPrefixAndSuffix(std::string str, const std::string& prefix, const std::string& suffix) {
+    return prefix + str + suffix;
+}
+
 
 // ...
 
 int main() {
-    std::vector<std::string> wordList = {"word", "paragraph", /* ... */ };
+    std::string primaryFilePath = "tests/taxanames";  // Primary file path
+    std::string fallbackFilePath = "/usr/share/dict/words";  // Fallback file path
+    unsigned maximum_size = WORD_COUNT;
+
+    boost::interprocess::file_mapping text_file;
+    boost::interprocess::mapped_region text_file_buffer;  // Corrected declaration
+
+    try {
+        text_file = boost::interprocess::file_mapping(primaryFilePath.c_str(), boost::interprocess::read_only);
+        text_file_buffer = boost::interprocess::mapped_region(text_file, boost::interprocess::read_only);  // Initialization
+    } catch (const boost::interprocess::interprocess_exception& ePrimary) {
+        try {
+            text_file = boost::interprocess::file_mapping(fallbackFilePath.c_str(), boost::interprocess::read_only);
+            text_file_buffer = boost::interprocess::mapped_region(text_file, boost::interprocess::read_only);  // Initialization
+        } catch (const boost::interprocess::interprocess_exception& eFallback) {
+            std::cerr << "Could not open fallback file " << fallbackFilePath << '.' << std::endl;
+            return EXIT_FAILURE;
+        }
+    }
+
+    std::vector<std::string> wordList = readWordsFromMappedFile(text_file_buffer, maximum_size);
+
     std::vector<TestCase> testCases = {
             // Your predefined test cases
             {"test", "test", 0, "Identical"}, // Identical strings
@@ -125,51 +190,90 @@ int main() {
     };
 
     // Generate random test cases for each type
-    for (int i = 0; i < 100; ++i) {
-        std::string a = getRandomString(wordList);
-        std::string b;
+    for (int i = 0; i < LOOP; ++i) {
+        std::string original = getRandomString(wordList); // Original string
+        std::string modified; // String after applying edit operation
         int editCount;
 
         // Transposition
-        editCount = getRandomEditCount(a);
-        b = applyTransposition(a, editCount);
-        testCases.push_back({a, b, static_cast<int>(calculateDamLevDistance(a, b)), "Transposition"});
+        editCount = getRandomEditCount(original);
+        modified = applyTransposition(original, editCount);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Transposition"});
 
         // Deletion
-        editCount = getRandomEditCount(a);
-        b = applyDeletion(a, editCount);
-        testCases.push_back({a, b, static_cast<int>(calculateDamLevDistance(a, b)), "Deletion"});
+        editCount = getRandomEditCount(original);
+        modified = applyDeletion(original, editCount);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Deletion"});
 
         // Insertion
-        editCount = getRandomEditCount(a);
-        b = applyInsertion(a, editCount);
-        testCases.push_back({a, b, static_cast<int>(calculateDamLevDistance(a, b)), "Insertion"});
+        editCount = getRandomEditCount(original);
+        modified = applyInsertion(original, editCount);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Insertion"});
 
         // Substitution
-        editCount = getRandomEditCount(a);
-        b = applySubstitution(a, editCount);
-        testCases.push_back({a, b, static_cast<int>(calculateDamLevDistance(a, b)), "Substitution"});
+        editCount = getRandomEditCount(original);
+        modified = applySubstitution(original, editCount);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Substitution"});
+
+
+        // Generate random prefix and suffix of length up to 10
+        std::string commonPrefix = getRandomStringOfLength(getRandomInt(1, 10));
+        std::string commonSuffix = getRandomStringOfLength(getRandomInt(1, 10));
+
+        // Tests with Common Prefix
+        editCount = getRandomEditCount(original);
+        modified = applyCommonPrefix(applyTransposition(original, editCount), commonPrefix);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Common Prefix"});
+
+        // Tests with Common Prefix
+        editCount = getRandomEditCount(original);
+        modified = applyCommonPrefix(applyDeletion(original, editCount), commonPrefix);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Common Prefix"});
+
+        // Tests with Common Suffix
+        editCount = getRandomEditCount(original);
+        modified = applyCommonSuffix(applyDeletion(original, editCount), commonSuffix);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Common Suffix"});
+
+        // Tests with Common Suffix
+        editCount = getRandomEditCount(original);
+        modified = applyCommonSuffix(applyInsertion(original, editCount), commonSuffix);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Common Suffix"});
+
+        // Tests with Both Common Prefix and Suffix
+        editCount = getRandomEditCount(original);
+        modified = applyBothPrefixAndSuffix(applyInsertion(original, editCount), commonPrefix, commonSuffix);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Prefix and Suffix"});
+        // Tests with Both Common Prefix and Suffix
+        editCount = getRandomEditCount(original);
+        modified = applyBothPrefixAndSuffix(applyTransposition(original, editCount), commonPrefix, commonSuffix);
+        testCases.push_back({original, modified, calculateDamLevDistance(original, modified), "Prefix and Suffix"});
+
     }
 
-
-
-
-    long long maxDistance = 25; // Maximum edit distance
     LEV_SETUP();
 
-// Run tests
+    // Run tests
     for (const auto& testCase : testCases) {
-        long long result = LEV_CALL(const_cast<char*>(testCase.a.c_str()), testCase.a.size(),
-                                    const_cast<char*>(testCase.b.c_str()), testCase.b.size(),
-                                    maxDistance);
+        long long result = LEV_CALL(const_cast<char*>(testCase.a.c_str()),
+                                    testCase.a.size(),
+                                    const_cast<char*>(testCase.b.c_str()),
+                                    testCase.b.size(),
+                                    25 // Assuming a max distance of 25
+        );
+
 
         bool testPassed = result == testCase.expectedDistance;
 
         if (!testPassed) { // Print only if the test failed
             std::cout << testCase.functionName << ": " << testCase.a << " vs " << testCase.b
                       << " (LD: " << result << ") - " << " (Expected: " << testCase.expectedDistance << ") - FAIL" << std::endl;
+        FAILED ++;
+            if (FAILED>25){ return 99;}
         }
-    }
+
+
+    } if (FAILED<2){std::cout<<"ALL PASSED FOR " <<LOOP << " STRINGS" <<std::endl;}
 
     LEV_TEARDOWN();
 }
