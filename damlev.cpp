@@ -55,6 +55,8 @@
     IN THE SOFTWARE.
 */
 #include <iostream>
+#include <cmath>
+
 #include "common.h"
 //#define PRINT_DEBUG
 #ifdef PRINT_DEBUG
@@ -133,50 +135,50 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     //const long long int max = max_string_length;
 
     if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
-            || args->args[0] == nullptr) {
+        || args->args[0] == nullptr) {
         // Either one of the strings doesn't exist, or one of the strings has
         // length zero. In either case
-        return (long long)std::max(args->lengths[0], args->lengths[1]);
+        return (long long) std::max(args->lengths[0], args->lengths[1]);
     }
-    #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
     std::cout << "Maximum edit distance:" <<  std::min(*((long long *)args->args[2]),
                                                        DAMLEV_MAX_EDIT_DIST)<<std::endl;
     std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" <<DAMLEV_MAX_EDIT_DIST<<std::endl;
     std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
                                                                       args->lengths[1]))<<std::endl;
 
-    #endif
+#endif
     // Retrieve buffer.
-    std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
+    std::vector<size_t> &buffer = *(std::vector<size_t> *) initid->ptr;
 
     // Let's make some string views so we can use the STL.
     std::string_view subject{args->args[0], args->lengths[0]};
     std::string_view query{args->args[1], args->lengths[1]};
 
     // Skip any common prefix.
-    auto[subject_begin, query_begin] =
-    std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
-    auto start_offset = (size_t)std::distance(subject.begin(), subject_begin);
+    auto [subject_begin, query_begin] =
+            std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
+    auto start_offset = (size_t) std::distance(subject.begin(), subject_begin);
 
     // If one of the strings is a prefix of the other, done.
     if (subject.length() == start_offset) {
 #ifdef PRINT_DEBUG
         std::cout << subject << " is a prefix of " << query << ", bailing" << std::endl;
 #endif
-        return (size_t)(query.length() - start_offset);
+        return (size_t) (query.length() - start_offset);
     } else if (query.length() == start_offset) {
 #ifdef PRINT_DEBUG
         std::cout << query << " is a prefix of " << subject << ", bailing" << std::endl;
 #endif
-        return (size_t)(subject.length() - start_offset);
+        return (size_t) (subject.length() - start_offset);
     }
 
     // Skip any common suffix.
-    auto[subject_end, query_end] = std::mismatch(
+    auto [subject_end, query_end] = std::mismatch(
             subject.rbegin(), static_cast<decltype(subject.rend())>(subject_begin),
             query.rbegin(), static_cast<decltype(query.rend())>(query_begin));
-    auto end_offset = std::min((size_t)std::distance(subject.rbegin(), subject_end),
-                               (size_t)(subject.size() - start_offset));
+    auto end_offset = std::min((size_t) std::distance(subject.rbegin(), subject_end),
+                               (size_t) (subject.size() - start_offset));
 
 #ifdef PRINT_DEBUG
     // Printing before trimming
@@ -199,7 +201,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     }
 
 
-    int trimmed_max = std::max(int(query.length()),int(subject.length()));
+    int trimmed_max = std::max(int(query.length()), int(subject.length()));
     int max = trimmed_max;
 #ifdef PRINT_DEBUG
     std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
@@ -223,64 +225,43 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         return query.length();
     }
 
+    int n = subject.size();
+    int m = query.size();
 
-// Resize the buffer for the 2D approach.
-    std::vector<int> prev(query.length() + 1, 0);
-    std::vector<int> cur(query.length() + 1, 0);
+    // Resize buffer to simulate a 2D matrix
+    buffer.resize((n + 1) * (m + 1));
 
-// Initialize the first row.
-    std::iota(prev.begin(), prev.end(), 0);
+    // Function to access the 2D matrix simulated in a 1D vector
+    auto idx = [m](int i, int j) { return i * (m + 1) + j; };
 
-
-#ifdef PRINT_DEBUG
-    unsigned i = 0;
-    std::cout <<"    ";
-    for (auto a: query){
-        if (i <10) std::cout << a << " ";
-        else std::cout <<" "<< a<<" ";
-        i++;
+    // Initialize first row and column
+    for (int i = 0; i <= n; i++) {
+        buffer[idx(i, 0)] = i;
     }
-    std::cout <<std::endl;
-    std::cout <<"  ";
-    for (auto a: buffer)
-        std::cout << a << ' ';
-    std::cout <<std::endl;
-#endif
-    size_t end_j; // end_j is referenced after the loop.
-    size_t j;
-// Main loop for calculating Levenshtein Distance.
-    for (int i = 1; i <= subject.length(); ++i) {
-        cur[0] = i;
-        int column_min = cur[0]; // Initialize column minimum for each row
+    for (int j = 0; j <= m; j++) {
+        buffer[idx(0, j)] = j;
+    }
 
-        for (int j = 1; j <= query.length(); ++j) {
-            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1; // Cost calculation
+    for (int i = 1; i <= n; i++) {
+        size_t column_min = trimmed_max + 1;
+        for (int j = 1; j <= m; j++) {
+            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1;
 
-            // Calculate minimum operation cost for current position.
-            cur[j] = std::min({ prev[j - 1] + cost,   // Substitution (or matching)
-                                cur[j - 1] + 1,      // Insertion
-                                prev[j] + 1 });      // Deletion
+            buffer[idx(i, j)] = std::min({ buffer[idx(i - 1, j)] + 1,
+                                           buffer[idx(i, j - 1)] + 1,
+                                           buffer[idx(i - 1, j - 1)] + cost });
 
-            // Check and handle transpositions.
-            if (i > 1 && j > 1 &&
-                subject[i - 1] == query[j - 2] &&
-                subject[i - 2] == query[j - 1]) {
-                cur[j] = std::min(cur[j], prev[j - 2] + 1); // Correct handling of transposition cost
+            if (i > 1 && j > 1 && subject[i - 1] == query[j - 2] && subject[i - 2] == query[j - 1]) {
+                buffer[idx(i, j)] = std::min(buffer[idx(i, j)], buffer[idx(i - 2, j - 2)] + cost);
             }
 
-            // Update column minimum for potential early bailout.
-            column_min = std::min(column_min, cur[j]);
+            column_min = std::min(column_min, buffer[idx(i, j)]);
         }
 
-        // Check for early bailout if column minimum exceeds max.
         if (column_min > max) {
-            return max;
+            return max_string_length;
         }
-
-        std::swap(prev, cur); // Prepare for next iteration.
     }
-
-    int ld = prev[query.length()]; // Final edit distance.
-    return ld;
-
+    buffer.resize(DAMLEV_MAX_EDIT_DIST);
+    return buffer[idx(n, m)];
 }

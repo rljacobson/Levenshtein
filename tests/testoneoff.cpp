@@ -11,13 +11,13 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"word"};
-std::string db_return {"orwd"};
+std::string search_term {"paragraph"};
+std::string db_return {"agap"};
 
 int main(int argc, char *argv[]) {
     std::string a = search_term;
     std::string b = db_return;
-    long long c =9;
+    long long c =3;
     long long result = 0;
 
 

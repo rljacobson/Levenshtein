@@ -251,88 +251,54 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED c
     }
 
     int trimmed_max = std::max(int(query.length()), int(subject.length()));
-    max = trimmed_max;
 #ifdef PRINT_DEBUG
     std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
     std::cout << "trimmed subject= " <<subject <<std::endl;
     std::cout <<"trimmed constant query= " <<query<<std::endl;
 #endif
 
-    // Make "subject" the smaller one.
+    // Make "subject" the smaller one
     if (query.length() < subject.length()) {
-
         std::swap(subject, query);
-
     }
 
+    int n = subject.size();
+    int m = query.size();
 
-    // If one of the strings is a suffix of the other.
-    if (subject.length() == 0) {
-#ifdef PRINT_DEBUG
-        std::cout << subject << " is a suffix of " << query << ", bailing" << std::endl;
-#endif
-        return query.length();
+    // Resize buffer to simulate a 2D matrix
+    buffer.resize((n + 1) * (m + 1));
+
+    // Function to access the 2D matrix simulated in a 1D vector
+    auto idx = [m](int i, int j) { return i * (m + 1) + j; };
+
+    // Initialize first row and column
+    for (int i = 0; i <= n; i++) {
+        buffer[idx(i, 0)] = i;
+    }
+    for (int j = 0; j <= m; j++) {
+        buffer[idx(0, j)] = j;
     }
 
+    for (int i = 1; i <= n; i++) {
+        size_t column_min = trimmed_max + 1;
+        for (int j = 1; j <= m; j++) {
+            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1;
 
-// Resize the buffer for the 2D approach.
-    std::vector<int> prev(query.length() + 1, 0);
-    std::vector<int> cur(query.length() + 1, 0);
+            buffer[idx(i, j)] = std::min({ buffer[idx(i - 1, j)] + 1,
+                                           buffer[idx(i, j - 1)] + 1,
+                                           buffer[idx(i - 1, j - 1)] + cost });
 
-// Initialize the first row.
-    std::iota(prev.begin(), prev.end(), 0);
-
-
-#ifdef PRINT_DEBUG
-    unsigned i = 0;
-    std::cout <<"    ";
-    for (auto a: query){
-        if (i <10) std::cout << a << " ";
-        else std::cout <<" "<< a<<" ";
-        i++;
-    }
-    std::cout <<std::endl;
-    std::cout <<"  ";
-    for (auto a: buffer)
-        std::cout << a << ' ';
-    std::cout <<std::endl;
-#endif
-    size_t end_j; // end_j is referenced after the loop.
-    size_t j;
-    //this for makes the vertical direction.
-    for (int i = 1; i <= subject.length(); ++i) {
-        cur[0] = i;
-        int column_min = cur[0]; // Initialize column minimum for each row
-
-        for (int j = 1; j <= query.length(); ++j) {
-            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1; // Cost calculation
-
-            // Calculate minimum operation cost for current position.
-            cur[j] = std::min({ prev[j - 1] + cost,   // Substitution (or matching)
-                                cur[j - 1] + 1,      // Insertion
-                                prev[j] + 1 });      // Deletion
-
-            // Check and handle transpositions.
-            if (i > 1 && j > 1 &&
-                subject[i - 1] == query[j - 2] &&
-                subject[i - 2] == query[j - 1]) {
-                cur[j] = std::min(cur[j], prev[j - 2] + 1); // Correct handling of transposition cost
+            if (i > 1 && j > 1 && subject[i - 1] == query[j - 2] && subject[i - 2] == query[j - 1]) {
+                buffer[idx(i, j)] = std::min(buffer[idx(i, j)], buffer[idx(i - 2, j - 2)] + cost);
             }
 
-            // Update column minimum for potential early bailout.
-            column_min = std::min(column_min, cur[j]);
+            column_min = std::min(column_min, buffer[idx(i, j)]);
         }
 
-        // Check for early bailout if column minimum exceeds max.
         if (column_min > max) {
             return max_string_length;
         }
-
-        std::swap(prev, cur); // Prepare for next iteration.
     }
-
-    int ld = prev[query.length()]; // Final edit distance.
     data.buffer->resize(DAMLEVCONST_MAX_EDIT_DIST);
-    return ld;
-
+    return buffer[idx(n, m)];
 }
