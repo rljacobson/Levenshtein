@@ -22,7 +22,7 @@ set(DAMLEV_SOURCES
    )
 
 
-add_library(damlev MODULE ${DAMLEV_SOURCES})
+add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)
 target_compile_definitions(damlev PRIVATE WORDS_PATH="/usr/share/dict/words")
 target_compile_definitions(damlev PRIVATE MYSQL_DYNAMIC_PLUGIN)
 # Uncomment the following to set the buffer size to something other than 512
@@ -78,16 +78,22 @@ add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testca
 target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev2D)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevp.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevp)
+
+## This is for unit testing for debugging purposes, makes errors of known and checks.
+
+add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlev.cpp)
+target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlev)
 
 
-## Benchmark
+# Benchmark
+find_package(Boost REQUIRED)
+if(Boost_FOUND)
+	include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlev2D.cpp noop.cpp tests/benchmark.cpp)
-# Boost is only required for the benchmark target.
-# ToDo: Use FindPackage.
-target_include_directories(benchmark PUBLIC /usr/local/include)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")
-

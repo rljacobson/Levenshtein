@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  udf:
+    container_name: damlev_udf
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/code
+      - ./build:/code/build
+    working_dir: /code
+    command: /bin/bash -c "cd build && cmake .. && make && tail -f /dev/null"
