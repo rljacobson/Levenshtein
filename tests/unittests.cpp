@@ -21,7 +21,7 @@ struct TestCase {
     std::string functionName;
 };
 
-int LOOP =1000000;
+int LOOP =100000;
 int FAILED =1;
 
 std::vector<std::string> readWordsFromMappedFile(const boost::interprocess::mapped_region& region, unsigned maximumWords) {

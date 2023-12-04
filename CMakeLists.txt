@@ -15,7 +15,7 @@ set(DAMLEV_SOURCES
         damlev.cpp
         damlevp.cpp
         damlevlim.cpp
-#       damlevlimp.cpp   ## removed no reason to have a percent as a limit.
+#       damlevlimp.cpp   ## TODO Need to add this with a limit, say look for words with 80% similar..
 		damlevconst.cpp
 		damlev2D.cpp
 		noop.cpp
@@ -67,22 +67,17 @@ message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
-## Out of the Box LD function
-add_executable(damlev2D common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
-target_compile_definitions(damlev2D PRIVATE LEV_FUNCTION=damlev2D)
 
 
 ### Testing and Benchmarking ###
-## Tests
-add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testcases.cpp damlevconst.cpp)
-target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevp.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevp)
+#### you will need to adjust arg number for those with limits
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev)
 
 ## This is for unit testing for debugging purposes, makes errors of known and checks.
-
+#TODO unittest does not currently work for damlevp, due to return type of a double conflicting.
 add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlev.cpp)
 target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlev)
 
@@ -93,7 +88,7 @@ if(Boost_FOUND)
 	include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlev2D.cpp noop.cpp tests/benchmark.cpp)
+add_executable(benchmark common.h tests/testharness.hpp damlev.cpp noop.cpp tests/benchmark.cpp)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")

@@ -6,7 +6,6 @@
 // The macros below are set in the CMakeLists.txt file. We give sensible
 // defaults here in case one does not want to use CMake.
 
-#define WORDS_PATH "tests/taxanames"
 
 
 #ifndef WORD_COUNT
@@ -101,9 +100,9 @@ long long calculateDamLevDistance(const std::string& S1, const std::string& S2) 
 
     return dp[n][m];
 }
-int main(int argc, char *argv[]) {
-    std::string primaryFilePath = WORDS_PATH;  // Primary file path (e.g., "tests/taxanames")
-    std::string fallbackFilePath = "/usr/share/dict/words";  // Default fallback file path
+int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
+    std::string primaryFilePath = "tests/taxanames";  // Primary file path (e.g., "tests/taxanames")
+    std::string fallbackFilePath = WORDS_PATH;  // Default fallback file path
     unsigned maximum_size = WORD_COUNT;
     boost::interprocess::file_mapping text_file;
     std::string openedFilePath;
