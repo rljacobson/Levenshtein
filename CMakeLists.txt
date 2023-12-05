@@ -35,7 +35,7 @@ target_compile_definitions(damlev PRIVATE MYSQL_DYNAMIC_PLUGIN)
 # If you know the plugin directory of your MySQL installation, you can uncomment
 # the following line and set it here.
 
-set(MYSQL_PLUGIN_DIR "set(MYSQL_PLUGIN_DIR /usr/local/mysql/lib/plugin)")
+set(MYSQL_PLUGIN_DIR "set(MYSQL_PLUGIN_DIR /opt/homebrew/opt/mysql/lib/plugin/)")
 
 if(NOT DEFINED MYSQL_PLUGIN_DIR)
     if(INSTALL_PLUGINDIR)
