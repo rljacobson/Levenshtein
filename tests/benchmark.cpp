@@ -3,12 +3,11 @@
 #include <string>
 #include <vector>
 #include <fstream>
-
 // The macros below are set in the CMakeLists.txt file. We give sensible
 // defaults here in case one does not want to use CMake.
-#ifndef WORDS_PATH
-#define WORDS_PATH "/usr/share/dict/linux.words"
-#endif
+
+#define WORDS_PATH "tests/taxanames"
+
 
 #ifndef WORD_COUNT
 #define WORD_COUNT 10000ul
@@ -21,8 +20,7 @@
 #endif
 #include "testharness.hpp"
 
-#define LEV_FUNCTION damlev2D
-#include "testharness.hpp"
+#
 
 #include "benchtime.hpp"
 
@@ -75,72 +73,96 @@ inline std::ostream& operator<<(std::ostream& s, boost::iterator_range<char cons
     return s.write(line.begin(), line.size());
 }
 
+long long calculateDamLevDistance(const std::string& S1, const std::string& S2) {
+    int n = S1.size();
+    int m = S2.size();
 
+    std::vector<std::vector<int>> dp(n + 1, std::vector<int>(m + 1, 0));
+
+    for (int i = 0; i <= n; i++) {
+        dp[i][0] = i;
+    }
+    for (int j = 0; j <= m; j++) {
+        dp[0][j] = j;
+    }
+
+    for (int i = 1; i <= n; i++) {
+        for (int j = 1; j <= m; j++) {
+            int cost = (S1[i - 1] == S2[j - 1]) ? 0 : 1;
+            dp[i][j] = std::min({ dp[i - 1][j] + 1, // Deletion
+                                  dp[i][j - 1] + 1, // Insertion
+                                  dp[i - 1][j - 1] + cost }); // Substitution
+
+            if (i > 1 && j > 1 && S1[i - 1] == S2[j - 2] && S1[i - 2] == S2[j - 1]) {
+                dp[i][j] = std::min(dp[i][j], dp[i - 2][j - 2] + cost); // Transposition
+            }
+        }
+    }
+
+    return dp[n][m];
+}
 int main(int argc, char *argv[]) {
-
-    std::string     words_file_path {WORDS_PATH};
-    unsigned        maximum_size    {WORD_COUNT};
+    std::string primaryFilePath = WORDS_PATH;  // Primary file path (e.g., "tests/taxanames")
+    std::string fallbackFilePath = "/usr/share/dict/words";  // Default fallback file path
+    unsigned maximum_size = WORD_COUNT;
     boost::interprocess::file_mapping text_file;
+    std::string openedFilePath;
 
-    // Magic from SE:
     try {
-        text_file = boost::interprocess::file_mapping(WORDS_PATH, boost::interprocess::read_only);
-    } catch (boost::interprocess::interprocess_exception &e){
-        std::cerr << "Could not open file " << words_file_path << '.' << std::endl;
-        return EXIT_FAILURE;
+        text_file = boost::interprocess::file_mapping(primaryFilePath.c_str(), boost::interprocess::read_only);
+        openedFilePath = primaryFilePath;
+    } catch (const boost::interprocess::interprocess_exception& ePrimary) {
+        try {
+            text_file = boost::interprocess::file_mapping(fallbackFilePath.c_str(), boost::interprocess::read_only);
+            openedFilePath = fallbackFilePath;
+        } catch (const boost::interprocess::interprocess_exception& eFallback) {
+            std::cerr << "Could not open fallback file " << fallbackFilePath << '.' << std::endl;
+            return EXIT_FAILURE;
+        }
     }
     boost::interprocess::mapped_region text_file_buffer(text_file, boost::interprocess::read_only);
 
-    std::cout << "Opened file: " << words_file_path << "." << std::endl;
+    std::cout << "Opened file: " << openedFilePath << "." << std::endl;
 
-    double timediff = 0;
+    Timer timer;
     unsigned line_no = 0;
-    Timer timer = Timer();
 
-    for(auto a : crange(text_file_buffer)){
-        damlev_setup();
-        for(auto b : crange(text_file_buffer)){
-            if (a==b)
-                continue;
+    // Benchmark for damlev
+    damlev_setup();
+
+    for (auto a : crange(text_file_buffer)) {
+        for (auto b : crange(text_file_buffer)) {
+            if (a == b) continue;
             ++line_no;
             damlev_call((char *)b.begin(), b.size(), (char *)a.begin(), a.size(), 1);
-            //std::cout <<a<<" : "<<b;
+            if (line_no > maximum_size) break;
         }
-        damlev_teardown();
-
-        if(line_no > maximum_size) goto breakA;
-
+        if (line_no > maximum_size) break;
     }
-breakA:
-    std::cout << "Number of words: " << line_no-1 << std::endl;
+    damlev_teardown();
+    double time_damlev = timer.elapsed();
+    std::cout << "DAMLEV: Time elapsed: " << time_damlev << "s, Number of words: " << line_no << std::endl;
 
-    std::cout << "-----------\nDAMLEV\n-----------\n";
-    timediff = timer.elapsed();
-    std::cout << "Time elapsed:" << timediff << 's' << std::endl;
-
-
+    // Benchmark for calculateDamLevDistance
     line_no = 0;
     timer.reset();
+    Timer timer2;  // Assuming timer starts here
 
-    for(auto a : crange(text_file_buffer)){
-        damlev2D_setup();
-        for(auto b : crange(text_file_buffer)){
-            if(a==b)
-                continue;
+    for (auto a : crange(text_file_buffer)) {
+        for (auto b : crange(text_file_buffer)) {
+            if (a == b) continue;
             ++line_no;
-            damlev2D_call((char *)b.begin(), b.size(), (char *)a.begin(), a.size(), 1);
+            std::string strA(a.begin(), a.end());
+            std::string strB(b.begin(), b.end());
+            calculateDamLevDistance(strA, strB);
+            if (line_no > maximum_size) break;
         }
-        damlev2D_teardown();
-        if(line_no > maximum_size) goto breakB;
-
+        if (line_no > maximum_size) break;
     }
-breakB:
+    double time_full_matrix = timer2.elapsed();
+    std::cout << "Full Matrix Approach: Time elapsed: " << time_full_matrix << "s, Number of words: " << line_no << std::endl;
 
-    std::cout << "-----------\n2 row approach\n-----------\n";
-    std::cout << "Time elapsed:" << timer.elapsed() << "s\n-----------\n\n";
-    std::cout << "We took " << timediff - timer.elapsed() ;
-    std::cout << "s longer to run DAMLEVCONST than use a 2 row approach" ;
-    std::cout << " checking " << line_no-1 << " words."<<std::endl;
+    std::cout << "Time difference: " << (time_damlev - time_full_matrix) << "s\n";
 
-
+    return 0;
 }

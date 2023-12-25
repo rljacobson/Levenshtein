@@ -200,6 +200,46 @@ request!
 This is probably the easiest and fastest way to get going. Get pre-built binaries on [the Releases page](https://github.com/rljacobson/Levenshtein/releases). There are pre-built binaries for Linux, macOS, and Windows. Download the file and put it in your MySQL plugins directory. Then procede to the [Installing](#installing) section.
 
 
+Certainly! Here's your Docker build instruction revised and formatted in Markdown:
+
+---
+
+### Building from Docker
+
+The Docker configuration is set up to persist the `build` directory. When you run the Docker container, the `.so` file will be generated in this directory. It's crucial to ensure that the chip architecture of your Docker environment matches your host machine to ensure compatibility with the `.so` file.
+
+#### Steps to Build:
+
+1. **Build and Start Docker Container**:
+   Run the following command to build and start the Docker container. This command also triggers the building process of the `.so` file:
+
+   ```bash
+   docker-compose up --build
+   ```
+
+2. **Monitor the Output**:
+   You may see some warning messages during the build process, typically related to type mismatches or other non-critical issues.
+
+3. **Build Completion**:
+   The build process is complete when you see an output similar to:
+
+   ```bash
+   damlev_udf  | [100%] Linking CXX executable unittest
+   damlev_udf  | [100%] Built target unittest
+   ```
+
+4. **Check the `build` Directory**:
+   After the build is complete, the `.so` file can be found in the `build` directory on your host machine.
+
+#### Notes:
+- The `docker-compose up --build` command both builds the Docker image and starts the container as per the `docker-compose.yml` file.
+- The build process executes inside the Docker container, but thanks to the configured volume mount, the output `.so` file is accessible on your host machine.
+- Ensure compatibility between the Docker environment and your host machine, especially in terms of architecture (e.g., x86_64, ARM), for the `.so` file to function correctly.
+- If you're not familiar with docker ask your favorite ChatBot 
+
+--- 
+
+This Markdown format maintains the structure and style you initially provided, offering clear and easy-to-follow instructions for building from Docker.
 ### Building from source
 
 The usual CMake build process with `make`:
