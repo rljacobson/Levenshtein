@@ -146,7 +146,7 @@ long long noop(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     PersistentData &data = *(PersistentData *)initid->ptr;
 
     // Retrieve buffer.
-    //std::vector<size_t> &buffer = *data.buffer; // Initialized later.
+    std::vector<size_t> &buffer = *data.buffer; // Initialized later.
     // Retrieve max edit distance.
     long long &max = data.max;
     

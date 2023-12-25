@@ -40,7 +40,7 @@
 #include "../common.h"
 
 #ifndef LEV_FUNCTION
-#define LEV_FUNCTION damlevconst
+define LEV_FUNCTION damlev
 #endif
 
 /*
