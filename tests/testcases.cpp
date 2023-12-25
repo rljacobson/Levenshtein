@@ -50,7 +50,7 @@
 */
 
 
-#define LEV_FUNCTION damlev
+#define LEV_FUNCTION damlevconst
 
 #include "testharness.hpp"
 
