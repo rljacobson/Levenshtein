@@ -73,13 +73,13 @@ install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
 ## This is for one-off testing for debugging purposes.
 #### you will need to adjust arg number for those with limits
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlev.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlev)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconst.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconst)
 
 ## This is for unit testing for debugging purposes, makes errors of known and checks.
 #TODO unittest does not currently work for damlevp, due to return type of a double conflicting.
-add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlev.cpp)
-target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlev)
+add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlevconst.cpp)
+target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlevconst)
 
 
 # Benchmark

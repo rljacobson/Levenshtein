@@ -11,8 +11,8 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"Anguila rostrata"};
-std::string db_return {"Anguilla rostrata"};
+std::string search_term {"Ammodytidae"};
+std::string db_return {"ZrfAommdytidae"};
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
     std::string a = search_term;
