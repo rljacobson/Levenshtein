@@ -11,13 +11,13 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"Ammodytidae"};
-std::string db_return {"ZrfAommdytidae"};
+std::string search_term {"Lysmata wurdemanni"};
+std::string db_return {  ""};
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
     std::string a = search_term;
     std::string b = db_return;
-    long long c =25;
+    long long c =3;
     long long result = 0;
 
 

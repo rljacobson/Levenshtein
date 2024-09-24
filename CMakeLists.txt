@@ -17,9 +17,10 @@ set(DAMLEV_SOURCES
         damlevlim.cpp
 #       damlevlimp.cpp   ## TODO Need to add this with a limit, say look for words with 80% similar..
 		damlevconst.cpp
+		damlevconstmin.cpp
 		damlev2D.cpp
 		noop.cpp
-   )
+)
 
 
 add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)
@@ -54,7 +55,7 @@ execute_process(COMMAND mysql_config --include
         OUTPUT_STRIP_TRAILING_WHITESPACE)
 if(WIN64)
 	# This is not at all robust. We need a better solution.
-	if(NOT DEFINED MYSQL_INCLUDE)	
+	if(NOT DEFINED MYSQL_INCLUDE)
 		set(MYSQL_INCLUDE "C:\\Program Files\\MySQL\\MySQL Server 8.0\\include")
 	endif()
 	if(NOT DEFINED MYSQL_PLUGIN_DIR)
@@ -73,13 +74,13 @@ install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
 ## This is for one-off testing for debugging purposes.
 #### you will need to adjust arg number for those with limits
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconst.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconst)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconstmin.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconstmin)
 
 ## This is for unit testing for debugging purposes, makes errors of known and checks.
 #TODO unittest does not currently work for damlevp, due to return type of a double conflicting.
-add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlevconst.cpp)
-target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlevconst)
+add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlevconstmin.cpp)
+target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlevconstmin)
 
 
 # Benchmark

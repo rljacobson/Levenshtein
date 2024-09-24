@@ -9,19 +9,20 @@ void set_error(char *error, const char *message) {
 
 // Use a "C" calling convention for MySQL UDF functions.
 extern "C" {
-    bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    void damlevconst_deinit(UDF_INIT *initid);
+    bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    int damlevconstmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    void damlevconstmin_deinit(UDF_INIT *initid);
 }
 
 struct PersistentData {
-    long long max;
-    size_t const_len;
+    long long max;            // The largest edit distance possible
+    long long cumulative_min; // Minimum edit distance seen so far
+    size_t const_len;         // Length of the constant string
     std::unique_ptr<char[]> const_string;
     std::unique_ptr<std::vector<size_t>> buffer;
 };
 
-bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
         set_error(message, "DAMLEVCONST() requires 3 arguments: two strings and a max distance.");
@@ -38,6 +39,7 @@ bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 
     // Initialize persistent data
     data->max = 512;  // Example max value, could be dynamic
+    data->cumulative_min = data->max;
     data->buffer = std::make_unique<std::vector<size_t>>(data->max);
     data->const_string = std::make_unique<char[]>(data->max);  // Pre-allocate buffer for constant string
 
@@ -55,12 +57,12 @@ bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     return 0;
 }
 
-void damlevconst_deinit(UDF_INIT *initid) {
+void damlevconstmin_deinit(UDF_INIT *initid) {
     // Clean up by destroying the unique_ptrs automatically
     delete reinterpret_cast<PersistentData*>(initid->ptr);
 }
 
-int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
+int damlevconstmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
     if (!args->args[2]) {
         // Early exit if max distance is zero
         return 0;
@@ -75,6 +77,7 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
         long long user_max = *((long long*)args->args[2]);
         if (user_max < 0) {
             set_error(error, "Maximum edit distance cannot be negative.");
+            // ToDo: We are setting is_null, but we promised to not return null through the init API
             *is_null = 1;
             return 1;
         }
@@ -83,7 +86,8 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
 
     // Handle null or empty strings
     if (!args->args[0] || args->lengths[0] == 0 || !args->args[1] || args->lengths[1] == 0) {
-        return (int) std::max(args->lengths[0], args->lengths[1]);
+        // For consistency, we return at most max + 1
+        return std::min((int) max + 1, (int) std::max(args->lengths[0], args->lengths[1]));
     }
 
     if (data.const_len == 0) {
@@ -102,9 +106,11 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
 
     // If one of the strings is a prefix of the other, return the length difference.
     if (subject.length() == start_offset) {
-        return int(query.length()) - int(start_offset);
+        // For consistency, we return at most max + 1
+        return  std::min((int) max + 1, int(query.length()) - int(start_offset));
     } else if (query.length() == start_offset) {
-        return int(subject.length()) - int(start_offset);
+        // For consistency, we return at most max + 1
+        return  std::min((int) max + 1, int(subject.length()) - int(start_offset));
     }
 
     // Skip any common suffix.
@@ -127,8 +133,7 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
     int m = static_cast<int>(query.length()); // Cast size_type to int
 
     // Determine the effective maximum edit distance
-    int effective_max = std::min(static_cast<int>(max), n);
-
+    int effective_max = std::min(static_cast<int>(data.cumulative_min), std::min(static_cast<int>(max), n));
 
     // Re-initialize buffer before calculation
     std::iota(buffer.begin(), buffer.begin() + static_cast<int>(query.length()) + 1, 0);
@@ -168,10 +173,13 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
 
         // Early exit if the minimum edit distance exceeds the effective maximum
         if (column_min > static_cast<size_t>(effective_max)) {
-            return max + 1;
+            return (int)max + 1;
         }
     }
 
     // Return the final Damerau-Levenshtein distance
+    if (data.cumulative_min > static_cast<int>(buffer[idx(n, m)])) {
+        data.cumulative_min = static_cast<int>(buffer[idx(n, m)]);
+    }
     return static_cast<int>(buffer[idx(n, m)]);
 }
