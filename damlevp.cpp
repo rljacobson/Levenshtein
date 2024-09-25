@@ -57,17 +57,11 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-#include <iostream>
 #include "common.h"
-//#define PRINT_DEBUG
-//#define PRINT_DEBUG
-#ifdef PRINT_DEBUG
-#include <iostream>
-#endif
-// Limits
+
+// Clamp buffer size to reasonable limits.
 #ifndef DAMLEVP_BUFFER_SIZE
-    // 640k should be good enough for anybody. Make it a multiple of 64 so it's aligned on a 64
-    // bit boundary.
+    // 640k should be good enough for anybody.
     #define DAMLEVP_BUFFER_SIZE 512ull
 #endif
 constexpr long long DAMLEVP_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull,  DAMLEVP_BUFFER_SIZE));
@@ -93,18 +87,18 @@ constexpr const auto DAMLEVP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVP_ARG_TYPE_ERR
 
 // Use a "C" calling convention.
 extern "C" {
-    bool damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
     double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
     void damlevp_deinit(UDF_INIT *initid);
 }
 
-bool damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, DAMLEVP_ARG_NUM_ERROR, DAMLEVP_ARG_NUM_ERROR_LEN);
         return 1;
     }
-        // The arguments needs to be of the right type.
+    // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
         strncpy(message, DAMLEVP_ARG_TYPE_ERROR, DAMLEVP_ARG_TYPE_ERROR_LEN);
         return 1;
@@ -134,18 +128,12 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         // length zero. In either case
         return 0;
     }
-    #ifdef PRINT_DEBUG
-    std::cout << "Maximum edit distance:" <<  DAMLEVP_MAX_EDIT_DIST <<std::endl;
-    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" << DAMLEVP_MAX_EDIT_DIST<<std::endl;
-    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
-                                                                      args->lengths[1]))<<std::endl;
 
-    #endif
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
     // Save the original max string length for the normalization when we return.
-    int max_string_length = static_cast<int>(std::max(args->lengths[0],
-            args->lengths[1]));
+    int max_string_length = static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
+
     // Let's make some string views so we can use the STL.
     std::string_view subject{args->args[0], args->lengths[0]};
     std::string_view query{args->args[1], args->lengths[1]};
@@ -156,26 +144,25 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     auto start_offset = std::distance(subject.begin(), prefix_mismatch.first);
 
 
-// If one of the strings is a prefix of the other, return the length difference.
+    // If one of the strings is a prefix of the other, return the length difference.
     if ( static_cast<int>(subject.length()) == start_offset) {
         return  static_cast<int>(query.length()) - int(start_offset);
     } else if ( static_cast<int>(query.length()) == start_offset) {
         return  static_cast<int>(subject.length()) - int(start_offset);
     }
 
-// Skip any common suffix.
+    // Skip any common suffix.
     auto suffix_mismatch = std::mismatch(subject.rbegin(), std::next(subject.rend(), -start_offset),
                                          query.rbegin(), std::next(query.rend(), -start_offset));
     auto end_offset = std::distance(subject.rbegin(), suffix_mismatch.first);
 
-// Extract the different part if significant.
+    // Extract the different part if significant.
     if (start_offset + end_offset <  static_cast<int>(subject.length())) {
         subject = subject.substr(start_offset, subject.length() - start_offset - end_offset);
-        query = query.substr(start_offset, query.length() - start_offset - end_offset);
+        query   = query.substr(  start_offset, query.length()   - start_offset - end_offset);
     }
 
-
-// Ensure 'subject' is the smaller string for efficiency
+    // Ensure 'subject' is the smaller string for efficiency
     if (query.length() < subject.length()) {
         std::swap(subject, query);
     }
@@ -183,29 +170,23 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     int n = static_cast<int>(subject.size()); // Length of the smaller string,Cast size_type to int
     int m = static_cast<int>(query.size()); // Length of the larger string, Cast size_type to int
 
-
-// Calculate trimmed_max based on the lengths of the trimmed strings
+    // Calculate trimmed_max based on the lengths of the trimmed strings
     auto trimmed_max = std::max(n, m);
     auto max = trimmed_max;
-    // std::cout << "max" <<max<<std::endl;
-    //std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
-    //std::cout << "trimmed subject= " <<subject <<std::endl;
-    //std::cout <<"trimmed constant query= " <<query<<std::endl;
 
-// Determine the effective maximum edit distance
-// Casting max to int (ensure that max is within the range of int)
+    // Determine the effective maximum edit distance
+    // Casting max to int (ensure that max is within the range of int)
     int effective_max = std::min(static_cast<int>(max), static_cast<int>(trimmed_max));
 
 
-// Resize the buffer to simulate a 2D matrix with dimensions (n+1) x (m+1)
+    // Resize the buffer to simulate a 2D matrix with dimensions (n+1) x (m+1)
     buffer.resize((n + 1) * (m + 1));
 
-
-// Lambda function for 2D matrix indexing in the 1D buffer
+    // Lambda function for 2D matrix indexing in the 1D buffer
     auto idx = [m](int i, int j) { return i * (m + 1) + j; };
     double similarity =0.0;
 
-// Initialize the first row and column of the matrix
+    // Initialize the first row and column of the matrix
     for (int i = 0; i <= n; ++i) {
         buffer[idx(i, 0)] = i;
     }
@@ -213,7 +194,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         buffer[idx(0, j)] = j;
     }
 
-// Main loop to calculate the Damerau-Levenshtein distance
+    // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
         size_t column_min = std::numeric_limits<size_t>::max();
 

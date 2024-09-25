@@ -20,7 +20,7 @@ set(DAMLEV_SOURCES
 		damlevconstmin.cpp
 		damlev2D.cpp
 		noop.cpp
-   )
+)
 
 
 add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)
@@ -55,7 +55,7 @@ execute_process(COMMAND mysql_config --include
         OUTPUT_STRIP_TRAILING_WHITESPACE)
 if(WIN64)
 	# This is not at all robust. We need a better solution.
-	if(NOT DEFINED MYSQL_INCLUDE)	
+	if(NOT DEFINED MYSQL_INCLUDE)
 		set(MYSQL_INCLUDE "C:\\Program Files\\MySQL\\MySQL Server 8.0\\include")
 	endif()
 	if(NOT DEFINED MYSQL_PLUGIN_DIR)

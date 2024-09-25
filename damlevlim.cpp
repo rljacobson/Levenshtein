@@ -63,7 +63,6 @@
     IN THE SOFTWARE.
 */
 #include "common.h"
-//#define PRINT_DEBUG
 #ifdef PRINT_DEBUG
 #include <iostream>
 #endif
@@ -99,34 +98,34 @@ constexpr const auto DAMLEVLIM_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIM_ARG_TYPE
 
 // Use a "C" calling convention.
 extern "C" {
-bool damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevlim_deinit(UDF_INIT *initid);
+    int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    void damlevlim_deinit(UDF_INIT *initid);
 }
 
-bool damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
         strncpy(message, DAMLEVLIM_ARG_NUM_ERROR, DAMLEVLIM_ARG_NUM_ERROR_LEN);
-        return int(1);
+        return 1;
     }
-        // The arguments needs to be of the right type.
+    // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT ||
             args->arg_type[2] != INT_RESULT) {
         strncpy(message, DAMLEVLIM_ARG_TYPE_ERROR, DAMLEVLIM_ARG_TYPE_ERROR_LEN);
-        return int(1);
+        return 1;
     }
 
     // Attempt to allocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) std::vector<size_t>(DAMLEVLIM_MAX_EDIT_DIST);
+    initid->ptr = (char *)new(std::nothrow) int[DAMLEVLIM_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
         strncpy(message, DAMLEVLIM_MEM_ERROR, DAMLEVLIM_MEM_ERROR_LEN);
-        return int(1);
+        return 1;
     }
 
     // damlevlim does not return null.
     initid->maybe_null = 0;
-    return int(0);
+    return 0;
 }
 
 void damlevlim_deinit(UDF_INIT *initid) {
@@ -134,34 +133,23 @@ void damlevlim_deinit(UDF_INIT *initid) {
 }
 
 long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
-    // Retrieve the arguments.
-    // Maximum edit distance.
-
-    int max_string_length = int(std::max(args->lengths[0],
-                                                                args->lengths[1]));
-    auto max = std::min(*((long long *)args->args[2]),
-             DAMLEVLIM_MAX_EDIT_DIST);
-
-    if (max == 0) {
-        return 0ll;
-    }
-    #ifdef PRINT_DEBUG
-    std::cout << "Maximum edit distance:" <<  max<<std::endl;
-
-    std::cout << "DAMLEVLIM_MAX_EDIT_DIST:" <<DAMLEVLIM_MAX_EDIT_DIST<<std::endl;
-
-    std::cout << "Max String Length:" << max_string_length <<std::endl;
-    #endif
-
+    // Check the arguments
     if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
             args->lengths[1] == 0) {
-        #ifdef PRINT_DEBUG
-        std::cout << "String DNE, bailing" << std::endl;
-        #endif
         // Either one of the strings doesn't exist, or one of the strings has
         // length zero. In either case
         return static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
     }
+
+    // Retrieve the maximum edit distance.
+    int max_string_length = int(std::max(args->lengths[0],
+                                         args->lengths[1]));
+    auto max = std::min(*((long long *)args->args[2]),
+                                  DAMLEVLIM_MAX_EDIT_DIST);
+    if (max == 0) {
+        return 0ll;
+    }
+
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *)initid->ptr;
 
@@ -175,7 +163,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUS
     auto start_offset = std::distance(subject.begin(), prefix_mismatch.first);
 
 
-// If one of the strings is a prefix of the other, return the length difference.
+    // If one of the strings is a prefix of the other, return the length difference.
     if ( static_cast<int>(subject.length()) == start_offset) {
         return  static_cast<int>(query.length()) - start_offset;
     } else if ( static_cast<int>(query.length()) == start_offset) {

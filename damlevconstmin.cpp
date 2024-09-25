@@ -3,7 +3,6 @@
 #include <iostream>
 
 
-
 // Use a "C" calling convention for MySQL UDF functions.
 extern "C" {
     bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);

@@ -1,12 +1,13 @@
 #include "common.h"
 #include <memory>
+#include <iostream>
 
 
 // Use a "C" calling convention for MySQL UDF functions.
 extern "C" {
-bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevconst_deinit(UDF_INIT *initid);
+    bool damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    void damlevconst_deinit(UDF_INIT *initid);
 }
 
 struct PersistentData {
@@ -118,14 +119,11 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
         std::swap(subject, query);
     }
 
-    int n = static_cast<int>(subject.size()); // Cast size_type to int
-    int m = static_cast<int>(query.size()); // Cast size_type to int
-
-    // Calculate trimmed_max based on the lengths of the trimmed strings
-    auto trimmed_max = std::max(n, m);
+    int n = static_cast<int>(subject.length()); // Cast size_type to int
+    int m = static_cast<int>(query.length()); // Cast size_type to int
 
     // Determine the effective maximum edit distance
-    int effective_max = std::min(static_cast<int>(max), static_cast<int>(trimmed_max));
+    int effective_max = std::min(static_cast<int>(max), n);
 
 
     // Re-initialize buffer before calculation
@@ -166,7 +164,7 @@ int damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
 
         // Early exit if the minimum edit distance exceeds the effective maximum
         if (column_min > static_cast<size_t>(effective_max)) {
-            return std::max(n, m);  // Return the max string length if distance exceeds effective_max
+            return max + 1;
         }
     }
 
