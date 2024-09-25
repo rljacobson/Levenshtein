@@ -17,6 +17,7 @@ set(DAMLEV_SOURCES
         damlevlim.cpp
 #       damlevlimp.cpp   ## TODO Need to add this with a limit, say look for words with 80% similar..
 		damlevconst.cpp
+		damlevconstmin.cpp
 		damlev2D.cpp
 		noop.cpp
    )
@@ -73,13 +74,13 @@ install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 
 ## This is for one-off testing for debugging purposes.
 #### you will need to adjust arg number for those with limits
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconst.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconst)
+add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevconstmin.cpp)
+target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevconstmin)
 
 ## This is for unit testing for debugging purposes, makes errors of known and checks.
 #TODO unittest does not currently work for damlevp, due to return type of a double conflicting.
-add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlevconst.cpp)
-target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlevconst)
+add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlevconstmin.cpp)
+target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlevconstmin)
 
 
 # Benchmark
@@ -88,7 +89,7 @@ if(Boost_FOUND)
 	include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-add_executable(benchmark common.h tests/testharness.hpp damlev.cpp noop.cpp tests/benchmark.cpp)
+add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlevconstmin.cpp noop.cpp tests/benchmark.cpp)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")

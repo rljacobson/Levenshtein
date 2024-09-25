@@ -236,7 +236,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
         if (column_min > static_cast<size_t>(effective_max)) {
             buffer.resize(DAMLEVP_MAX_EDIT_DIST);
             /// RETURN FROM TESTHARNESS YEILDS A STRANGE NUMBER, PRINT BELOW FOR TESTING
-            std::cout << "column_min > effective_max therefore we return zero"<<std::endl;
+            //std::cout << "column_min > effective_max therefore we return zero"<<std::endl;
             return 0.0; //returning zero because its outside of scope
         }
     }
@@ -245,7 +245,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     buffer.resize(DAMLEVP_MAX_EDIT_DIST);
 
     /// RETURN FROM TESTHARNESS YEILDS A STRANGE NUMBER, PRINT BELOW FOR TESTING
-    std::cout << "similarity: "<< similarity <<std::endl;
+    //std::cout << "similarity: "<< similarity <<std::endl;
 
     return similarity;
 

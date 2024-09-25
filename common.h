@@ -24,3 +24,8 @@
 // Silences warning in gcc/clang.
 #define UNUSED __attribute__((unused))
 #endif
+
+// Define set_error as an inline function
+inline void set_error(char *error, const char *message) {
+    strncpy(error, message, MYSQL_ERRMSG_SIZE);
+}
