@@ -89,7 +89,7 @@ if(Boost_FOUND)
 	include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-add_executable(benchmark common.h tests/testharness.hpp damlev.cpp noop.cpp tests/benchmark.cpp)
+add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlevconstmin.cpp noop.cpp tests/benchmark.cpp)
 target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
 target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
 target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")

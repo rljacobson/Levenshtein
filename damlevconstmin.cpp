@@ -2,10 +2,6 @@
 #include <memory>
 #include <iostream>
 
-// Error handling helper function
-void set_error(char *error, const char *message) {
-    strncpy(error, message, MYSQL_ERRMSG_SIZE);
-}
 
 // Use a "C" calling convention for MySQL UDF functions.
 extern "C" {
