@@ -22,8 +22,8 @@ struct TestCase {
     std::string functionName;
 };
 
-int LOOP =100000;
-int FAILED =1;
+int LOOP = 100000;
+int FAILED = 0;
 
 std::vector<std::string> readWordsFromMappedFile(const boost::interprocess::mapped_region& region, unsigned maximumWords) {
     const char* begin = static_cast<const char*>(region.get_address());
@@ -255,18 +255,17 @@ int main() {
         auto total_start = std::chrono::high_resolution_clock::now();
 
         // Run all test cases
+        LEV_SETUP();
         for (const auto& testCase : testCases) {
-            LEV_SETUP();  // Setup before each test case
-
-            long long result = LEV_CALL(const_cast<char*>(testCase.a.c_str()),
-                                        testCase.a.size(),
-                                        const_cast<char*>(testCase.b.c_str()),
-                                        testCase.b.size(),
-                                        25 // Assuming a max distance of 25
-            );
-
+            long long result
+                = LEV_CALL(
+                    const_cast<char*>(testCase.a.c_str()),
+                    testCase.a.size(),
+                    const_cast<char*>(testCase.b.c_str()),
+                    testCase.b.size(),
+                    25 // Assuming a max distance of 25
+                );
             bool testPassed = result == testCase.expectedDistance;
-
             if (!testPassed) { // Print only if the test failed
                 std::cout << testCase.functionName << ": " << testCase.a << " vs " << testCase.b
                           << " (LD: " << result << ") - " << " (Expected: " << testCase.expectedDistance << ") - FAIL" << std::endl;
@@ -277,16 +276,18 @@ int main() {
                 }
             }
 
-            LEV_TEARDOWN();  // Tear down after each test case
         }
-
-        if (FAILED < 2) {
-            std::cout << "ALL PASSED FOR " << LOOP << " STRINGS" << std::endl;
-        }
+        LEV_TEARDOWN();
 
         // Stop the timer after running all test cases
         auto total_stop = std::chrono::high_resolution_clock::now();
         auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_stop - total_start);
+
+        if (FAILED < 1) {
+            std::cout << "ALL PASSED FOR " << LOOP << " STRINGS" << std::endl;
+        } else {
+            std::cout << "FAILED FOR " << FAILED << " STRINGS" << std::endl;
+        }
 
         // Print the total time for all tests
         std::cout << "Total time elapsed for all test cases: " << total_duration.count() << " milliseconds" << std::endl;

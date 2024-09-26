@@ -54,16 +54,12 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-#include <iostream>
-#include <cmath>
+//#include <cmath>
+//#define PRINT_DEBUG
 
 #include "common.h"
-//#define PRINT_DEBUG
-#ifdef PRINT_DEBUG
-#include <iostream>
-#endif
 
-//#define PRINT_DEBUG
+
 // Limits
 #ifndef DAMLEV_BUFFER_SIZE
     // 640k should be good enough for anybody.
@@ -92,12 +88,12 @@ constexpr const auto DAMLEV_ARG_TYPE_ERROR_LEN = std::size(DAMLEV_ARG_TYPE_ERROR
 
 // Use a "C" calling convention.
 extern "C" {
-bool damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlev_deinit(UDF_INIT *initid);
+    int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    void damlev_deinit(UDF_INIT *initid);
 }
 
-bool damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, DAMLEV_ARG_NUM_ERROR, DAMLEV_ARG_NUM_ERROR_LEN);
@@ -129,10 +125,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
     // Retrieve the arguments.
 
     //set max string lenght for later
-    int max_string_length = static_cast<int>(std::max(args->lengths[0],
-                                                                  args->lengths[1]));
-    // we don't get a LD limit, so set at max string lenght
-    //const long long int max = max_string_length;
+    int max_string_length = static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
 
     if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
         || args->args[0] == nullptr) {
@@ -140,14 +133,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED 
         // length zero. In either case
         return static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
     }
-#ifdef PRINT_DEBUG
-    std::cout << "Maximum edit distance:" <<  std::min(*((long long *)args->args[2]),
-                                                       DAMLEV_MAX_EDIT_DIST)<<std::endl;
-    std::cout << "DAMLEVCONST_MAX_EDIT_DIST:" <<DAMLEV_MAX_EDIT_DIST<<std::endl;
-    std::cout << "Max String Length:" << static_cast<double>(std::max(args->lengths[0],
-                                                                      args->lengths[1]))<<std::endl;
 
-#endif
     // Retrieve buffer.
     std::vector<size_t> &buffer = *(std::vector<size_t> *) initid->ptr;
 

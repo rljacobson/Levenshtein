@@ -9,12 +9,12 @@ void set_error(char *error, const char *message) {
 
 // Use a "C" calling convention for MySQL UDF functions.
 extern "C" {
-    bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    int damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
     int damlevconstmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
     void damlevconstmin_deinit(UDF_INIT *initid);
 }
 
-struct PersistentData {
+struct DamLevConstMinData {
     long long max;            // The largest edit distance possible
     long long cumulative_min; // Minimum edit distance seen so far
     size_t const_len;         // Length of the constant string
@@ -22,20 +22,22 @@ struct PersistentData {
     std::unique_ptr<std::vector<size_t>> buffer;
 };
 
-bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        set_error(message, "DAMLEVCONST() requires 3 arguments: two strings and a max distance.");
+        char *error = message;
+        const char *message1 = "DAMLEVCONSTMIN() requires 3 arguments: two strings and a max distance.";
+        strcpy(error, message1);
         return 1;
     }
     if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        set_error(message, "Wrong argument types for DAMLEVCONST(). Expected: 2 strings, 1 max distance.");
+        set_error(message, "Wrong argument types for DAMLEVCONSTMIN(). Expected: 2 strings, 1 max distance.");
         return 1;
     }
 
 
     // Allocate persistent data using smart pointers
-    auto data = std::make_unique<PersistentData>();
+    auto data = std::make_unique<DamLevConstMinData>();
 
     // Initialize persistent data
     data->max = 512;  // Example max value, could be dynamic
@@ -45,7 +47,7 @@ bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 
     // If memory allocation failed
     if (!data->const_string || !data->buffer) {
-        set_error(message, "Memory allocation failure in DAMLEVCONST.");
+        set_error(message, "Memory allocation failure in DAMLEVCONSTMIN.");
         return 1;
     }
 
@@ -59,7 +61,7 @@ bool damlevconstmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 
 void damlevconstmin_deinit(UDF_INIT *initid) {
     // Clean up by destroying the unique_ptrs automatically
-    delete reinterpret_cast<PersistentData*>(initid->ptr);
+    delete reinterpret_cast<DamLevConstMinData*>(initid->ptr);
 }
 
 int damlevconstmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
@@ -68,7 +70,7 @@ int damlevconstmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error)
         return 0;
     }
 
-    PersistentData& data = *reinterpret_cast<PersistentData*>(initid->ptr);
+    DamLevConstMinData& data = *reinterpret_cast<DamLevConstMinData*>(initid->ptr);
     long long& max = data.max;
     std::vector<size_t>& buffer = *data.buffer;
 

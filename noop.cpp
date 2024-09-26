@@ -73,7 +73,7 @@ bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void noop_deinit(UDF_INIT *initid);
 }
-struct PersistentData {
+struct DamLevConstMinData {
     // Holds the min edit distance seen so far, which is the maximum distance that can be
     // computed before the algorithm bails early.
     long long max;
@@ -98,7 +98,7 @@ bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     }
 
     // Attempt to allocate persistent data.
-    PersistentData *data = new PersistentData();
+    DamLevConstMinData *data = new DamLevConstMinData();
     // (NOOP_MAX_EDIT_DIST);
     if (nullptr == data) {
         strncpy(message, NOOP_MEM_ERROR, NOOP_MEM_ERROR_LEN);
@@ -122,7 +122,7 @@ bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 void noop_deinit(UDF_INIT *initid) {
-    PersistentData &data = *(PersistentData *)initid->ptr;
+    DamLevConstMinData &data = *(DamLevConstMinData *)initid->ptr;
     if(nullptr != data.const_string){
         delete[] data.const_string;
         data.const_string = nullptr;
@@ -143,13 +143,13 @@ long long noop(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED ch
     }
 
     // Retrieve the persistent data.
-    PersistentData &data = *(PersistentData *)initid->ptr;
+    DamLevConstMinData &data = *(DamLevConstMinData *)initid->ptr;
 
     // Retrieve buffer.
     //std::vector<size_t> &buffer = *data.buffer; // Initialized later.
     // Retrieve max edit distance.
     long long &max = data.max;
-    
+
     // For purposes of the algorithm, set max to the smallest distance seen so far.
     max = std::min(*((long long *)args->args[2]), max);
     if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
