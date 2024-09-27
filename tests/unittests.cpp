@@ -7,10 +7,16 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <sstream>
-#include "testharness.hpp"
+
 #ifndef WORD_COUNT
 #define WORD_COUNT 10000ul
 #endif
+#ifndef WORDS_PATH
+#define WORDS_PATH "/usr/share/dict/words"
+#endif
+
+#include "testharness.hpp"
+
 // Random Number Generator
 std::random_device rd;
 std::mt19937 gen(rd());
@@ -56,9 +62,9 @@ int calculateDamLevDistance(const std::string& S1, const std::string& S2) {
     for (int i = 1; i <= n; i++) {
         for (int j = 1; j <= m; j++) {
             int cost = (S1[i - 1] == S2[j - 1]) ? 0 : 1;
-            dp[i][j] = std::min({ dp[i - 1][j] + 1, // Deletion
-                                  dp[i][j - 1] + 1, // Insertion
-                                  dp[i - 1][j - 1] + cost }); // Substitution
+            dp[i][j] = std::min({dp[i - 1][j] + 1, // Deletion
+                                 dp[i][j - 1] + 1, // Insertion
+                                 dp[i - 1][j - 1] + cost}); // Substitution
 
             if (i > 1 && j > 1 && S1[i - 1] == S2[j - 2] && S1[i - 2] == S2[j - 1]) {
                 dp[i][j] = std::min(dp[i][j], dp[i - 2][j - 2] + cost); // Transposition
@@ -163,7 +169,7 @@ std::string applyBothPrefixAndSuffix(std::string str, const std::string& prefix,
 
 int main() {
     std::string primaryFilePath = "tests/taxanames";  // Primary file path
-    std::string fallbackFilePath = "/usr/share/dict/words";  // Fallback file path
+    std::string fallbackFilePath = WORDS_PATH;  // Fallback file path
     unsigned maximum_size = WORD_COUNT;
 
     boost::interprocess::file_mapping text_file;
@@ -171,12 +177,16 @@ int main() {
 
     try {
         text_file = boost::interprocess::file_mapping(primaryFilePath.c_str(), boost::interprocess::read_only);
-        text_file_buffer = boost::interprocess::mapped_region(text_file, boost::interprocess::read_only);  // Initialization
-    } catch (const boost::interprocess::interprocess_exception& ePrimary) {
+        text_file_buffer = boost::interprocess::mapped_region(text_file,
+                                                              boost::interprocess::read_only);  // Initialization
+        std::cout << "Using word list " << primaryFilePath << "\n";
+    } catch (const boost::interprocess::interprocess_exception &ePrimary) {
         try {
             text_file = boost::interprocess::file_mapping(fallbackFilePath.c_str(), boost::interprocess::read_only);
-            text_file_buffer = boost::interprocess::mapped_region(text_file, boost::interprocess::read_only);  // Initialization
-        } catch (const boost::interprocess::interprocess_exception& eFallback) {
+            text_file_buffer = boost::interprocess::mapped_region(text_file,
+                                                                  boost::interprocess::read_only);  // Initialization
+            std::cout << "Using word list " << fallbackFilePath << "\n";
+        } catch (const boost::interprocess::interprocess_exception &eFallback) {
             std::cerr << "Could not open fallback file " << fallbackFilePath << '.' << std::endl;
             return EXIT_FAILURE;
         }
@@ -185,9 +195,9 @@ int main() {
     std::vector<std::string> wordList = readWordsFromMappedFile(text_file_buffer, maximum_size);
 
     std::vector<TestCase> testCases = {
-            // Your predefined test cases
+            // Tests have the form:
+            // { original string, modified string, expected distance, name of test }
             {"test", "test", 0, "Identical"}, // Identical strings
-            // ... (Other predefined test cases) ...
     };
 
     // Generate random test cases for each type
@@ -252,47 +262,49 @@ int main() {
 
     }
 
-        auto total_start = std::chrono::high_resolution_clock::now();
+    auto total_start = std::chrono::high_resolution_clock::now();
 
-        // Run all test cases
-        LEV_SETUP();
-        for (const auto& testCase : testCases) {
-            long long result
-                = LEV_CALL(
-                    const_cast<char*>(testCase.a.c_str()),
-                    testCase.a.size(),
-                    const_cast<char*>(testCase.b.c_str()),
-                    testCase.b.size(),
-                    25 // Assuming a max distance of 25
-                );
-            bool testPassed = result == testCase.expectedDistance;
-            if (!testPassed) { // Print only if the test failed
-                std::cout << testCase.functionName << ": " << testCase.a << " vs " << testCase.b
-                          << " (LD: " << result << ") - " << " (Expected: " << testCase.expectedDistance << ") - FAIL" << std::endl;
-                FAILED++;
-                if (FAILED > 25) {
-                    LEV_TEARDOWN();  // Tear down after test case
-                    return 99;
-                }
+    // Run all test cases
+    LEV_SETUP();
+    for (const auto& testCase : testCases) {
+        long long result
+            = LEV_CALL(
+                const_cast<char*>(testCase.a.c_str()),
+                testCase.a.size(),
+                const_cast<char*>(testCase.b.c_str()),
+                testCase.b.size(),
+                25 // Assuming a max distance of 25
+            );
+        bool testPassed = result == testCase.expectedDistance;
+        if (!testPassed) { // Print only if the test failed
+            std::cout << testCase.functionName << ": " << testCase.a << " vs " << testCase.b
+                      << " (LD: " << result << ") - " << " (Expected: " << testCase.expectedDistance << ") - FAIL"
+                      << std::endl;
+            FAILED++;
+            if (FAILED > 25) {
+                LEV_TEARDOWN();  // Tear down after test case
+                std::cout << "FAILED FOR > 25 STRINGS" << std::endl;
+                return 99;
             }
-
-        }
-        LEV_TEARDOWN();
-
-        // Stop the timer after running all test cases
-        auto total_stop = std::chrono::high_resolution_clock::now();
-        auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_stop - total_start);
-
-        if (FAILED < 1) {
-            std::cout << "ALL PASSED FOR " << LOOP << " STRINGS" << std::endl;
-        } else {
-            std::cout << "FAILED FOR " << FAILED << " STRINGS" << std::endl;
         }
 
-        // Print the total time for all tests
-        std::cout << "Total time elapsed for all test cases: " << total_duration.count() << " milliseconds" << std::endl;
-
-        return 0;
     }
+    LEV_TEARDOWN();
+
+    // Stop the timer after running all test cases
+    auto total_stop = std::chrono::high_resolution_clock::now();
+    auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(total_stop - total_start);
+
+    if (FAILED < 1) {
+        std::cout << "ALL PASSED FOR " << LOOP << " STRINGS" << std::endl;
+    } else {
+        std::cout << "FAILED FOR " << FAILED << " STRINGS" << std::endl;
+    }
+
+    // Print the total time for all tests
+    std::cout << "Total time elapsed for all test cases: " << total_duration.count() << " milliseconds" << std::endl;
+
+    return 0;
+}
 
 

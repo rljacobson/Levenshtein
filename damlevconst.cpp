@@ -21,7 +21,8 @@ int damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     }
 
     // Initialize persistent data
-    std::vector<int>* buffer = new (std::nothrow) std::vector<int>(DAMLEV_MAX_EDIT_DIST);
+    std::cout << "Using buffer size " << DAMLEV_MAX_EDIT_DIST << "\n";
+    int* buffer = new (std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
 
     // If memory allocation failed
     if (!buffer) {
@@ -37,7 +38,7 @@ int damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 void damlevconst_deinit(UDF_INIT *initid) {
-    delete reinterpret_cast<std::vector<int>*>(initid->ptr);
+    delete reinterpret_cast<int *>(initid->ptr);
 }
 
 long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error) {
@@ -47,7 +48,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
     }
 
     // Fetch persistent buffer allocation
-    std::vector<int>& buffer = *reinterpret_cast<std::vector<int>*>(initid->ptr);
+    int* buffer = reinterpret_cast<int *>(initid->ptr);
 
     // Handle null or empty strings
     if (!args->args[0] || args->lengths[0] == 0 || !args->args[1] || args->lengths[1] == 0) {
@@ -93,7 +94,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
         auto end_offset = std::distance(subject.rbegin(), suffix_mismatch.first);
 
         // Extract the different part if significant
-        if (start_offset + end_offset < subject_length) {
+        if (start_offset + end_offset < static_cast<long>(subject_length)) {
             subject = subject.substr(start_offset, subject_length - start_offset - end_offset);
             query   = query.substr(  start_offset, query_length   - start_offset - end_offset);
         }
@@ -111,7 +112,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
     int effective_max = std::min(static_cast<int>(max), n);
 
     // Re-initialize buffer before calculation
-    std::iota(buffer.begin(), buffer.begin() + static_cast<int>(query.length()) + 1, 0);
+    std::iota(buffer, buffer + static_cast<int>(query.length()) + 1, 0);
 
     // Lambda function for 2D matrix indexing in the 1D buffer
     auto idx = [m](int i, int j) { return i * (m + 1) + j; };
@@ -145,5 +146,5 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
     }
 
     // Return the final Damerau-Levenshtein distance
-    return static_cast<int>(buffer[idx(n, m)]);
+    return buffer[idx(n, m)];
 }

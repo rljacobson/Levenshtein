@@ -16,7 +16,7 @@
 // Limits
 #ifndef DAMLEV_BUFFER_SIZE
 // 640k should be good enough for anybody.
-#define DAMLEV_BUFFER_SIZE 512ull
+#define DAMLEV_BUFFER_SIZE 1024ull
 #endif
 constexpr long long DAMLEV_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull, DAMLEV_BUFFER_SIZE));
 

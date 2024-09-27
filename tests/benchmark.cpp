@@ -17,9 +17,11 @@
 #else
     #define LEV_FUNCTION damlev
 #endif
+#ifndef WORDS_PATH
+#define WORDS_PATH "/usr/share/dict/words"
+#endif
 #include "testharness.hpp"
 
-#
 
 #include "benchtime.hpp"
 
@@ -100,6 +102,7 @@ long long calculateDamLevDistance(const std::string& S1, const std::string& S2) 
 
     return dp[n][m];
 }
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
     std::string primaryFilePath = "tests/taxanames";  // Primary file path (e.g., "tests/taxanames")
     std::string fallbackFilePath = WORDS_PATH;  // Default fallback file path

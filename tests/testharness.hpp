@@ -68,7 +68,7 @@
 
 // Use a "C" calling convention.
 extern "C" {
-bool LEV_INIT(UDF_INIT *initid, UDF_ARGS *args, char *message);
+int LEV_INIT(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long LEV_FUNCTION(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void LEV_DEINIT(UDF_INIT *initid);
 }
@@ -113,7 +113,7 @@ void LEV_SETUP(){
     // } UDF_INIT;
 
     // Nothing to init for UDF_INIT.
-    bool result = LEV_INIT(LEV_INITID, LEV_ARGS, LEV_MESSAGE);
+    int result = LEV_INIT(LEV_INITID, LEV_ARGS, LEV_MESSAGE);
     if(result == 1){
         std::cout << LEV_MESSAGE << std::endl;
     }
@@ -147,7 +147,7 @@ long long LEV_CALL(char *subject, size_t subject_len, char *query, size_t query_
     LEV_ARGS->args[2] = (char *)(&max);
     LEV_ARGS->lengths[2] = sizeof(max);
 
-    result = LEV_FUNCTION(LEV_INITID, LEV_ARGS, 0, LEV_MESSAGE);
+    result = LEV_FUNCTION(LEV_INITID, LEV_ARGS, nullptr, LEV_MESSAGE);
 
     return result;
 }
