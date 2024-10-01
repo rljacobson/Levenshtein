@@ -166,83 +166,6 @@ FROM CUSTOMERS WHERE DAMLEV(Name, "Vladimir Iosifovich Levenshtein") < 8;
 
 The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
 where `Name` has edit distance within 8 of "Vladimir Iosifovich Levenshtein".
-# Testing
-
-## Unittest.cpp
-
-#### Overview
-
-The unit testing suite focuses on evaluating several key types of string manipulations, each contributing to the robust testing of our algorithms, especially in calculating the Damerau-Levenshtein distance. These manipulations simulate real-world scenarios where strings may undergo various changes. The primary types of manipulations included in the test suite are:
-
-#### 1. Transposition
-
-- **Description:** This manipulation involves swapping adjacent characters in a string.
-- **Purpose:** Tests the algorithm's ability to handle cases where characters are out of order but still present, a common occurrence in typing errors.
-
-#### 2. Deletion
-
-- **Description:** Involves removing one or more characters from the string.
-- **Purpose:** Validates the algorithm’s performance when characters are missing, reflecting scenarios like typos or truncated text.
-
-#### 3. Insertion
-
-- **Description:** This manipulation adds one or more new characters to the string.
-- **Purpose:** Assesses how well the algorithm copes with extraneous characters, which could represent data entry errors or unintended insertions.
-
-#### 4. Substitution
-
-- **Description:** Involves replacing one or more characters in the string with different characters.
-- **Purpose:** Tests the algorithm’s accuracy in situations where characters are mistakenly replaced, a typical issue in misspelled words.
-
-#### 5. Common Prefix/Suffix Addition
-
-- **Description:** Adds a common set of characters either at the beginning (prefix) or at the end (suffix) of the string.
-- **Purpose:** Ensures the algorithm remains effective when strings share similar starting or ending segments, a frequent case in related or derived words.
-
-#### Key Features of the Testing Suite
-
-- **Source of Test Words:** The suite sources test words from a predefined file (`tests/taxanames`), with a secondary option of using a system dictionary (`/usr/share/dict/words`). You will likely not have (`tests/taxanames`), feel free to build file with a million rows of long strings for testing. This strategy offers a rich and diverse pool of test strings.
-- **Randomization Mechanism:** Utilizing a standard library random device paired with a Mersenne Twister engine (`std::mt19937`), the suite efficiently generates random numbers to facilitate the creation of various test conditions.
-
-#### Structure and Execution of Test Cases
-
-- **TestCase Structure:** Each test case, defined in the `TestCase` structure, includes two strings and an expected Damerau-Levenshtein distance, accompanied by a descriptive label of the function being tested.
-- **Diverse String Operations:** The suite employs an array of string manipulations, including transposition, deletion, insertion, and substitution, applied randomly to simulate real-world string alterations.
-- **Testing Common Prefixes/Suffixes:** The test strings are systematically appended with common prefixes and suffixes, extending up to 10 characters, to evaluate the algorithm's performance with shared string segments.
-- **Extensive Iterative Testing:** Executing a substantial number of iterations (as indicated by `LOOP`), the suite ensures broad coverage of potential string scenarios.
-
-#### Error Management and Reporting
-
-- **Automated Execution and Validation:** The testing process is fully automated, comparing the calculated Damerau-Levenshtein distances against pre-established benchmarks.
-- **Efficient Error Handling:** The suite is designed to cease execution if more than 25 errors are detected, returning those error and a code of 99. This approach prevents extensive logging from a single pervasive issue, enhancing the efficiency of error identification and resolution.
-- **Successful Test Message:**  `ALL PASSED FOR 100000 STRINGS`
-
-## One Off Test `testoneoff.cpp`
-
-#### Overview
-
-The one-off test script is a specialized utility designed to manually test the calculation of the Damerau-Levenshtein distance between two specific strings. This tool is particularly useful for quickly debugging the functionality of different variations of the Damerau-Levenshtein algorithm.
-
-#### Features
-
-- **Customizable String Inputs:** Users can specify any two strings for comparison directly within the code. The script is currently set up to compare `"string"` and `"strlng"`.
-- **Flexible Algorithm Testing:** The script is adaptable to test different implementations of the Damerau-Levenshtein distance by adjusting the `LEV_ARGS->arg_count` and corresponding function in `testharness.hpp`.
-- **Immediate Results:** It provides an instant calculation of the Damerau-Levenshtein distance, outputting the result to the console.
-
-#### Usage
-
-1. **Setup Strings:** Modify the `search_term` and `db_return` variables in the script to the strings you want to compare.
-2. **Select Algorithm:** Ensure the `LEV_ARGS->arg_count` is set appropriately in `testharness.hpp` for the specific Damerau-Levenshtein implementation you wish to test (e.g., `damlevconst`, `damlev`, `damlevlimp`).
-3. **Compile and Run:** Compile the script and execute it. The Damerau-Levenshtein distance between the specified strings will be displayed in the console.
-
-#### Example Output
-
-```
-LEV_FUNCTION("string", "strlng") =  1
-```
-
-
-
 
 ## Limitations
 
@@ -250,14 +173,8 @@ LEV_FUNCTION("string", "strlng") =  1
 compute the correct edit distance between your strings.
 * This function is case sensitive. If you need case insensitivity, you need to either compose this
 function with `LOWER`/`TOLOWER`, or adapt the code.
-* There are a few edge cases that that give an erroneous damlev2D, 1 less than the actual distance
-* By default, `PosInt` has a default maximum of 512 for performance reasons. Removing the maximum
-entirely is not supported at this time, but you can increase the default by defining
-`DAMLEV_BUFFER_SIZE` to be a larger number prior to compilation:
-
-```bash
-$ export DAMLEV_BUFFER_SIZE=10000
-```
+* By default, `PosInt` has a default maximum of 512 for performance reasons. You can configure this maximum by changing
+`DAMLEV_BUFFER_SIZE` in `CMakeLists.txt`. See the Configuration section below for more details.
 
 Any one of these limitations would be a good for a contributor to solve. Make a pull
 request!
@@ -276,11 +193,23 @@ request!
 
 This is probably the easiest and fastest way to get going. Get pre-built binaries on [the Releases page](https://github.com/rljacobson/Levenshtein/releases). There are pre-built binaries for Linux, macOS, and Windows. Download the file and put it in your MySQL plugins directory. Then procede to the [Installing](#installing) section.
 
+### Configuration
 
-Certainly! Here's your Docker build instruction revised and formatted in Markdown:
+You can configure the following options within the `CMakeLists.txt` file.
 
----
+| Option | Description | Values (Default) |
+|:-----:|:-----|:-----|
+| `BUFFER_SIZE` | Size of allocated buffer. This effectively limits the size of the strings you are able to compare. (See note below.) | unsigned long long number of bytes (`4096ull`, which is 4KB) |
+| Insufficient Buffer Size Policy | Policy for handling strings that require a buffer size greater than the allocated buffer. (See note below.) | `TRUNCATE_ON_BUFFER_EXCEEDED` (default)<br>`RETURN_ZERO_ON_BUFFER_EXCEEDED`<br>`RETURN_NULL_ON_BUFFER_EXCEEDED` |
+| Bad Max Policy | The behavior if the user provides a negative maximum edit distance. | `RETURN_ZERO_ON_BAD_MAX` (default)<br>`RETURN_NULL_ON_BAD_MAX` |
 
+*Notes on buffer size.* 
+
+For a single-row buffer, the size of the buffer required is just the size of the shortest string plus 1. The buffer is only used to compare the part of the strings *after* the common prefix and suffix are trimmed. Consequently, for any given set of strings being compared, you will only require a maximum of the size of the *second* largest string plus 1, as the largest string compared against itself will "trim" the entire string.
+
+For a 2D matrix buffer, we require a buffer size of (shortest + 1)*(longest + 1).  You should therefore keep your strings smaller than $\sqrt{\text{buffer size}} - 1$.
+
+There is a hard max set at ~16KB. This is the wrong tool for the job if you are using it for strings that large.
 ### Building from Docker
 
 The Docker configuration is set up to persist the `build` directory. When you run the Docker container, the `.so` file will be generated in this directory. It's crucial to ensure that the chip architecture of your Docker environment matches your host machine to ensure compatibility with the `.so` file.
@@ -338,7 +267,7 @@ damlev_udf  | [100%] Built target benchmark
 - Ensure compatibility between the Docker environment and your host machine, especially in terms of architecture (e.g., x86_64, ARM), for the `.so` file to function correctly.
 - If you're not familiar with docker ask your favorite ChatBot 
 
---- 
+---
 
 This Markdown format maintains the structure and style you initially provided, offering clear and easy-to-follow instructions for building from Docker.
 ### Building from source
@@ -426,6 +355,81 @@ You can ask MySQL for the plugin directory:
 ```bash
 $ mysql_config --plugindir
 /path/to/directory/
+```
+
+## Testing
+
+### Unittest.cpp
+
+#### Overview
+
+The unit testing suite focuses on evaluating several key types of string manipulations, each contributing to the robust testing of our algorithms, especially in calculating the Damerau-Levenshtein distance. These manipulations simulate real-world scenarios where strings may undergo various changes. The primary types of manipulations included in the test suite are:
+
+#### 1. Transposition
+
+- **Description:** This manipulation involves swapping adjacent characters in a string.
+- **Purpose:** Tests the algorithm's ability to handle cases where characters are out of order but still present, a common occurrence in typing errors.
+
+#### 2. Deletion
+
+- **Description:** Involves removing one or more characters from the string.
+- **Purpose:** Validates the algorithm’s performance when characters are missing, reflecting scenarios like typos or truncated text.
+
+#### 3. Insertion
+
+- **Description:** This manipulation adds one or more new characters to the string.
+- **Purpose:** Assesses how well the algorithm copes with extraneous characters, which could represent data entry errors or unintended insertions.
+
+#### 4. Substitution
+
+- **Description:** Involves replacing one or more characters in the string with different characters.
+- **Purpose:** Tests the algorithm’s accuracy in situations where characters are mistakenly replaced, a typical issue in misspelled words.
+
+#### 5. Common Prefix/Suffix Addition
+
+- **Description:** Adds a common set of characters either at the beginning (prefix) or at the end (suffix) of the string.
+- **Purpose:** Ensures the algorithm remains effective when strings share similar starting or ending segments, a frequent case in related or derived words.
+
+#### Key Features of the Testing Suite
+
+- **Source of Test Words:** The suite sources test words from a predefined file (`tests/taxanames`), with a secondary option of using a system dictionary (`/usr/share/dict/words`). You will likely not have (`tests/taxanames`), feel free to build file with a million rows of long strings for testing. This strategy offers a rich and diverse pool of test strings.
+- **Randomization Mechanism:** Utilizing a standard library random device paired with a Mersenne Twister engine (`std::mt19937`), the suite efficiently generates random numbers to facilitate the creation of various test conditions.
+
+#### Structure and Execution of Test Cases
+
+- **TestCase Structure:** Each test case, defined in the `TestCase` structure, includes two strings and an expected Damerau-Levenshtein distance, accompanied by a descriptive label of the function being tested.
+- **Diverse String Operations:** The suite employs an array of string manipulations, including transposition, deletion, insertion, and substitution, applied randomly to simulate real-world string alterations.
+- **Testing Common Prefixes/Suffixes:** The test strings are systematically appended with common prefixes and suffixes, extending up to 10 characters, to evaluate the algorithm's performance with shared string segments.
+- **Extensive Iterative Testing:** Executing a substantial number of iterations (as indicated by `LOOP`), the suite ensures broad coverage of potential string scenarios.
+
+#### Error Management and Reporting
+
+- **Automated Execution and Validation:** The testing process is fully automated, comparing the calculated Damerau-Levenshtein distances against pre-established benchmarks.
+- **Efficient Error Handling:** The suite is designed to cease execution if more than 25 errors are detected, returning those error and a code of 99. This approach prevents extensive logging from a single pervasive issue, enhancing the efficiency of error identification and resolution.
+- **Successful Test Message:**  `ALL PASSED FOR 100000 STRINGS`
+
+### One Off Test `testoneoff.cpp`
+
+#### Overview
+
+The one-off test script is a specialized utility designed to manually test the calculation of the Damerau-Levenshtein distance between two specific strings. This tool is particularly useful for quickly debugging the functionality of different variations of the Damerau-Levenshtein algorithm.
+
+#### Features
+
+- **Customizable String Inputs:** Users can specify any two strings for comparison directly within the code. The script is currently set up to compare `"string"` and `"strlng"`.
+- **Flexible Algorithm Testing:** The script is adaptable to test different implementations of the Damerau-Levenshtein distance by adjusting the `LEV_ARGS->arg_count` and corresponding function in `testharness.hpp`.
+- **Immediate Results:** It provides an instant calculation of the Damerau-Levenshtein distance, outputting the result to the console.
+
+#### Usage
+
+1. **Setup Strings:** Modify the `search_term` and `db_return` variables in the script to the strings you want to compare.
+2. **Select Algorithm:** Ensure the `LEV_ARGS->arg_count` is set appropriately in `testharness.hpp` for the specific Damerau-Levenshtein implementation you wish to test (e.g., `damlevconst`, `damlev`, `damlevlimp`).
+3. **Compile and Run:** Compile the script and execute it. The Damerau-Levenshtein distance between the specified strings will be displayed in the console.
+
+#### Example Output
+
+```
+LEV_FUNCTION("string", "strlng") =  1
 ```
 
 ## Warning

@@ -11,6 +11,23 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 # Library specific.
 add_definitions("-DHAVE_DLOPEN")
 
+# CONFIGURATION
+
+# Modify the following to set the buffer size to something other than 4096
+# characters. There is a hard max set at ~16KB. This is the wrong tool for
+# the job if you are using it for strings that large.
+set(BUFFER_SIZE 4096ull)
+
+# Select the policy for handling negative max edit distance
+add_compile_definitions(RETURN_ZERO_ON_BAD_MAX)
+#add_compile_definitions(RETURN_NULL_ON_BAD_MAX)
+
+# Select the policy for handling strings that require a buffer size greater than the allocated buffer.
+add_compile_definitions(TRUNCATE_ON_BUFFER_EXCEEDED) # Truncates the strings to fit within the buffer.
+#add_compile_definitions(RETURN_ZERO_ON_BUFFER_EXCEEDED)
+#add_compile_definitions(RETURN_NULL_ON_BUFFER_EXCEEDED)
+
+
 set(DAMLEV_SOURCES
         damlev.cpp
         damlevp.cpp
@@ -21,12 +38,6 @@ set(DAMLEV_SOURCES
 		damlev2D.cpp
 		noop.cpp
 )
-
-
-# Modify the following to set the buffer size to something other than 4096
-# characters. There is a hard max set at ~16KB. This is the wrong tool for
-# the job if you are using it for strings that large.
-set(BUFFER_SIZE 4096ull)
 
 
 add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)

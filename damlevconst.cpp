@@ -32,8 +32,16 @@ int damlevconst_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 
     initid->ptr = reinterpret_cast<char*>(buffer);
 
-    // damlevconst does not return null
+    // There are two error states possible within the function itself:
+    //    1. Negative max distance provided
+    //    2. Buffer size required is greater than available buffer allocated.
+    // The policy for how to handle these cases is selectable in the CMakeLists.txt file.
+#if defined(RETURN_NULL_ON_BAD_MAX) || defined(RETURN_NULL_ON_BUFFER_EXCEEDED)
+    initid->maybe_null = 1;
+#else
     initid->maybe_null = 0;
+#endif
+
     return 0;
 }
 
@@ -61,7 +69,18 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
         long long user_max = *((long long*)args->args[2]);
         if (user_max < 0) {
             strcpy(error, "Maximum edit distance cannot be negative.");
-            return 1;
+            // The policy for how to handle these cases is selectable in the CMakeLists.txt file.
+#ifdef RETURN_NULL_ON_BAD_MAX
+            *is_null = 1;
+            return 0;
+#else
+#ifdef RETURN_ZERO_ON_BAD_MAX
+            return 0;
+#else
+            // Return `max` on error
+            return max;
+#endif
+#endif
         }
         max = std::min(user_max, max);
     }
@@ -80,6 +99,7 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
         // Get the lengths of both strings
         auto subject_length = subject.length();
         auto query_length = query.length();
+
 
         // If one of the strings is a prefix of the other, return the length difference
         if (start_offset == static_cast<long>(subject_length)) {
@@ -107,6 +127,33 @@ long long damlevconst(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *err
 
     int n = static_cast<int>(subject.length());
     int m = static_cast<int>(query.length());
+
+    // Check for memory overrun
+    // For a single-row buffer, the size of the buffer required is just the size of the shortest string plus 1.
+    // For a 2D matrix buffer, we require a buffer size of (shortest + 1)*(longest + 1)
+    if (m * n > DAMLEV_MAX_EDIT_DIST) {
+        strcpy(error, "Buffer size exceeded.");
+#ifdef RETURN_NULL_ON_BUFFER_EXCEEDED
+        *is_null = 1;
+        return 0;
+#else
+#ifdef RETURN_ZERO_ON_BUFFER_EXCEEDED
+        return 0;
+#else
+        // TRUNCATE_ON_BUFFER_EXCEEDED
+        // For a single-row buffer, the size of the buffer required is just the size of the shortest string plus 1.
+        // Thus, we only need to truncate the shortest string to buffer_size-1 in this case.
+        //
+        // For a 2D matrix buffer, we require a buffer size of (at least)
+        //      (shortest + 1)*(longest + 1)
+        // There are a few different ways to truncate the strings in this case.
+        //      - If buffer_size/longest > 0, truncate shortest to buffer_size/longest.
+        //      - Truncate each to be at most sqrt(buffer_size).
+        // We'll punt on this.
+        return max;
+#endif
+#endif
+    }
 
     // Determine the effective maximum edit distance
     int effective_max = std::min(static_cast<int>(max), n);
