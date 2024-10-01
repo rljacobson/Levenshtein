@@ -1,3 +1,4 @@
+//common.h
 #pragma once
 
 #define NOMINMAX // msvc++ incompatibility
