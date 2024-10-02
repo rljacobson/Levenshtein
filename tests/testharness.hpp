@@ -11,7 +11,7 @@
 // multiple times.
 
 #include <iostream>
-#include "../common.h"
+#include "common.h"
 
 // Default definitions in case CMake does not define them
 #ifndef LEV_FUNCTION

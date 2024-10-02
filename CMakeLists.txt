@@ -20,23 +20,29 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 # Library specific definitions
 add_definitions("-DHAVE_DLOPEN")
 
+# Include directories for headers
+include_directories(
+		${PROJECT_SOURCE_DIR}/src/common
+		${PROJECT_SOURCE_DIR}/include  # If you have additional headers here
+)
+
 # Define library sources
 set(DAMLEV_SOURCES
-		damlev.cpp
-		damlevp.cpp
-		damlevlim.cpp
-		# damlevlimp.cpp   ## TODO: Need to add this with a limit, say look for words with 80% similarity
-		damlevconst.cpp
-		damlevconstmin.cpp
-		damlev2D.cpp
-		noop.cpp
+		src/algorithms/damlev.cpp
+		src/algorithms/damlevp.cpp
+		src/algorithms/damlevlim.cpp
+		# src/algorithms/damlevlimp.cpp   ## TODO: Need to add this with a limit, say look for words with 80% similarity
+		src/algorithms/damlevconst.cpp
+		src/algorithms/damlevconstmin.cpp
+		src/algorithms/damlev2D.cpp
+		src/algorithms/noop.cpp
 )
 
 # Modify the buffer size if needed (default is 4096ull)
 set(BUFFER_SIZE 4096ull)
 
-# Add the damlev library
-add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)
+# Add the damlev library without test sources
+add_library(damlev MODULE ${DAMLEV_SOURCES})
 target_compile_definitions(damlev PRIVATE
 		WORDS_PATH="/usr/share/dict/words"
 		MYSQL_DYNAMIC_PLUGIN
@@ -129,12 +135,13 @@ message(STATUS "Selected Algorithm: ${TEST_ALGORITHM}")
 message(STATUS "ARG_NUMBER: ${ARG_NUMBER}")
 
 ## Add Executable for One-off Testing
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp ${TEST_ALGORITHM}.cpp)
+add_executable(oneoff tests/testoneoff.cpp src/algorithms/${TEST_ALGORITHM}.cpp)
 target_compile_definitions(oneoff PRIVATE
 		LEV_FUNCTION=${TEST_ALGORITHM}
 		LEV_ALGORITHM_COUNT=${ARG_NUMBER}
 		DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
 )
+target_include_directories(oneoff PRIVATE src/common include)
 
 # Unit Tests and Benchmark uses Boost
 find_package(Boost REQUIRED)
@@ -144,7 +151,7 @@ endif()
 
 ## This is for unit testing for debugging purposes, makes errors of known and checks.
 # TODO unittest does not currently work for damlevp, due to return type of a double conflicting.
-add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp ${TEST_ALGORITHM}.cpp)
+add_executable(unittest tests/unittests.cpp src/algorithms/${TEST_ALGORITHM}.cpp)
 target_compile_definitions(unittest PRIVATE
 		LEV_FUNCTION=${TEST_ALGORITHM}
 		LEV_ALGORITHM_COUNT=${ARG_NUMBER}
@@ -152,16 +159,18 @@ target_compile_definitions(unittest PRIVATE
 		DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
 		WORDS_PATH="${WORDS_FILE}"
 )
+target_include_directories(unittest PRIVATE src/common include)
 
-add_executable(benchmark common.h tests/testharness.hpp ${TEST_ALGORITHM}.cpp tests/benchmark.cpp)
+add_executable(benchmark tests/benchmark.cpp src/algorithms/${TEST_ALGORITHM}.cpp)
 target_compile_definitions(benchmark PRIVATE
 		WORD_COUNT=235000ul
 		BENCH_FUNCTION=${TEST_ALGORITHM}
 		WORDS_PATH="${WORDS_FILE}"
 		DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
 )
+target_include_directories(benchmark PRIVATE src/common include)
 
-# Optional: Specify C++ Standard (e.g., C++17)
+# Specify C++ Standard for all executables
 set_target_properties(oneoff unittest benchmark PROPERTIES
 		CXX_STANDARD 17
 		CXX_STANDARD_REQUIRED YES
