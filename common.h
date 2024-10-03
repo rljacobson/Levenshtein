@@ -25,13 +25,6 @@ constexpr long long DAMLEV_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull, DAM
 #include <iostream>
 #endif
 
-#ifdef _WIN64
-// msvc++ incompatibility
-#define UNUSED
-#else
-// Silences warning in gcc/clang.
-#define UNUSED __attribute__((unused))
-#endif
 
 // Define set_error as an inline function
 inline void set_error(char *error, const char *message) {

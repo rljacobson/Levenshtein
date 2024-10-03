@@ -54,17 +54,8 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
-//#include <cmath>
-//#define PRINT_DEBUG
 
 #include "common.h"
-
-
-// Limits
-#ifndef DAMLEV_BUFFER_SIZE
-    // 640k should be good enough for anybody.
-    #define DAMLEV_BUFFER_SIZE 512ull
-#endif
 
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
@@ -96,24 +87,32 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, DAMLEV_ARG_NUM_ERROR, DAMLEV_ARG_NUM_ERROR_LEN);
-        return int(1);
+        return 1;
     }
         // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
         strncpy(message, DAMLEV_ARG_TYPE_ERROR, DAMLEV_ARG_TYPE_ERROR_LEN);
-        return  int(1);
+        return  1;
     }
 
     // Attempt to allocate a buffer.
     initid->ptr = (char *)new(std::nothrow) std::vector<size_t>((DAMLEV_MAX_EDIT_DIST));
     if (initid->ptr == nullptr) {
         strncpy(message, DAMLEV_MEM_ERROR, DAMLEV_MEM_ERROR_LEN);
-        return  int(1);
+        return  1;
     }
 
-    // damlev does not return null.
+    // There are two error states possible within the function itself:
+    //    1. Negative max distance provided
+    //    2. Buffer size required is greater than available buffer allocated.
+    // The policy for how to handle these cases is selectable in the CMakeLists.txt file.
+#if defined(RETURN_NULL_ON_BAD_MAX) || defined(RETURN_NULL_ON_BUFFER_EXCEEDED)
+    initid->maybe_null = 1;
+#else
     initid->maybe_null = 0;
-    return  int(0);
+#endif
+
+    return 0;
 }
 
 void damlev_deinit(UDF_INIT *initid) {

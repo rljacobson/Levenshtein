@@ -8,7 +8,7 @@ project(Levenshtein)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 
-# Library specific.
+# Library specific. (Dynamic linking of shared libraries at runtime.)
 add_definitions("-DHAVE_DLOPEN")
 
 # CONFIGURATION
@@ -33,8 +33,7 @@ set(DAMLEV_SOURCES
         damlevp.cpp
         damlevlim.cpp
 #       damlevlimp.cpp   ## TODO Need to add this with a limit, say look for words with 80% similar..
-		damlevconst.cpp
-		damlevconstmin.cpp
+		damlevmin.cpp
 		damlev2D.cpp
 		noop.cpp
 )
@@ -89,9 +88,8 @@ install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
 set(WORDS_FILE "/usr/share/dict/words")
 
 # Select which algorithm to test by uncommenting exactly one of the following.
-set(TEST_ALGORITHM "damlev")
-#set(TEST_ALGORITHM "damlevconstmin")
-#set(TEST_ALGORITHM "damlevconst")
+#set(TEST_ALGORITHM "damlev")
+set(TEST_ALGORITHM "damlevmin")
 #set(TEST_ALGORITHM "damlevlim")
 #set(TEST_ALGORITHM "damlevp")
 #set(TEST_ALGORITHM "noop")

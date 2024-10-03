@@ -57,6 +57,9 @@
 #define PPCAT(A, B) PPCAT_NX(A, B)
 #endif
 
+#define STRINGIFY(x) #x
+#define AS_STRING(x) STRINGIFY(x)
+
 #define LEV_ARGS PPCAT(LEV_FUNCTION,args)
 #define LEV_INITID PPCAT(LEV_FUNCTION,initid)
 #define LEV_MESSAGE PPCAT(LEV_FUNCTION,message)
@@ -95,7 +98,7 @@ void LEV_SETUP(){
     LEV_ARGS->args = new char*[3];
     LEV_ARGS->lengths = new unsigned long[3];
     //TODO: need to put a try for 3 or 2 here.
-    LEV_ARGS->arg_count = 2;
+    LEV_ARGS->arg_count = 3;
     LEV_ARGS->arg_type[0] = STRING_RESULT;
     LEV_ARGS->arg_type[1] = STRING_RESULT;
     LEV_ARGS->arg_type[2] = INT_RESULT;
@@ -108,7 +111,7 @@ void LEV_SETUP(){
     //     my_bool maybe_null;			/* 1 if function can return NULL */
     //     unsigned int decimals;		/* for real functions */
     //     unsigned int max_length;		/* For string functions */
-    //     char	  *ptr;				/* free pointer for function data */
+    //     char	  *ptr;				    /* free pointer for function data */
     //     my_bool const_item;			/* 0 if result is independent of arguments */
     // } UDF_INIT;
 

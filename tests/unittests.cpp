@@ -168,6 +168,9 @@ std::string applyBothPrefixAndSuffix(std::string str, const std::string& prefix,
 // ...
 
 int main() {
+    std::cout << "Using buffer size " << DAMLEV_MAX_EDIT_DIST << "\n";
+    std::cout << "Using algorithm " << AS_STRING(LEV_FUNCTION) << "\n";
+
     std::string primaryFilePath = "tests/taxanames";  // Primary file path
     std::string fallbackFilePath = WORDS_PATH;  // Fallback file path
     unsigned maximum_size = WORD_COUNT;
