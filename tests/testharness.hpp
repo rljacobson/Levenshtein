@@ -11,7 +11,8 @@
 // multiple times.
 
 #include <iostream>
-#include "common.h"
+#include <common.h> //gives IDE error but runs fine.
+#include <mysql/mysql/udf_registration_types.h>  // This wasn't needed but it removed errors in IDE, ran with or without.
 
 // Default definitions in case CMake does not define them
 #ifndef LEV_FUNCTION
@@ -75,11 +76,6 @@ void LEV_SETUP(){
     LEV_ARGS->arg_type[1] = STRING_RESULT;
     LEV_ARGS->arg_type[2] = INT_RESULT;
     // LEV_ARGS->arg_type[2] = DECIMAL_RESULT;
-
-    // Print algorithm details
-    std::cout << "LEV_FUNCTION: " << LEV_ALGORITHM_NAME << std::endl;
-    std::cout << "LEV_ALGORITHM_COUNT: " << LEV_ALGORITHM_COUNT << std::endl;
-
     // Initialize UDF_INIT
     int result = LEV_INIT(LEV_INITID, LEV_ARGS, LEV_MESSAGE);
     if(result == 1){
