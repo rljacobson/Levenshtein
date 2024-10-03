@@ -43,6 +43,7 @@ std::vector<std::string> readWordsFromMappedFile(const boost::interprocess::mapp
     std::string word;
     while (iss >> word && words.size() < maximumWords) {
         words.push_back(word);
+        words.push_back(word);
     }
 
     return words;
