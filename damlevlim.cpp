@@ -63,17 +63,9 @@
     IN THE SOFTWARE.
 */
 #include "common.h"
-#ifdef PRINT_DEBUG
-#include <iostream>
-#endif
 
-// Limits
-#ifndef DAMLEVLIM_BUFFER_SIZE
-    // 640k should be good enough for anybody.
-    #define DAMLEVLIM_BUFFER_SIZE 512ull
-#endif
-constexpr long long DAMLEVLIM_MAX_EDIT_DIST = std::max(0ull,
-        std::min(16384ull, DAMLEVLIM_BUFFER_SIZE));
+// constexpr long long DAMLEVLIM_MAX_EDIT_DIST = std::max(0ull,
+//         std::min(16384ull, DAMLEVLIM_BUFFER_SIZE));
 
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
@@ -117,7 +109,7 @@ int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     }
 
     // Attempt to preallocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) int[DAMLEVLIM_MAX_EDIT_DIST];
+    initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
         strncpy(message, DAMLEVLIM_MEM_ERROR, DAMLEVLIM_MEM_ERROR_LEN);
         return 1;
@@ -146,13 +138,15 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     // Fetch preallocated buffer. The only difference between damlevmin and damlevlim is that damlevmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
-    long long max = std::min(*((long long *)args->args[2]),
-                        DAMLEVLIM_MAX_EDIT_DIST);
+    long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
+
+    // Validate max distance and update.
+    // This code is common to algorithms with limits.
+#include "validate_max.h"
 
     // The pre-algorithm code is the same for all algorithm variants. It handles
     //     - basic setup & initialization
     //     - trimming of common prefix/suffix
-    //     - computation of "effective" max edit distance
 #include "prealgorithm.h"
 
     // Lambda function for 2D matrix indexing in the 1D buffer

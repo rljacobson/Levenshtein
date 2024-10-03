@@ -1,5 +1,4 @@
 #include "common.h"
-#include <memory>
 
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
@@ -90,10 +89,13 @@ long long damlevmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     long long max = data->max;
     int *buffer = data->buffer;
 
+    // Validate max distance and update.
+    // This code is common to algorithms with limits.
+#include "validate_max.h"
+
     // The pre-algorithm code is the same for all algorithm variants. It handles
     //     - basic setup & initialization
     //     - trimming of common prefix/suffix
-    //     - computation of "effective" max edit distance
 #include "prealgorithm.h"
 
     // Lambda function for 2D matrix indexing in the 1D buffer
