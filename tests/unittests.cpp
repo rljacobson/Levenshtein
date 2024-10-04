@@ -173,16 +173,31 @@ protected:
 };
 
 // Helper function for running test cases
-void runTestCase(const TestCase& testCase) {
+void runTestCase(const TestCase& testCase, int max_distance) {
     long long result = LEV_CALL(
             const_cast<char*>(testCase.a.c_str()),
             testCase.a.size(),
             const_cast<char*>(testCase.b.c_str()),
             testCase.b.size(),
-            3 // Assuming a max distance of 3
+            max_distance
     );
-    ASSERT_EQ(result, testCase.expectedDistance) << "Test case: " << testCase.functionName << " failed.";
+
+    // Calculate the Damerau-Levenshtein distance without an early exit for comparison
+    int calculatedDistance = calculateDamLevDistance(testCase.a, testCase.b);
+
+    if (result != testCase.expectedDistance) {
+        // Print detailed information when a test fails
+        std::cout << "Test case failed for " << testCase.functionName << std::endl;
+        std::cout << "Original: " << testCase.a << ", Modified: " << testCase.b << std::endl;
+        std::cout << "Expected Distance: " << testCase.expectedDistance
+                  << ", Calculated Distance: " << calculatedDistance
+                  << ", Result from LEV_CALL: " << result << std::endl;
+    }
+
+    ASSERT_EQ(result, testCase.expectedDistance) << "Test case: " << testCase.functionName
+                                                 << " failed.";
 }
+
 
 // Maximum number of allowed failures before breaking the loop
 const int MAX_FAILURES = 1;
@@ -190,6 +205,7 @@ const int MAX_FAILURES = 1;
 // Specific test for Transposition
 TEST_F(LevenshteinTest, Transposition) {
     int failureCount = 0;
+    int max_distance = 3;
     for (int i = 0; i < LOOP; ++i) {
         std::string original = getRandomString(wordList);
         int editCount = getRandomEditCount(original);
@@ -203,6 +219,8 @@ TEST_F(LevenshteinTest, Transposition) {
                 testCase.b.size(),
                 3 // Assuming a max distance of 3
         );
+        // Use the updated runTestCase function with more debug prints
+        runTestCase(testCase, max_distance);
 
         if (result != testCase.expectedDistance) {
             failureCount++;
@@ -221,6 +239,7 @@ TEST_F(LevenshteinTest, Transposition) {
 // Specific test for Deletion
 TEST_F(LevenshteinTest, Deletion) {
     int failureCount = 0;
+    int max_distance = 3;
     for (int i = 0; i < LOOP; ++i) {
         std::string original = getRandomString(wordList);
         int editCount = getRandomEditCount(original);
@@ -234,6 +253,9 @@ TEST_F(LevenshteinTest, Deletion) {
                 testCase.b.size(),
                 3 // Assuming a max distance of 3
         );
+
+        // Use the updated runTestCase function with more debug prints
+        runTestCase(testCase, max_distance);
 
         if (result != testCase.expectedDistance) {
             failureCount++;
@@ -251,6 +273,7 @@ TEST_F(LevenshteinTest, Deletion) {
 // Specific test for Insertion
 TEST_F(LevenshteinTest, Insertion) {
     int failureCount = 0;
+    int max =3;
     for (int i = 0; i < LOOP; ++i) {
         std::string original = getRandomString(wordList);
         int editCount = getRandomEditCount(original);
@@ -265,6 +288,8 @@ TEST_F(LevenshteinTest, Insertion) {
                 3 // Assuming a max distance of 3
         );
 
+        // Use the updated runTestCase function with more debug prints
+        runTestCase(testCase, max);
         if (result != testCase.expectedDistance) {
             failureCount++;
             if (failureCount >= MAX_FAILURES) {
@@ -281,6 +306,7 @@ TEST_F(LevenshteinTest, Insertion) {
 // Specific test for Substitution
 TEST_F(LevenshteinTest, Substitution) {
     int failureCount = 0;
+    int max_distance = 3;
     for (int i = 0; i < LOOP; ++i) {
         std::string original = getRandomString(wordList);
         int editCount = getRandomEditCount(original);
@@ -294,6 +320,8 @@ TEST_F(LevenshteinTest, Substitution) {
                 testCase.b.size(),
                 3 // Assuming a max distance of 3
         );
+        // Use the updated runTestCase function with more debug prints
+        runTestCase(testCase, max_distance);
 
         if (result != testCase.expectedDistance) {
             failureCount++;

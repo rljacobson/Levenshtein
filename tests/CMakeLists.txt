@@ -28,7 +28,7 @@ set(AVAILABLE_ALGORITHMS "damlev;damlevconstmin;damlevconst;damlevlim;damlevp;no
 set(ALGORITHM_ARGS "2;3;3;3;3;1")
 
 # Define algorithm variables with default values
-set(ALGORITHM "damlevconstmin")
+set(ALGORITHM "damlevconst")
 set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.")
 set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
 
