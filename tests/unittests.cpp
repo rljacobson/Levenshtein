@@ -49,6 +49,14 @@ std::vector<std::string> readWordsFromMappedFile(const boost::interprocess::mapp
     return words;
 }
 
+// Helper function to check if a value is within a given range.
+::testing::AssertionResult IsBetweenInclusive(int val, int lower_bound, int upper_bound) {
+    if ((val >= lower_bound) && (val <= upper_bound))
+        return ::testing::AssertionSuccess();
+    else
+        return ::testing::AssertionFailure() << val << " is outside the range " << lower_bound << " to " << upper_bound;
+}
+
 int calculateDamLevDistance(const std::string& S1, const std::string& S2) {
     int n = S1.size();
     int m = S2.size();
@@ -172,168 +180,75 @@ protected:
     }
 };
 
-// Helper function for running test cases
-void runTestCase(const TestCase& testCase, int max_distance) {
-    long long result = LEV_CALL(
-            const_cast<char*>(testCase.a.c_str()),
-            testCase.a.size(),
-            const_cast<char*>(testCase.b.c_str()),
-            testCase.b.size(),
-            max_distance
-    );
-
-    // Calculate the Damerau-Levenshtein distance without an early exit for comparison
-    int calculatedDistance = calculateDamLevDistance(testCase.a, testCase.b);
-
-    if (result != testCase.expectedDistance) {
-        // Print detailed information when a test fails
-        std::cout << "Test case failed for " << testCase.functionName << std::endl;
-        std::cout << "Original: " << testCase.a << ", Modified: " << testCase.b << std::endl;
-        std::cout << "Expected Distance: " << testCase.expectedDistance
-                  << ", Calculated Distance: " << calculatedDistance
-                  << ", Result from LEV_CALL: " << result << std::endl;
-    }
-
-    ASSERT_EQ(result, testCase.expectedDistance) << "Test case: " << testCase.functionName
-                                                 << " failed.";
-}
 
 
 // Maximum number of allowed failures before breaking the loop
 const int MAX_FAILURES = 1;
 
-// Specific test for Transposition
-TEST_F(LevenshteinTest, Transposition) {
+template <typename Func>
+void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std::vector<std::string>& wordList, int max_distance) {
     int failureCount = 0;
-    int max_distance = 3;
     for (int i = 0; i < LOOP; ++i) {
         std::string original = getRandomString(wordList);
         int editCount = getRandomEditCount(original);
-        std::string modified = applyTransposition(original, editCount);
-        TestCase testCase = {original, modified, calculateDamLevDistance(original, modified), "Transposition"};
+        std::string modified = applyEditFunc(original, editCount);
+        TestCase testCase = {original, modified, calculateDamLevDistance(original, modified), function_name};
 
         long long result = LEV_CALL(
                 const_cast<char*>(testCase.a.c_str()),
                 testCase.a.size(),
                 const_cast<char*>(testCase.b.c_str()),
                 testCase.b.size(),
-                3 // Assuming a max distance of 3
+                max_distance // Assuming a max distance of 3
         );
-        // Use the updated runTestCase function with more debug prints
-        runTestCase(testCase, max_distance);
 
-        if (result != testCase.expectedDistance) {
+        // Determine bounds based on the current algorithm being tested
+        const char* algorithm_name = LEV_ALGORITHM_NAME;
+        int lower_bound, upper_bound;
+
+        if (strcmp(algorithm_name, "damlevconst") == 0 || strcmp(algorithm_name, "damlevconstmin") == 0) {
+            lower_bound = std::min(testCase.expectedDistance, max_distance + 1);
+            upper_bound = std::max(testCase.expectedDistance, max_distance + 1);
+        } else {
+            lower_bound = testCase.expectedDistance;
+            upper_bound = testCase.expectedDistance;
+        }
+
+        if (!IsBetweenInclusive(result, lower_bound, upper_bound)) {
             failureCount++;
             if (failureCount >= MAX_FAILURES) {
-                ADD_FAILURE() << "Transposition test failed for " << failureCount << " cases. Breaking loop.";
-                ADD_FAILURE() << "Transposition test failed " << testCase.a<< " -- "<<testCase.b <<" "<<testCase.expectedDistance<<" vs. "<<result;
+                ADD_FAILURE() << function_name << " test failed for " << failureCount << " cases. Breaking loop.";
+                ADD_FAILURE() << function_name << " test failed " << testCase.a << " -- " << testCase.b << " " << testCase.expectedDistance << " vs. " << result;
                 break;
             }
         }
     }
     if (failureCount > 0) {
-        FAIL() << "Transposition test failed for " << failureCount << " cases.";
+        FAIL() << function_name << " test failed for " << failureCount << " cases.";
     }
+}
+
+
+//Here we should get each function we want to test and loop through that AVAILABLE_ALGORITHMS
+//is it possible to do that with LEV_CALL?  We use LEV_CALL in one_off testing as well.
+// Specific test for Transposition
+TEST_F(LevenshteinTest, Transposition) {
+    RunLevenshteinTest("Transposition", applyTransposition, wordList, 3);
 }
 
 // Specific test for Deletion
 TEST_F(LevenshteinTest, Deletion) {
-    int failureCount = 0;
-    int max_distance = 3;
-    for (int i = 0; i < LOOP; ++i) {
-        std::string original = getRandomString(wordList);
-        int editCount = getRandomEditCount(original);
-        std::string modified = applyDeletion(original, editCount);
-        TestCase testCase = {original, modified, calculateDamLevDistance(original, modified), "Deletion"};
-
-        long long result = LEV_CALL(
-                const_cast<char*>(testCase.a.c_str()),
-                testCase.a.size(),
-                const_cast<char*>(testCase.b.c_str()),
-                testCase.b.size(),
-                3 // Assuming a max distance of 3
-        );
-
-        // Use the updated runTestCase function with more debug prints
-        runTestCase(testCase, max_distance);
-
-        if (result != testCase.expectedDistance) {
-            failureCount++;
-            if (failureCount >= MAX_FAILURES) {
-                ADD_FAILURE() << "Deletion test failed for " << failureCount << " cases. Breaking loop.";
-                break;
-            }
-        }
-    }
-    if (failureCount > 0) {
-        FAIL() << "Deletion test failed for " << failureCount << " cases.";
-    }
+    RunLevenshteinTest("Deletion", applyDeletion, wordList,3);
 }
 
 // Specific test for Insertion
 TEST_F(LevenshteinTest, Insertion) {
-    int failureCount = 0;
-    int max =3;
-    for (int i = 0; i < LOOP; ++i) {
-        std::string original = getRandomString(wordList);
-        int editCount = getRandomEditCount(original);
-        std::string modified = applyInsertion(original, editCount);
-        TestCase testCase = {original, modified, calculateDamLevDistance(original, modified), "Insertion"};
-
-        long long result = LEV_CALL(
-                const_cast<char*>(testCase.a.c_str()),
-                testCase.a.size(),
-                const_cast<char*>(testCase.b.c_str()),
-                testCase.b.size(),
-                3 // Assuming a max distance of 3
-        );
-
-        // Use the updated runTestCase function with more debug prints
-        runTestCase(testCase, max);
-        if (result != testCase.expectedDistance) {
-            failureCount++;
-            if (failureCount >= MAX_FAILURES) {
-                ADD_FAILURE() << "Insertion test failed for " << failureCount << " cases. Breaking loop.";
-                break;
-            }
-        }
-    }
-    if (failureCount > 0) {
-        FAIL() << "Insertion test failed for " << failureCount << " cases.";
-    }
+    RunLevenshteinTest("Insertion", applyInsertion, wordList,3);
 }
 
 // Specific test for Substitution
 TEST_F(LevenshteinTest, Substitution) {
-    int failureCount = 0;
-    int max_distance = 3;
-    for (int i = 0; i < LOOP; ++i) {
-        std::string original = getRandomString(wordList);
-        int editCount = getRandomEditCount(original);
-        std::string modified = applySubstitution(original, editCount);
-        TestCase testCase = {original, modified, calculateDamLevDistance(original, modified), "Substitution"};
-
-        long long result = LEV_CALL(
-                const_cast<char*>(testCase.a.c_str()),
-                testCase.a.size(),
-                const_cast<char*>(testCase.b.c_str()),
-                testCase.b.size(),
-                3 // Assuming a max distance of 3
-        );
-        // Use the updated runTestCase function with more debug prints
-        runTestCase(testCase, max_distance);
-
-        if (result != testCase.expectedDistance) {
-            failureCount++;
-            if (failureCount >= MAX_FAILURES) {
-                ADD_FAILURE() << "Substitution test failed for " << failureCount << " cases. Breaking loop.";
-                break;
-            }
-        }
-    }
-    if (failureCount > 0) {
-        FAIL() << "Substitution test failed for " << failureCount << " cases.";
-    }
+    RunLevenshteinTest("Substitution", applySubstitution, wordList,3);
 }
 
 int main(int argc, char **argv) {
