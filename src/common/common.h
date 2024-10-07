@@ -1,3 +1,4 @@
+//common.h
 #pragma once
 
 #define NOMINMAX // msvc++ incompatibility
@@ -10,7 +11,7 @@
 #include <iterator>
 #include <numeric>
 
-#include "mysql.h"
+#include <mysql.h>
 
 
 // Limits

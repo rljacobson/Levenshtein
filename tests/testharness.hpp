@@ -37,11 +37,7 @@
 
 #include <iostream>
 
-#include "../common.h"
-
-#ifndef LEV_FUNCTION
-#define LEV_FUNCTION damlevconst
-#endif
+#include "common.h"
 
 /*
  * Concatenate preprocessor tokens A and B without expanding macro definitions
@@ -59,6 +55,19 @@
 
 #define STRINGIFY(x) #x
 #define AS_STRING(x) STRINGIFY(x)
+
+// Default definitions in case CMake does not define them
+#ifndef LEV_FUNCTION
+#define LEV_FUNCTION damlev
+#endif
+
+#ifndef LEV_ALGORITHM_NAME
+#define LEV_ALGORITHM_NAME AS_STRING(LEV_FUNCTION)
+#endif
+
+#ifndef LEV_ALGORITHM_COUNT
+#define LEV_ALGORITHM_COUNT 2
+#endif
 
 #define LEV_ARGS PPCAT(LEV_FUNCTION,args)
 #define LEV_INITID PPCAT(LEV_FUNCTION,initid)
@@ -85,43 +94,21 @@ void LEV_SETUP(){
     LEV_INITID = new UDF_INIT;
     LEV_MESSAGE = new char[512];
 
-    // typedef struct st_udf_args
-    // {
-    //     unsigned int arg_count;		/* Number of arguments */
-    //     enum Item_result *arg_type;		/* Pointer to item_results */
-    //     char **args;				/* Pointer to argument */
-    //     unsigned long *lengths;		/* Length of string arguments */
-    //     char *maybe_null;			/* Set to 1 for all maybe_null args */
-    // } UDF_ARGS;
-
-    LEV_ARGS->arg_type = new Item_result[3];
-    LEV_ARGS->args = new char*[3];
-    LEV_ARGS->lengths = new unsigned long[3];
-    //TODO: need to put a try for 3 or 2 here.
-    LEV_ARGS->arg_count = 3;
+    // Initialize UDF_ARGS
+    LEV_ARGS->arg_type    = new Item_result[3];
+    LEV_ARGS->args        = new char*[3];
+    LEV_ARGS->lengths     = new unsigned long[3];
+    LEV_ARGS->arg_count   = LEV_ALGORITHM_COUNT;
     LEV_ARGS->arg_type[0] = STRING_RESULT;
     LEV_ARGS->arg_type[1] = STRING_RESULT;
     LEV_ARGS->arg_type[2] = INT_RESULT;
-    //LEV_ARGS->arg_type[2] = DECIMAL_RESULT;
-
-    // Don't forget to set args and lengths;
-
-    // typedef struct st_udf_init
-    // {
-    //     my_bool maybe_null;			/* 1 if function can return NULL */
-    //     unsigned int decimals;		/* for real functions */
-    //     unsigned int max_length;		/* For string functions */
-    //     char	  *ptr;				    /* free pointer for function data */
-    //     my_bool const_item;			/* 0 if result is independent of arguments */
-    // } UDF_INIT;
-
-    // Nothing to init for UDF_INIT.
+    // LEV_ARGS->arg_type[2] = DECIMAL_RESULT;
+    // Initialize UDF_INIT
     int result = LEV_INIT(LEV_INITID, LEV_ARGS, LEV_MESSAGE);
     if(result == 1){
-        std::cout << LEV_MESSAGE << std::endl;
+        std::cout << "Initialization Message: " << LEV_MESSAGE << std::endl;
     }
 }
-
 
 void LEV_TEARDOWN(){
     LEV_DEINIT(LEV_INITID);
@@ -142,7 +129,6 @@ void LEV_TEARDOWN(){
 long long LEV_CALL(char *subject, size_t subject_len, char *query, size_t query_len, long long max){
     long long result;
 
-
     LEV_ARGS->args[0] = subject;
     LEV_ARGS->lengths[0] = subject_len;
     LEV_ARGS->args[1] = query;
@@ -154,13 +140,3 @@ long long LEV_CALL(char *subject, size_t subject_len, char *query, size_t query_
 
     return result;
 }
-
-
-
-
-
-
-
-
-
-
