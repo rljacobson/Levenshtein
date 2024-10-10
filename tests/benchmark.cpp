@@ -7,6 +7,8 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <sstream>
 #include <boost/range/iterator_range_core.hpp>
+#include <iomanip> //added for docker image
+
 
 
 // #ifndef WORD_COUNT

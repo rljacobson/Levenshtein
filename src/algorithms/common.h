@@ -10,7 +10,8 @@
 #include <cstring>
 #include <iterator>
 #include <numeric>
-
+#include <limits>
+#include <climits>
 #include <mysql.h>
 
 

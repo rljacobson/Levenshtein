@@ -1,11 +1,12 @@
-# Use Ubuntu 18.04 (Bionic) as the base image
-FROM ubuntu:bionic
+# Use Ubuntu 22.04 (Jammy) as the base image
+FROM ubuntu:jammy
 
 # Update the package repository and install essential packages
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     apt-utils \
     gcc \
     g++ \
+    git \
     openssh-server \
     cmake \
     build-essential \
@@ -15,8 +16,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     vim \
     libmysqlclient-dev \
     libboost-all-dev \
-    && rm -rf /var/lib/apt/lists/* # Clean up the package list to reduce image size
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
+# Verify Git installation
+RUN git --version
 
 # Add your code to the container
 ADD . /code
