@@ -79,11 +79,12 @@ constexpr const auto DAMLEV_ARG_TYPE_ERROR_LEN = std::size(DAMLEV_ARG_TYPE_ERROR
 
 // Use a "C" calling convention.
 extern "C" {
-    int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    void damlev_deinit(UDF_INIT *initid);
+    [[maybe_unused]] int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    [[maybe_unused]] long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    [[maybe_unused]] void damlev_deinit(UDF_INIT *initid);
 }
 
+[[maybe_unused]]
 int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
@@ -116,11 +117,13 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     return 0;
 }
 
+[[maybe_unused]]
 void damlev_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-long long damlev(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
+[[maybe_unused]]
+long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, [[maybe_unused]] char *error) {
     // Retrieve the arguments.
 
     //set max string lenght for later

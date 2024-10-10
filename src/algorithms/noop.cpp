@@ -69,10 +69,11 @@ constexpr const auto NOOP_ARG_TYPE_ERROR_LEN = std::size(NOOP_ARG_TYPE_ERROR) + 
 
 // Use a "C" calling convention.
 extern "C" {
-bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void noop_deinit(UDF_INIT *initid);
+    [[maybe_unused]] bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    [[maybe_unused]] long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    [[maybe_unused]] void noop_deinit(UDF_INIT *initid);
 }
+
 struct DamLevConstMinData {
     // Holds the min edit distance seen so far, which is the maximum distance that can be
     // computed before the algorithm bails early.
@@ -83,7 +84,7 @@ struct DamLevConstMinData {
     std::vector<size_t> *buffer;
 };
 
-
+[[maybe_unused]]
 bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
@@ -121,6 +122,7 @@ bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     return 0;
 }
 
+[[maybe_unused]]
 void noop_deinit(UDF_INIT *initid) {
     DamLevConstMinData &data = *(DamLevConstMinData *)initid->ptr;
     if(nullptr != data.const_string){
@@ -134,8 +136,8 @@ void noop_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-
-long long noop(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
+[[maybe_unused]]
+long long noop(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, [[maybe_unused]] char *error) {
     // Retrieve the arguments, setting maximum edit distance and the strings accordingly.
     if ((long long *)args->args[2] == 0) {
         // This is the case that the user gave 0 as max distance.

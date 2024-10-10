@@ -87,11 +87,12 @@ constexpr const auto DAMLEVP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVP_ARG_TYPE_ERR
 
 // Use a "C" calling convention.
 extern "C" {
-    int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    void damlevp_deinit(UDF_INIT *initid);
+    [[maybe_unused]] int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    [[maybe_unused]] double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    [[maybe_unused]] void damlevp_deinit(UDF_INIT *initid);
 }
 
+[[maybe_unused]]
 int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
@@ -116,11 +117,13 @@ int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     return 0;
 }
 
+[[maybe_unused]]
 void damlevp_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-double damlevp(UDF_INIT *initid, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
+[[maybe_unused]]
+double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
     // Check the arguments.
     if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
         || args->args[0] == nullptr) {

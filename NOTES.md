@@ -15,6 +15,9 @@
  - Fix issue in LEV_SETUP where you need to change the number of arguments depending on the algorithm.
  - We do all our arithmetic in `int`, but the functions return `long long`, because that is the C++ datatype corresponding to MySQL's `INTEGER`.
  - clang-tidy "unused" warnings are silences with `[[maybe_unused]]`, which is part of the standard as of C++17. We no longer use `__attribute__((unused))`.
+ - Change "policy" macros/variables to use string values so they are guaranteed to be mutually exclusive.
+ - Use the CACHE STRING option for user configurable values in CMake.
+
 
 # Changes Made
 

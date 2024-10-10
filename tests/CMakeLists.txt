@@ -1,12 +1,6 @@
 # Enable testing
 enable_testing()
 
-# Find required packages
-find_package(Boost REQUIRED)
-if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS})
-endif()
-
 # Integrate Google Test using FetchContent
 include(FetchContent)
 FetchContent_Declare(
@@ -20,15 +14,22 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(googletest)
 
+# Find required packages
+find_package(Boost REQUIRED)
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 # ===============================
 # Algorithm Selection Section
 # ===============================
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "damlev;damlevconstmin;damlevconst;damlevlim;damlevp;noop")
-set(ALGORITHM_ARGS "2;3;3;3;3;1")
+set(AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevlim;damlevp;noop")
+set(ALGORITHM_ARGS "2;3;3;3;1")
 
 # Define algorithm variables with default values
-set(ALGORITHM "damlevconst")
+set(ALGORITHM "damlevlim")
+
 set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.")
 set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
 
@@ -49,14 +50,14 @@ function(setup_executable target source_file)
     target_compile_definitions(${target} PRIVATE
             LEV_FUNCTION=${TEST_ALGORITHM}
             LEV_ALGORITHM_COUNT=${ARG_NUMBER}
-            LEV_ALGORITHM_NAME=\"${TEST_ALGORITHM}\"
+            LEV_ALGORITHM_NAME="${TEST_ALGORITHM}"
             DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
-            WORDS_PATH=\"${WORDS_PATH}\"
-            TEST_ALGORITHM=\"${TEST_ALGORITHM}\"
+            WORDS_PATH="${WORDS_PATH}"
+            TEST_ALGORITHM="${TEST_ALGORITHM}"
     )
     target_include_directories(${target} PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/common
-            ${PROJECT_SOURCE_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src/algorithms
+            ${CMAKE_CURRENT_SOURCE_DIR}
     )
     target_link_libraries(${target} PRIVATE
             damlev
@@ -75,7 +76,7 @@ setup_executable(benchmark ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp)
 # Adjust specific compile definitions for each executable
 target_compile_definitions(benchmark PRIVATE
         WORD_COUNT=235000ul
-        BENCH_FUNCTION=${TEST_ALGORITHM}
+        BENCH_FUNCTION="${TEST_ALGORITHM}"
 )
 
 # ===============================
@@ -84,9 +85,3 @@ target_compile_definitions(benchmark PRIVATE
 # Discover and add GoogleTest
 include(GoogleTest)
 gtest_discover_tests(unittest)
-
-# Set C++ Standard for all executables
-set_target_properties(oneoff unittest benchmark PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-)

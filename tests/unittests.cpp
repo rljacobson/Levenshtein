@@ -1,3 +1,5 @@
+// unittest_gtest.cpp
+#include <gtest/gtest.h>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -205,7 +207,7 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
         const char* algorithm_name = LEV_ALGORITHM_NAME;
         int lower_bound, upper_bound;
 
-        if (strcmp(algorithm_name, "damlevconst") == 0 || strcmp(algorithm_name, "damlevconstmin") == 0) {
+        if (strcmp(algorithm_name, "damlevlim") == 0 || strcmp(algorithm_name, "damlevmin") == 0) {
             lower_bound = std::min(testCase.expectedDistance, max_distance + 1);
             upper_bound = std::max(testCase.expectedDistance, max_distance + 1);
         } else {

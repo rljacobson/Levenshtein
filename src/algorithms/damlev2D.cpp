@@ -94,12 +94,13 @@ constexpr const auto EDIT_DISTANCE_ARG_TYPE_ERROR_LEN = std::size(EDIT_DISTANCE_
 
 // Use a "C" calling convention.
 extern "C" {
-bool damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlev2D_deinit(UDF_INIT *initid);
+    [[maybe_unused]] int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    [[maybe_unused]] long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    [[maybe_unused]] void damlev2D_deinit(UDF_INIT *initid);
 }
 
-bool damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+[[maybe_unused]]
+int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, EDIT_DISTANCE_ARG_NUM_ERROR, EDIT_DISTANCE_ARG_NUM_ERROR_LEN);
@@ -123,11 +124,13 @@ bool damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     return int(0);
 }
 
+[[maybe_unused]]
 void damlev2D_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
-long long damlev2D(UDF_INIT, UDF_ARGS *args, UNUSED char *is_null, UNUSED char *error) {
+[[maybe_unused]]
+long long damlev2D(UDF_INIT, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
 
     std::string_view S1{args->args[0], args->lengths[0]};
     std::string_view S2{args->args[1], args->lengths[1]};
