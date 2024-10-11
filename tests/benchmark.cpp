@@ -8,6 +8,7 @@
 #include <sstream>
 #include <boost/range/iterator_range_core.hpp>
 #include <iomanip> //added for docker image
+#include <random>
 
 
 
@@ -31,10 +32,16 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void damlev_deinit(UDF_INIT *initid);
 
+// damlev2D functions
+int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+void damlev2D_deinit(UDF_INIT *initid);
+
 // damlevmin functions
 int damlevmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long damlevmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void damlevmin_deinit(UDF_INIT *initid);
+
 
 // damlevlim functions
 int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
@@ -51,6 +58,7 @@ int noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void noop_deinit(UDF_INIT *initid);
 }
+
 
 // Structure to hold function pointers and their metadata
 struct UDF_Function {
@@ -69,8 +77,8 @@ std::vector<UDF_Function> get_udf_functions() {
     // AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevconst;damlevlim;damlevp;noop"
     // ALGORITHM_ARGS "2;3;3;3;3;1"
 
-    std::vector<std::string> algorithms = { "damlev", "damlevmin", "damlevconst", "damlevlim", "damlevp", "noop" };
-    std::vector<int> algorithm_args = { 2, 3, 3, 3, 2, 3 };
+    std::vector<std::string> algorithms = { "damlev", "damlev2D", "damlevlim", "damlevmin", "damlevp", "noop" };
+    std::vector<int> algorithm_args = { 2, 2, 3, 3, 2, 3 };
 
     // List to hold UDF_Function structs
     std::vector<UDF_Function> udf_functions;
@@ -82,10 +90,16 @@ std::vector<UDF_Function> get_udf_functions() {
         udf.has_max_distance = (udf.arg_count == 3); // Assuming arg_count==3 means max_distance is required
 
         // Assign function pointers based on the algorithm name
-        if(udf.name == "damlev") {
+        if (udf.name == "damlev") {
             udf.init = &damlev_init;
             udf.func = &damlev;
             udf.deinit = &damlev_deinit;
+        }
+        // Assign function pointers based on the algorithm name
+        else if(udf.name == "damlev2D") {
+            udf.init = &damlev2D_init;
+            udf.func = &damlev2D;
+            udf.deinit = &damlev2D_deinit;
         }
         else if(udf.name == "damlevmin") {
             udf.init = &damlevmin_init;
@@ -161,6 +175,19 @@ inline boost::iterator_range<LineIterator> crange(boost::interprocess::mapped_re
     auto q = p + r.get_size();
     return {LineIterator{p, q}, LineIterator{q, q}};
 }
+
+// Helper function to randomly insert a string into another string
+std::string randomlyInsertString(const std::string& base, const std::string& to_insert) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(1, base.size() - 1); // Avoiding the very start and end
+    int insert_pos = dis(gen);
+
+    std::string modified_base = base;
+    modified_base.insert(insert_pos, to_insert);
+    return modified_base;
+}
+
 
 int main(int argc, char *argv[]) {
     // Define file paths and configurations
@@ -265,36 +292,43 @@ int main(int argc, char *argv[]) {
         Timer timer;
         timer.start();  // Start the timer
 
-        // Iterate over word pairs
-    for (auto a : crange(text_file_buffer)) {
-        for (auto b : crange(text_file_buffer)) {
-                // Skip identical words if there are at least two arguments
-                if(udf.arg_count >=2 && a == b) continue;
 
-            ++line_no;
+// Iterate over word pairs
+        for (auto a : crange(text_file_buffer)) {
+            // Append '123' to word 'a'
+            std::string mangled_a = std::string(a.begin(), a.end()) + "123";
+
+            for (auto b : crange(text_file_buffer)) {
+                // Skip identical words
+                if (udf.arg_count >= 2 && a == b) continue;
+
+                // Randomly insert 'mangled_a' into 'b'
+                std::string modified_b = randomlyInsertString(std::string(b.begin(), b.end()), mangled_a);
+
+                ++line_no;
 
                 // Assign arguments based on arg_count
-                if(udf.arg_count == 3) {
+                if (udf.arg_count == 3) {
                     // Subject word
                     args.args[0] = const_cast<char*>(a.begin());
                     args.lengths[0] = a.size();
-                    // Query word
-                    args.args[1] = const_cast<char*>(b.begin());
-                    args.lengths[1] = b.size();
+                    // Query word (with random insertion of 'a + 123')
+                    args.args[1] = const_cast<char*>(modified_b.c_str());
+                    args.lengths[1] = modified_b.size();
                     // Max distance
-                    int max_distance = 1;
+                    int max_distance = 6;
                     args.args[2] = reinterpret_cast<char*>(&max_distance);
                     args.lengths[2] = sizeof(max_distance);
                 }
-                else if(udf.arg_count == 2) {
+                else if (udf.arg_count == 2) {
                     // Subject word
                     args.args[0] = const_cast<char*>(a.begin());
                     args.lengths[0] = a.size();
-                    // Query word
-                    args.args[1] = const_cast<char*>(b.begin());
-                    args.lengths[1] = b.size();
+                    // Query word (with random insertion of 'a + 123')
+                    args.args[1] = const_cast<char*>(modified_b.c_str());
+                    args.lengths[1] = modified_b.size();
                 }
-                else if(udf.arg_count == 1) {
+                else if (udf.arg_count == 1) {
                     // Single argument
                     args.args[0] = const_cast<char*>(a.begin());
                     args.lengths[0] = a.size();
@@ -304,8 +338,9 @@ int main(int argc, char *argv[]) {
                 char is_null = 0;
                 char error[512] = {0};
 
+
                 // Call the UDF function directly
-                long long distance = udf.func(&initid, &args, &is_null, error);
+                udf.func(&initid, &args, &is_null, error);
                 if (error[0] != '\0') {
                     std::cerr << "Error during UDF call (" << udf.name << "): " << error << std::endl;
                     // Optionally handle the error, e.g., continue or exit

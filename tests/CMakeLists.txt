@@ -1,3 +1,4 @@
+# tests/CMakeLists.txt
 # Enable testing
 enable_testing()
 
@@ -24,8 +25,8 @@ endif()
 # Algorithm Selection Section
 # ===============================
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevlim;damlevp;noop")
-set(ALGORITHM_ARGS "2;3;3;3;1")
+set(AVAILABLE_ALGORITHMS "damlev;damlev2D;damlevmin;damlevlim;damlevp;noop")
+set(ALGORITHM_ARGS "2;2;3;3;2;3")
 
 # Define algorithm variables with default values
 set(ALGORITHM "damlevlim")

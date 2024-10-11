@@ -57,6 +57,7 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
     IN THE SOFTWARE.
 */
+
 #include "common.h"
 #include <vector>
 //#define PRINT_DEBUG
@@ -130,7 +131,7 @@ void damlev2D_deinit(UDF_INIT *initid) {
 }
 
 [[maybe_unused]]
-long long damlev2D(UDF_INIT, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
+long long damlev2D(UDF_INIT *, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
 
     std::string_view S1{args->args[0], args->lengths[0]};
     std::string_view S2{args->args[1], args->lengths[1]};
