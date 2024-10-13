@@ -22,11 +22,6 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 # Verify Git installation
 RUN git --version
 
-# Add your code to the container
-ADD . /code
-
-# Set your working directory inside the container to /code
-WORKDIR /code
-
+ap
 # Default command or entry point for the container
 CMD ["bash"]
