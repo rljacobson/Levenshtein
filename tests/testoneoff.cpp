@@ -11,8 +11,8 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"erecta"};
-std::string db_return {  "rceaet"};
+std::string search_term {"allantoxaidin"};
+std::string db_return {  "allantcohxnaidgiQn"};
 
 void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1, const std::string& S2) {
     int n = S1.size();
@@ -105,7 +105,7 @@ int calculateDamLevDistance(const std::string& S1_input, const std::string& S2_i
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
     std::string a = search_term;
     std::string b = db_return;
-    long long c =3;
+    long long c =10;
     long long result = 0;
     long long result2 = 0;
     long long result3 = 0;

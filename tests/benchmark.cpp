@@ -32,6 +32,11 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void damlev_deinit(UDF_INIT *initid);
 
+// damlev1D functions
+int damlev1D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+long long damlev1D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+void damlev1D_deinit(UDF_INIT *initid);
+
 // damlev2D functions
 int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
@@ -77,8 +82,8 @@ std::vector<UDF_Function> get_udf_functions() {
     // AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevconst;damlevlim;damlevp;noop"
     // ALGORITHM_ARGS "2;3;3;3;3;1"
 
-    std::vector<std::string> algorithms = { "damlev", "damlev2D", "damlevlim", "damlevmin", "damlevp", "noop" };
-    std::vector<int> algorithm_args = { 2, 2, 3, 3, 2, 3 };
+    std::vector<std::string> algorithms = { "damlev", "damlev1D", "damlev2D", "damlevlim", "damlevmin", "damlevp", "noop" };
+    std::vector<int> algorithm_args = { 2, 3, 2, 3, 3, 2, 3 };
 
     // List to hold UDF_Function structs
     std::vector<UDF_Function> udf_functions;
@@ -94,6 +99,12 @@ std::vector<UDF_Function> get_udf_functions() {
             udf.init = &damlev_init;
             udf.func = &damlev;
             udf.deinit = &damlev_deinit;
+        }
+
+        else if(udf.name == "damlev1D") {
+            udf.init = &damlev1D_init;
+            udf.func = &damlev1D;
+            udf.deinit = &damlev1D_deinit;
         }
         // Assign function pointers based on the algorithm name
         else if(udf.name == "damlev2D") {

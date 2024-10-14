@@ -207,7 +207,7 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
         const char* algorithm_name = LEV_ALGORITHM_NAME;
         int lower_bound, upper_bound;
 
-        if (strcmp(algorithm_name, "damlevlim") == 0 || strcmp(algorithm_name, "damlevmin") == 0) {
+        if (strcmp(algorithm_name, "damlevlim") == 0 || strcmp(algorithm_name, "damlevmin") == 0 || strcmp(algorithm_name, "damlev1D") == 0) {
             lower_bound = std::min(testCase.expectedDistance, max_distance + 1);
             upper_bound = std::max(testCase.expectedDistance, max_distance + 1);
         } else {

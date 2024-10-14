@@ -25,11 +25,11 @@ endif()
 # Algorithm Selection Section
 # ===============================
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "damlev;damlev2D;damlevmin;damlevlim;damlevp;noop")
-set(ALGORITHM_ARGS "2;2;3;3;2;3")
+set(AVAILABLE_ALGORITHMS "damlev;damlev1D;damlev2D;damlevmin;damlevlim;damlevp;noop")
+set(ALGORITHM_ARGS "2;3;2;3;3;2;3")
 
 # Define algorithm variables with default values
-set(ALGORITHM "damlevlim")
+set(ALGORITHM "damlev1D")
 
 set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.")
 set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
