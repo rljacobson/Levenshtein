@@ -17,7 +17,8 @@
  - clang-tidy "unused" warnings are silences with `[[maybe_unused]]`, which is part of the standard as of C++17. We no longer use `__attribute__((unused))`.
  - Change "policy" macros/variables to use string values so they are guaranteed to be mutually exclusive.
  - Use the CACHE STRING option for user configurable values in CMake.
-
+ - Need to look at CMake files and decide how to clean them up a bit for linux and windows builds.  Also NOOP should likely only be in the tests, not the build verison.
+ - Test our include/mysql-8-0-39, put all mysql source code verison in the include, this removes the need to use host system for build, allows for cross complier, would alos allow other verisons to be built. 
 
 # Changes Made
 
@@ -32,7 +33,6 @@
 
  * Why initialize `DAMLEV_MAX_EDIT_DISTANCE` to the buffer size?
  * How does `benchmark` differ from `unittests`? Answer: Benchmark more closely simulates our use case for correcting scientific names.
-
 
 
 
