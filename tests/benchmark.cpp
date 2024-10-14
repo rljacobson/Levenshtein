@@ -9,18 +9,7 @@
 #include <boost/range/iterator_range_core.hpp>
 #include <iomanip> //added for docker image
 #include <random>
-
-
-
-// #ifndef WORD_COUNT
-// #define WORD_COUNT 10000ul
-// #endif
-// #ifdef BENCH_FUNCTION
-// #define LEV_FUNCTION BENCH_FUNCTION
-// #endif
-// #ifndef WORDS_PATH
-// #define WORDS_PATH "/usr/share/dict/words"
-// #endif
+#include <chrono> // For precise timing
 
 #include "testharness.hpp"  // Include the test harness for LEV_FUNCTION macros
 #include "benchtime.hpp"
@@ -47,7 +36,6 @@ int damlevmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long damlevmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void damlevmin_deinit(UDF_INIT *initid);
 
-
 // damlevlim functions
 int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
@@ -63,7 +51,6 @@ int noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
 long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
 void noop_deinit(UDF_INIT *initid);
 }
-
 
 // Structure to hold function pointers and their metadata
 struct UDF_Function {
@@ -100,13 +87,11 @@ std::vector<UDF_Function> get_udf_functions() {
             udf.func = &damlev;
             udf.deinit = &damlev_deinit;
         }
-
         else if(udf.name == "damlev1D") {
             udf.init = &damlev1D_init;
             udf.func = &damlev1D;
             udf.deinit = &damlev1D_deinit;
         }
-        // Assign function pointers based on the algorithm name
         else if(udf.name == "damlev2D") {
             udf.init = &damlev2D_init;
             udf.func = &damlev2D;
@@ -146,10 +131,10 @@ std::vector<UDF_Function> get_udf_functions() {
 // Iterator to traverse lines in the mapped file
 class LineIterator:
         public boost::iterator_facade<
-            LineIterator,
-            boost::iterator_range<char const*>,
-            boost::iterators::forward_traversal_tag,
-            boost::iterator_range<char const*>
+                LineIterator,
+                boost::iterator_range<char const*>,
+                boost::iterators::forward_traversal_tag,
+                boost::iterator_range<char const*>
         >{
 public:
     LineIterator(char const *begin, char const *end) : p_(begin), q_(end) {}
@@ -187,18 +172,22 @@ inline boost::iterator_range<LineIterator> crange(boost::interprocess::mapped_re
     return {LineIterator{p, q}, LineIterator{q, q}};
 }
 
+// Structure to hold precomputed word pairs
+struct WordPair {
+    std::string subject;
+    std::string query;
+};
+
 // Helper function to randomly insert a string into another string
-std::string randomlyInsertString(const std::string& base, const std::string& to_insert) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(1, base.size() - 1); // Avoiding the very start and end
+std::string randomlyInsertString(const std::string& base, const std::string& to_insert, std::mt19937& gen) {
+    if (base.empty()) return to_insert; // Handle empty base string
+    std::uniform_int_distribution<> dis(0, base.size()); // Allow insertion at position 0 and base.size()
     int insert_pos = dis(gen);
 
     std::string modified_base = base;
     modified_base.insert(insert_pos, to_insert);
     return modified_base;
 }
-
 
 int main(int argc, char *argv[]) {
     // Define file paths and configurations
@@ -226,6 +215,52 @@ int main(int argc, char *argv[]) {
     boost::interprocess::mapped_region text_file_buffer(text_file, boost::interprocess::read_only);
 
     std::cout << "Opened file: " << openedFilePath << "." << std::endl;
+
+    // Preprocess: Load all words into a vector
+    std::vector<std::string> words;
+    words.reserve(100000); // Reserve space to avoid frequent reallocations
+
+    for (auto a : crange(text_file_buffer)) {
+        std::string word(a.begin(), a.end());
+        // Remove any trailing carriage return (for Windows compatibility)
+        if (!word.empty() && word.back() == '\r') {
+            word.pop_back();
+        }
+        words.push_back(word);
+    }
+
+    std::cout << "Loaded " << words.size() << " words from the file." << std::endl;
+
+    // Precompute word pairs
+    std::vector<WordPair> word_pairs;
+    word_pairs.reserve(maximum_size);
+
+    std::mt19937 gen(std::random_device{}());
+    std::uniform_int_distribution<> word_dist(0, words.size() - 1);
+
+    std::cout << "Precomputing " << maximum_size << " word pairs..." << std::endl;
+
+    for(unsigned i = 0; i < maximum_size; ++i) {
+        // Select random words
+        const std::string& a = words[word_dist(gen)];
+        const std::string& b = words[word_dist(gen)];
+
+        // Skip identical words
+        if(a == b) {
+            --i; // Retry this iteration
+            continue;
+        }
+
+        // Append '123' to word 'a' to create 'mangled_a'
+        std::string mangled_a = a + "123";
+
+        // Randomly insert 'mangled_a' into 'b' to create 'modified_b'
+        std::string modified_b = randomlyInsertString(b, mangled_a, gen);
+
+        word_pairs.push_back(WordPair{a, modified_b});
+    }
+
+    std::cout << "Precomputed " << word_pairs.size() << " word pairs." << std::endl;
 
     // Get the list of UDF functions
     std::vector<UDF_Function> udf_functions = get_udf_functions();
@@ -294,76 +329,74 @@ int main(int argc, char *argv[]) {
         }
 
         // Reset counters for each function
-    unsigned line_no = 0;
+        unsigned line_no = 0;
         unsigned print_count = 0;  // Counter for printed examples
         const unsigned max_print = 10;  // Maximum number of examples to print
 
         // Begin Benchmarking
         std::cout << "Starting benchmark for " << udf.name << "..." << std::endl;
-        Timer timer;
-        timer.start();  // Start the timer
+        auto start_time = std::chrono::high_resolution_clock::now();
 
+        // Iterate over precomputed word pairs
+        for (const auto& pair : word_pairs) {
+            // Assign arguments based on arg_count
+            if (udf.arg_count == 3) {
+                // Subject word
+                args.args[0] = const_cast<char*>(pair.subject.c_str());
+                args.lengths[0] = pair.subject.size();
 
-// Iterate over word pairs
-        for (auto a : crange(text_file_buffer)) {
-            // Append '123' to word 'a'
-            std::string mangled_a = std::string(a.begin(), a.end()) + "123";
+                // Query word (with random insertion of 'a + 123')
+                args.args[1] = const_cast<char*>(pair.query.c_str());
+                args.lengths[1] = pair.query.size();
 
-            for (auto b : crange(text_file_buffer)) {
-                // Skip identical words
-                if (udf.arg_count >= 2 && a == b) continue;
-
-                // Randomly insert 'mangled_a' into 'b'
-                std::string modified_b = randomlyInsertString(std::string(b.begin(), b.end()), mangled_a);
-
-                ++line_no;
-
-                // Assign arguments based on arg_count
-                if (udf.arg_count == 3) {
-                    // Subject word
-                    args.args[0] = const_cast<char*>(a.begin());
-                    args.lengths[0] = a.size();
-                    // Query word (with random insertion of 'a + 123')
-                    args.args[1] = const_cast<char*>(modified_b.c_str());
-                    args.lengths[1] = modified_b.size();
-                    // Max distance
-                    int max_distance = 6;
-                    args.args[2] = reinterpret_cast<char*>(&max_distance);
-                    args.lengths[2] = sizeof(max_distance);
-                }
-                else if (udf.arg_count == 2) {
-                    // Subject word
-                    args.args[0] = const_cast<char*>(a.begin());
-                    args.lengths[0] = a.size();
-                    // Query word (with random insertion of 'a + 123')
-                    args.args[1] = const_cast<char*>(modified_b.c_str());
-                    args.lengths[1] = modified_b.size();
-                }
-                else if (udf.arg_count == 1) {
-                    // Single argument
-                    args.args[0] = const_cast<char*>(a.begin());
-                    args.lengths[0] = a.size();
-                }
-
-                // Variables to capture return and null status
-                char is_null = 0;
-                char error[512] = {0};
-
-
-                // Call the UDF function directly
-                udf.func(&initid, &args, &is_null, error);
-                if (error[0] != '\0') {
-                    std::cerr << "Error during UDF call (" << udf.name << "): " << error << std::endl;
-                    // Optionally handle the error, e.g., continue or exit
-                }
-
-
-                if (line_no >= maximum_size) break;
+                // Max distance
+                long long max_distance = 6; // Changed from int to long long
+                args.args[2] = reinterpret_cast<char*>(&max_distance);
+                args.lengths[2] = sizeof(max_distance);
             }
-            if (line_no >= maximum_size) break;
+            else if(udf.arg_count == 2) {
+                // Subject word
+                args.args[0] = const_cast<char*>(pair.subject.c_str());
+                args.lengths[0] = pair.subject.size();
+                // Query word (with random insertion of 'a + 123')
+                args.args[1] = const_cast<char*>(pair.query.c_str());
+                args.lengths[1] = pair.query.size();
+            }
+            else if(udf.arg_count == 1) {
+                // Single argument
+                args.args[0] = const_cast<char*>(pair.subject.c_str());
+                args.lengths[0] = pair.subject.size();
+            }
+
+            // Variables to capture return and null status
+            char is_null = 0;
+            char error[512] = {0};
+
+            // Call the UDF function directly
+            long long result = udf.func(&initid, &args, &is_null, error);
+            if (error[0] != '\0') {
+                std::cerr << "Error during UDF call (" << udf.name << "): " << error << std::endl;
+                // Optionally handle the error, e.g., continue or exit
+            }
+
+            // Optionally print some results
+            if (print_count < max_print) {
+                std::cout << "Call " << (line_no + 1) << ": ";
+                if (udf.arg_count >= 2) {
+                    std::cout << "Subject: " << pair.subject << ", ";
+                    std::cout << "Query: " << pair.query << ", ";
+                } else if (udf.arg_count == 1) {
+                    std::cout << "Input: " << pair.subject << ", ";
+                }
+                std::cout << "Result: " << result << std::endl;
+                ++print_count;
+            }
+
+            ++line_no;
         }
 
-        timer.stop();  // Stop the timer
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end_time - start_time;
 
         // De-initialize the UDF
         udf.deinit(&initid);
@@ -376,7 +409,7 @@ int main(int argc, char *argv[]) {
         // Store the benchmarking result
         BenchmarkResult br;
         br.name = udf.name;
-        br.time_elapsed = timer.elapsed();
+        br.time_elapsed = elapsed.count();
         br.word_pairs = line_no;
         results.push_back(br);
 

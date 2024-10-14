@@ -173,12 +173,9 @@ protected:
         }
 
         wordList = readWordsFromMappedFile(text_file_buffer, maximum_size);
-        LEV_SETUP();
     }
 
-    void TearDown() override {
-        LEV_TEARDOWN();
-    }
+
 };
 
 
@@ -187,7 +184,7 @@ protected:
 const int MAX_FAILURES = 1;
 
 template <typename Func>
-void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std::vector<std::string>& wordList, int max_distance) {
+void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std::vector<std::string>& wordList, long long max_distance) {
     int failureCount = 0;
     for (int i = 0; i < LOOP; ++i) {
         std::string original = getRandomString(wordList);
@@ -195,31 +192,53 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
         std::string modified = applyEditFunc(original, editCount);
         TestCase testCase = {original, modified, calculateDamLevDistance(original, modified), function_name};
 
-        long long result = LEV_CALL(
+        LEV_SETUP();
+
+        // Perform  the UDF call with appropriate argument types
+        long long result = LEV_CALL( // Changed from int to long long
                 const_cast<char*>(testCase.a.c_str()),
                 testCase.a.size(),
                 const_cast<char*>(testCase.b.c_str()),
                 testCase.b.size(),
-                max_distance // Assuming a max distance of 3
+                max_distance // Ensure this is a long long
         );
+
+        LEV_TEARDOWN();
 
         // Determine bounds based on the current algorithm being tested
         const char* algorithm_name = LEV_ALGORITHM_NAME;
         int lower_bound, upper_bound;
 
-        if (strcmp(algorithm_name, "damlevlim") == 0 || strcmp(algorithm_name, "damlevmin") == 0 || strcmp(algorithm_name, "damlev1D") == 0) {
-            lower_bound = std::min(testCase.expectedDistance, max_distance + 1);
-            upper_bound = std::max(testCase.expectedDistance, max_distance + 1);
-        } else {
+        if (strcmp(algorithm_name, "damlevlim") == 0 || strcmp(algorithm_name, "damlevmin") == 0 || (strcmp(algorithm_name, "Transposition") != 0)) {
+            lower_bound = std::min(testCase.expectedDistance, static_cast<int>(max_distance) + 1);
+            upper_bound = std::max(testCase.expectedDistance, static_cast<int>(max_distance) + 1);
+        }
+        else {
             lower_bound = testCase.expectedDistance;
             upper_bound = testCase.expectedDistance;
         }
 
+
+        // Validate the result within the expected bounds
         if (!IsBetweenInclusive(result, lower_bound, upper_bound)) {
             failureCount++;
             if (failureCount >= MAX_FAILURES) {
                 ADD_FAILURE() << function_name << " test failed for " << failureCount << " cases. Breaking loop.";
-                ADD_FAILURE() << function_name << " test failed " << testCase.a << " -- " << testCase.b << " " << testCase.expectedDistance << " vs. " << result;
+                ADD_FAILURE() << function_name << " test failed \"" << testCase.a << "\" -- \"" << testCase.b
+                              << "\" expectedDistance: " << testCase.expectedDistance
+                              << " vs. " << algorithm_name << ": " << result;
+                // **Added Print Statements for Debugging**
+                std::cout << "----------------------------------------" << std::endl;
+                std::cout << "Algorithm: " << algorithm_name << std::endl;
+                std::cout << "Test Function: " << function_name << std::endl;
+                std::cout << "Test Case " << i + 1 << ":" << std::endl;
+                std::cout << "Original String: \"" << testCase.a << "\"" << std::endl;
+                std::cout << "Modified String: \"" << testCase.b << "\"" << std::endl;
+                std::cout << "Expected Distance: " << testCase.expectedDistance << std::endl;
+                std::cout << "Max Distance: " << max_distance << std::endl;
+                std::cout << "Computed Distance: " << result << std::endl;
+                std::cout << "Lower Bound: " << lower_bound << ", Upper Bound: " << upper_bound << std::endl;
+                std::cout << "----------------------------------------" << std::endl;
                 break;
             }
         }
@@ -228,6 +247,7 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
         FAIL() << function_name << " test failed for " << failureCount << " cases.";
     }
 }
+
 
 
 //Here we should get each function we want to test and loop through that AVAILABLE_ALGORITHMS
@@ -251,6 +271,24 @@ TEST_F(LevenshteinTest, Insertion) {
 TEST_F(LevenshteinTest, Substitution) {
     RunLevenshteinTest("Substitution", applySubstitution, wordList,3);
 }
+
+TEST_F(LevenshteinTest, SpecificCaseDamlevmin) {
+    std::string a = "cahlemci";
+    std::string b = "alchemic";
+    long long max_distance = 3;
+    LEV_SETUP();
+    long long result = LEV_CALL(
+            const_cast<char*>(a.c_str()),
+            a.size(),
+            const_cast<char*>(b.c_str()),
+            b.size(),
+            max_distance
+    );
+    LEV_TEARDOWN();
+
+    EXPECT_EQ(result, 4) << "damlevmin(\"" << a << "\", \"" << b << "\") should be 4, but got " << result;
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
