@@ -18,3 +18,4 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 # Search for libraries and includes only in the target directories
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(MYSQL_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include/mysql-8-0-39")
