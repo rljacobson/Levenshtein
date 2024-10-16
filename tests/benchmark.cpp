@@ -7,9 +7,13 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <sstream>
 #include <boost/range/iterator_range_core.hpp>
-#include <iomanip> //added for docker image
+#include <iomanip> // For output formatting
 #include <random>
 #include <chrono> // For precise timing
+#include <cctype> // For character classification
+#include <cassert> // For assertions
+#include <cstring> // For memset
+#include <map>     // For storing sample results
 
 #include "testharness.hpp"  // Include the test harness for LEV_FUNCTION macros
 #include "benchtime.hpp"
@@ -64,11 +68,6 @@ struct UDF_Function {
 
 // Function to initialize the list of UDF_Functions
 std::vector<UDF_Function> get_udf_functions() {
-    // Define the available algorithms and their argument counts
-    // From CMake:
-    // AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevconst;damlevlim;damlevp;noop"
-    // ALGORITHM_ARGS "2;3;3;3;3;1"
-
     std::vector<std::string> algorithms = { "damlev", "damlev1D", "damlev2D", "damlevlim", "damlevmin", "damlevp", "noop" };
     std::vector<int> algorithm_args = { 2, 3, 2, 3, 3, 2, 3 };
 
@@ -128,55 +127,21 @@ std::vector<UDF_Function> get_udf_functions() {
     return udf_functions;
 }
 
-// Iterator to traverse lines in the mapped file
-class LineIterator:
-        public boost::iterator_facade<
-                LineIterator,
-                boost::iterator_range<char const*>,
-                boost::iterators::forward_traversal_tag,
-                boost::iterator_range<char const*>
-        >{
-public:
-    LineIterator(char const *begin, char const *end) : p_(begin), q_(end) {}
-
-private:
-    char const *p_, *q_;
-
-    // Returns the current line as a range
-    boost::iterator_range<char const*> dereference() const {
-        return {p_, this->next()};
-    }
-
-    // Checks equality based on current pointer
-    bool equal(LineIterator b) const {
-        return p_ == b.p_;
-    }
-
-    // Moves to the next line
-    void increment() {
-        p_ = this->next();
-    }
-
-    // Finds the next newline character
-    char const* next() const {
-        auto p = std::find(p_, q_, '\n');
-        return p + (p != q_);  // Move past the newline if found
-    }
-    friend class boost::iterator_core_access;
-};
-
-// Creates a range of LineIterators over the mapped region
-inline boost::iterator_range<LineIterator> crange(boost::interprocess::mapped_region const& r) {
-    auto p = static_cast<char const*>(r.get_address());
-    auto q = p + r.get_size();
-    return {LineIterator{p, q}, LineIterator{q, q}};
+// Helper function to trim whitespace from both ends of a string
+std::string trim(const std::string& s) {
+    auto start = s.find_first_not_of(" \t\r\n");
+    auto end = s.find_last_not_of(" \t\r\n");
+    if (start == std::string::npos) return ""; // All whitespace
+    return s.substr(start, end - start + 1);
 }
 
-// Structure to hold precomputed word pairs
-struct WordPair {
-    std::string subject;
-    std::string query;
-};
+// Helper function to remove internal control characters except spaces
+std::string remove_internal_control_chars(const std::string& s) {
+    std::string result = s;
+    result.erase(std::remove_if(result.begin(), result.end(),
+                                [](unsigned char c) { return std::iscntrl(c) && c != ' '; }), result.end());
+    return result;
+}
 
 // Helper function to randomly insert a string into another string
 std::string randomlyInsertString(const std::string& base, const std::string& to_insert, std::mt19937& gen) {
@@ -186,14 +151,23 @@ std::string randomlyInsertString(const std::string& base, const std::string& to_
 
     std::string modified_base = base;
     modified_base.insert(insert_pos, to_insert);
+
+    // Assertion to ensure no newline or carriage return characters are present
+    assert(modified_base.find('\n') == std::string::npos && "Modified base contains newline character!");
+    assert(modified_base.find('\r') == std::string::npos && "Modified base contains carriage return!");
+
     return modified_base;
 }
 
 int main(int argc, char *argv[]) {
+    // For reproducibility
+    std::mt19937 gen(42);
+
     // Define file paths and configurations
     std::string primaryFilePath = "tests/taxanames";  // Primary file path
-    std::string fallbackFilePath = WORDS_PATH;  // Default fallback file path
-    unsigned maximum_size = WORD_COUNT;
+    std::string fallbackFilePath = "words.txt";        // Default fallback file path
+    unsigned max_subject_words = 100;                 // Number of subject words to test
+    unsigned max_total_words = 100000;                 // Total number of words to load
     boost::interprocess::file_mapping text_file;
     std::string openedFilePath;
 
@@ -216,62 +190,70 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Opened file: " << openedFilePath << "." << std::endl;
 
-    // Preprocess: Load all words into a vector
+    // Preprocess: Load words into a vector
     std::vector<std::string> words;
-    words.reserve(100000); // Reserve space to avoid frequent reallocations
+    words.reserve(max_total_words); // Reserve space to avoid frequent reallocations
 
-    for (auto a : crange(text_file_buffer)) {
-        std::string word(a.begin(), a.end());
-        // Remove any trailing carriage return (for Windows compatibility)
-        if (!word.empty() && word.back() == '\r') {
-            word.pop_back();
+    // Load words
+    size_t word_count = 0;
+    std::istringstream iss(std::string(static_cast<const char*>(text_file_buffer.get_address()), text_file_buffer.get_size()));
+    std::string line;
+    while (std::getline(iss, line)) {
+        std::string word = trim(line); // Remove leading and trailing whitespace
+        word = remove_internal_control_chars(word); // Remove internal control characters
+
+        if (!word.empty()) {
+            words.push_back(word);
+            if (++word_count >= max_total_words) break;
         }
-        words.push_back(word);
     }
 
     std::cout << "Loaded " << words.size() << " words from the file." << std::endl;
 
-    // Precompute word pairs
-    std::vector<WordPair> word_pairs;
-    word_pairs.reserve(maximum_size);
-
-    std::mt19937 gen(std::random_device{}());
-    std::uniform_int_distribution<> word_dist(0, words.size() - 1);
-
-    std::cout << "Precomputing " << maximum_size << " word pairs..." << std::endl;
-
-    for(unsigned i = 0; i < maximum_size; ++i) {
-        // Select random words
-        const std::string& a = words[word_dist(gen)];
-        const std::string& b = words[word_dist(gen)];
-
-        // Skip identical words
-        if(a == b) {
-            --i; // Retry this iteration
-            continue;
-        }
-
-        // Append '123' to word 'a' to create 'mangled_a'
-        std::string mangled_a = a + "123";
-
-        // Randomly insert 'mangled_a' into 'b' to create 'modified_b'
-        std::string modified_b = randomlyInsertString(b, mangled_a, gen);
-
-        word_pairs.push_back(WordPair{a, modified_b});
+    // Create mangled words from all loaded words
+    std::vector<std::string> mangled_words;
+    mangled_words.reserve(words.size());
+    for (const auto& word : words) {
+        std::string mangled_word = randomlyInsertString(word, "123", gen);
+        mangled_words.push_back(mangled_word);
     }
 
-    std::cout << "Precomputed " << word_pairs.size() << " word pairs." << std::endl;
+    // Shuffle the mangled words list once
+    std::shuffle(mangled_words.begin(), mangled_words.end(), gen);
+
+    // Select a subset of words to use as subject words
+    std::vector<std::string> subject_words;
+    if (words.size() <= max_subject_words) {
+        subject_words = words;
+    } else {
+        // Randomly sample max_subject_words from words
+        subject_words.reserve(max_subject_words);
+        std::sample(words.begin(), words.end(), std::back_inserter(subject_words),
+                    max_subject_words, gen);
+    }
+
+    std::cout << "Selected " << subject_words.size() << " subject words for testing." << std::endl;
 
     // Get the list of UDF functions
     std::vector<UDF_Function> udf_functions = get_udf_functions();
 
     // Structure to hold benchmarking results
+    struct SampleResult {
+        std::string subject;
+        std::string query;
+        long long result;
+    };
+
     struct BenchmarkResult {
         std::string name;
         double time_elapsed;
-        unsigned word_pairs;
+        unsigned long long function_calls;
+        std::vector<SampleResult> samples;
     };
     std::vector<BenchmarkResult> results;
+
+    // Total number of function calls
+    unsigned long long total_calls = subject_words.size() * mangled_words.size();
 
     // Iterate over each UDF function
     for(const auto& udf : udf_functions) {
@@ -302,7 +284,6 @@ int main(int argc, char *argv[]) {
         else if(udf.arg_count == 2) {
             args.arg_type[0] = STRING_RESULT;  // Subject word
             args.arg_type[1] = STRING_RESULT;  // Query word
-            // No max_distance
         }
         else if(udf.arg_count == 1) {
             args.arg_type[0] = STRING_RESULT;  // Single argument
@@ -328,71 +309,70 @@ int main(int argc, char *argv[]) {
             continue; // Skip to the next function
         }
 
-        // Reset counters for each function
-        unsigned line_no = 0;
-        unsigned print_count = 0;  // Counter for printed examples
-        const unsigned max_print = 10;  // Maximum number of examples to print
-
         // Begin Benchmarking
-        std::cout << "Starting benchmark for " << udf.name << "..." << std::endl;
         auto start_time = std::chrono::high_resolution_clock::now();
 
-        // Iterate over precomputed word pairs
-        for (const auto& pair : word_pairs) {
-            // Assign arguments based on arg_count
-            if (udf.arg_count == 3) {
-                // Subject word
-                args.args[0] = const_cast<char*>(pair.subject.c_str());
-                args.lengths[0] = pair.subject.size();
+        std::vector<SampleResult> sample_results; // To store up to 5 samples
+        size_t sample_count = 0;
 
-                // Query word (with random insertion of 'a + 123')
-                args.args[1] = const_cast<char*>(pair.query.c_str());
-                args.lengths[1] = pair.query.size();
+        unsigned long long call_count = 0;
 
-                // Max distance
-                long long max_distance = 6; // Changed from int to long long
-                args.args[2] = reinterpret_cast<char*>(&max_distance);
-                args.lengths[2] = sizeof(max_distance);
-            }
-            else if(udf.arg_count == 2) {
-                // Subject word
-                args.args[0] = const_cast<char*>(pair.subject.c_str());
-                args.lengths[0] = pair.subject.size();
-                // Query word (with random insertion of 'a + 123')
-                args.args[1] = const_cast<char*>(pair.query.c_str());
-                args.lengths[1] = pair.query.size();
-            }
-            else if(udf.arg_count == 1) {
-                // Single argument
-                args.args[0] = const_cast<char*>(pair.subject.c_str());
-                args.lengths[0] = pair.subject.size();
-            }
+        // Outer loop over subject words
+        for (const auto& subject : subject_words) {
+            long long min_result = -1;
+            std::string min_query;
 
-            // Variables to capture return and null status
-            char is_null = 0;
-            char error[512] = {0};
+            // Inner loop over mangled words
+            for (const auto& query : mangled_words) {
+                // Prepare arguments
+                if (udf.arg_count == 3) {
+                    args.args[0] = const_cast<char*>(subject.c_str());
+                    args.lengths[0] = subject.size();
 
-            // Call the UDF function directly
-            long long result = udf.func(&initid, &args, &is_null, error);
-            if (error[0] != '\0') {
-                std::cerr << "Error during UDF call (" << udf.name << "): " << error << std::endl;
-                // Optionally handle the error, e.g., continue or exit
-            }
+                    args.args[1] = const_cast<char*>(query.c_str());
+                    args.lengths[1] = query.size();
 
-            // Optionally print some results
-            if (print_count < max_print) {
-                std::cout << "Call " << (line_no + 1) << ": ";
-                if (udf.arg_count >= 2) {
-                    std::cout << "Subject: " << pair.subject << ", ";
-                    std::cout << "Query: " << pair.query << ", ";
-                } else if (udf.arg_count == 1) {
-                    std::cout << "Input: " << pair.subject << ", ";
+                    long long max_distance = 1;
+                    args.args[2] = reinterpret_cast<char*>(&max_distance);
+                    args.lengths[2] = sizeof(max_distance);
                 }
-                std::cout << "Result: " << result << std::endl;
-                ++print_count;
+                else if (udf.arg_count == 2) {
+                    args.args[0] = const_cast<char*>(subject.c_str());
+                    args.lengths[0] = subject.size();
+
+                    args.args[1] = const_cast<char*>(query.c_str());
+                    args.lengths[1] = query.size();
+                }
+                else if (udf.arg_count == 1) {
+                    args.args[0] = const_cast<char*>(subject.c_str());
+                    args.lengths[0] = subject.size();
+                }
+
+                // Variables to capture return and null status
+                char is_null = 0;
+                char error[512] = {0};
+
+                // Call the UDF function directly
+                long long result = udf.func(&initid, &args, &is_null, error);
+                if (error[0] != '\0') {
+                    std::cerr << "Error during UDF call (" << udf.name << "): " << error << std::endl;
+                    // Optionally handle the error, e.g., continue or exit
+                }
+
+                // Update min_result and min_query
+                if (min_result == -1 || result < min_result) {
+                    min_result = result;
+                    min_query = query;
+                }
+
+                ++call_count;
             }
 
-            ++line_no;
+            // Collect up to 5 samples
+            if (sample_count < 5) {
+                sample_results.push_back({subject, min_query, min_result});
+                ++sample_count;
+            }
         }
 
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -410,13 +390,22 @@ int main(int argc, char *argv[]) {
         BenchmarkResult br;
         br.name = udf.name;
         br.time_elapsed = elapsed.count();
-        br.word_pairs = line_no;
+        br.function_calls = call_count;
+        br.samples = sample_results;
         results.push_back(br);
 
-        std::cout << "Benchmark completed for " << udf.name << ": Time elapsed: " << br.time_elapsed << "s, Number of word pairs: " << br.word_pairs << std::endl;
+        std::cout << "Benchmark completed for " << udf.name << ": Time elapsed: " << br.time_elapsed << "s, Number of function calls: " << br.function_calls << std::endl;
     }
 
-    // After benchmarking all functions, print a summary
+    // After benchmarking all functions, print samples and summary
+    for(const auto& br : results) {
+        std::cout << "\nSamples for function: " << br.name << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+        for(const auto& sample : br.samples) {
+            std::cout << "Subject: " << sample.subject << ", Query: " << sample.query << ", Result: " << sample.result << std::endl;
+        }
+    }
+
     std::cout << "\n========================================" << std::endl;
     std::cout << "Benchmark Summary:" << std::endl;
     std::cout << "----------------------------------------" << std::endl;
@@ -424,7 +413,7 @@ int main(int argc, char *argv[]) {
     // Define column headers with fixed widths
     std::cout << std::left << std::setw(20) << "Function"
               << std::right << std::setw(15) << "Time (s)"
-              << std::right << std::setw(15) << "Word Pairs" << std::endl;
+              << std::right << std::setw(20) << "Function Calls" << std::endl;
 
     // Print a separator line
     std::cout << "----------------------------------------" << std::endl;
@@ -436,7 +425,7 @@ int main(int argc, char *argv[]) {
     for(const auto& br : results) {
         std::cout << std::left << std::setw(20) << br.name
                   << std::right << std::setw(15) << br.time_elapsed
-                  << std::right << std::setw(15) << br.word_pairs << std::endl;
+                  << std::right << std::setw(20) << br.function_calls << std::endl;
     }
 
     // Print a closing line
