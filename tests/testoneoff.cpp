@@ -11,8 +11,8 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"cahlemci"};
-std::string db_return {  "alchemic"};
+std::string search_term {"Acanthemblemaria greenfieldi"};
+std::string db_return {  "Praeformosania intermedia fan123g"};
 
 void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1, const std::string& S2) {
     int n = S1.size();

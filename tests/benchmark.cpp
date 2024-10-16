@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::string> mangled_words;
     mangled_words.reserve(words.size());
     for (const auto& word : words) {
-        std::string mangled_word = randomlyInsertString(word, "123", gen);
+        std::string mangled_word = randomlyInsertString(word, "12", gen);
         mangled_words.push_back(mangled_word);
     }
 
@@ -242,6 +242,7 @@ int main(int argc, char *argv[]) {
         std::string subject;
         std::string query;
         long long result;
+        int count;
     };
 
     struct BenchmarkResult {
@@ -320,10 +321,13 @@ int main(int argc, char *argv[]) {
         // Outer loop over subject words
         for (const auto& subject : subject_words) {
             long long min_result = -1;
+            int count =0;
+            int count_found = 0;
             std::string min_query;
-
+            [[maybe_unused]] long long max_distance =100;
             // Inner loop over mangled words
             for (const auto& query : mangled_words) {
+                count++;
                 // Prepare arguments
                 if (udf.arg_count == 3) {
                     args.args[0] = const_cast<char*>(subject.c_str());
@@ -332,7 +336,6 @@ int main(int argc, char *argv[]) {
                     args.args[1] = const_cast<char*>(query.c_str());
                     args.lengths[1] = query.size();
 
-                    long long max_distance = 1;
                     args.args[2] = reinterpret_cast<char*>(&max_distance);
                     args.lengths[2] = sizeof(max_distance);
                 }
@@ -363,6 +366,7 @@ int main(int argc, char *argv[]) {
                 if (min_result == -1 || result < min_result) {
                     min_result = result;
                     min_query = query;
+                    count_found = count;
                 }
 
                 ++call_count;
@@ -370,7 +374,7 @@ int main(int argc, char *argv[]) {
 
             // Collect up to 5 samples
             if (sample_count < 5) {
-                sample_results.push_back({subject, min_query, min_result});
+                sample_results.push_back({subject, min_query, min_result, count_found});
                 ++sample_count;
             }
         }
@@ -402,7 +406,7 @@ int main(int argc, char *argv[]) {
         std::cout << "\nSamples for function: " << br.name << std::endl;
         std::cout << "----------------------------------------" << std::endl;
         for(const auto& sample : br.samples) {
-            std::cout << "Subject: " << sample.subject << ", Query: " << sample.query << ", Result: " << sample.result << std::endl;
+            std::cout << "Subject: " << sample.subject << ", Query: " << sample.query << ", Result: " << sample.result <<" Position: " << sample.count <<std::endl;
         }
     }
 
