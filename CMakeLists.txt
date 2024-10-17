@@ -6,8 +6,6 @@ project(Levenshtein)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
-message(STATUS "Using C++ standard: ${CMAKE_CXX_STANDARD}")
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 
@@ -57,7 +55,6 @@ if(NOT DEFINED MYSQL_INCLUDE)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MYSQL_INCLUDE}")
-message(STATUS "Include dir: ${MYSQL_INCLUDE}")
 message(STATUS "CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 # Determine MYSQL_PLUGIN_DIR using mysql_config
@@ -76,7 +73,6 @@ if(NOT DEFINED MYSQL_PLUGIN_DIR)
         set(MYSQL_PLUGIN_DIR "C:\\Program Files\\MySQL\\MySQL Server 8.0\\lib\\plugin")
     endif()
 endif()
-message(STATUS "Plugin dir: ${MYSQL_PLUGIN_DIR}")
 
 
 # Report configured values.

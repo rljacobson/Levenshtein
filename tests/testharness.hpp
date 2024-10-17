@@ -35,8 +35,6 @@
 // We do not have `#pragma once` because we need to be able to include this file
 // multiple times.
 
-#include <iostream>
-
 #include "common.h"
 
 /*
@@ -56,7 +54,7 @@
 #define STRINGIFY(x) #x
 #define AS_STRING(x) STRINGIFY(x)
 
-// Default definitions in case CMake does not define them
+// Default definitions in case CMake does not define them.
 #ifndef LEV_FUNCTION
 #define LEV_FUNCTION damlev
 #endif

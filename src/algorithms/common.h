@@ -1,4 +1,3 @@
-//common.h
 #pragma once
 
 #define NOMINMAX // msvc++ incompatibility
@@ -15,10 +14,11 @@
 #include <mysql.h>
 
 
-// Limits
+// Limits. These are set elsewhere, but we include this here for any use case that doesn't care about these details and
+// just wants to use the code.
 #ifndef DAMLEV_BUFFER_SIZE
 // 640k should be good enough for anybody.
-#define DAMLEV_BUFFER_SIZE 1024ull
+#define DAMLEV_BUFFER_SIZE 4096ull
 #endif
 constexpr long long DAMLEV_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull, DAMLEV_BUFFER_SIZE));
 

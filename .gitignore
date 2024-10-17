@@ -10,6 +10,7 @@ tests/taxanames
 .buildconfig
 test
 builddir
+build
 *benchmark
 
 ## C/C++ Artifacts ##

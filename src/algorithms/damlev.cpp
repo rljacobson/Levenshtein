@@ -91,14 +91,14 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
         strncpy(message, DAMLEV_ARG_NUM_ERROR, DAMLEV_ARG_NUM_ERROR_LEN);
         return 1;
     }
-        // The arguments needs to be of the right type.
+    // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
         strncpy(message, DAMLEV_ARG_TYPE_ERROR, DAMLEV_ARG_TYPE_ERROR_LEN);
         return  1;
     }
 
     // Attempt to allocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) std::vector<size_t>((DAMLEV_MAX_EDIT_DIST));
+    initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
         strncpy(message, DAMLEV_MEM_ERROR, DAMLEV_MEM_ERROR_LEN);
         return  1;
@@ -119,99 +119,33 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 
 [[maybe_unused]]
 void damlev_deinit(UDF_INIT *initid) {
-    delete[] initid->ptr;
+    delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
 long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, [[maybe_unused]] char *error) {
-    // Retrieve the arguments.
+    // Fetch preallocated buffer
+    int *buffer   = reinterpret_cast<int *>(initid->ptr);
+    // Set max to be the longest string length.
+    long long max = std::min(static_cast<long long>(std::max(args->lengths[0], args->lengths[1])), DAMLEV_MAX_EDIT_DIST);
 
-    //set max string lenght for later
-    int max_string_length = static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
+    // The pre-algorithm code is the same for all algorithm variants. It handles
+    //     - basic setup & initialization
+    //     - trimming of common prefix/suffix
+#include "prealgorithm.h"
 
-    if (args->lengths[0] == 0 || args->lengths[1] == 0 || args->args[1] == nullptr
-        || args->args[0] == nullptr) {
-        // Either one of the strings doesn't exist, or one of the strings has
-        // length zero. In either case
-        return static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
-    }
-
-    // Retrieve buffer.
-    std::vector<size_t> &buffer = *(std::vector<size_t> *) initid->ptr;
-
-    // Let's make some string views so we can use the STL.
-    std::string_view subject{args->args[0], args->lengths[0]};
-    std::string_view query{args->args[1], args->lengths[1]};
-
-
-    // Skip any common prefix.
-    auto prefix_mismatch = std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
-    auto start_offset = std::distance(subject.begin(), prefix_mismatch.first);
-
-
-// If one of the strings is a prefix of the other, return the length difference.
-    if (static_cast<int>(subject.length()) == start_offset) {
-        return static_cast<int>(query.length()) - start_offset;
-    } else if (static_cast<int>(query.length()) == start_offset) {
-        return static_cast<int>(subject.length()) - start_offset;
-    }
-
-// Skip any common suffix.
-    auto suffix_mismatch = std::mismatch(subject.rbegin(), std::next(subject.rend(), -start_offset),
-                                         query.rbegin(), std::next(query.rend(), -start_offset));
-    auto end_offset = std::distance(subject.rbegin(), suffix_mismatch.first);
-
-// Extract the different part if significant.
-    if (start_offset + end_offset < static_cast<int>(subject.length())) {
-        subject = subject.substr(start_offset, subject.length() - start_offset - end_offset);
-        query = query.substr(start_offset, query.length() - start_offset - end_offset);
-    }
-
-
-// Ensure 'subject' is the smaller string for efficiency
-    if (query.length() < subject.length()) {
-        std::swap(subject, query);
-    }
-
-    int n = static_cast<int>(subject.size()); // Length of the smaller string,Cast size_type to int
-    int m = static_cast<int>(query.size()); // Length of the larger string, Cast size_type to int
-
-
-// Calculate trimmed_max based on the lengths of the trimmed strings
-    auto trimmed_max = std::max(n, m);
-    auto max = trimmed_max;
-    // std::cout << "max" <<max<<std::endl;
-    //std::cout << "trimmed max length:" <<trimmed_max<<std::endl;
-    //std::cout << "trimmed subject= " <<subject <<std::endl;
-    //std::cout <<"trimmed constant query= " <<query<<std::endl;
-
-// Determine the effective maximum edit distance
-// Casting max to int (ensure that max is within the range of int)
-    int effective_max = std::min(static_cast<int>(max), static_cast<int>(trimmed_max));
-
-
-// Resize the buffer to simulate a 2D matrix with dimensions (n+1) x (m+1)
-    buffer.resize((n + 1) * (m + 1));
-
-
-// Lambda function for 2D matrix indexing in the 1D buffer
+    // Lambda function for 2D matrix indexing in the 1D buffer
     auto idx = [m](int i, int j) { return i * (m + 1) + j; };
 
-// Initialize the first row and column of the matrix
-    for (int i = 0; i <= n; ++i) {
-        buffer[idx(i, 0)] = i;
-    }
-    for (int j = 0; j <= m; ++j) {
-        buffer[idx(0, j)] = j;
-    }
-
-// Main loop to calculate the Damerau-Levenshtein distance
+    // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-        size_t column_min = std::numeric_limits<size_t>::max();
+        // Set column_min to infinity
+        int column_min = std::numeric_limits<int>::max();
+        // Initialize first column
+        buffer[idx(i, 0)] = i;
 
         for (int j = 1; j <= m; ++j) {
-            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1;
-
+            int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
             buffer[idx(i, j)] = std::min({buffer[idx(i - 1, j)] + 1,
                                           buffer[idx(i, j - 1)] + 1,
                                           buffer[idx(i - 1, j - 1)] + cost});
@@ -225,10 +159,10 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         }
 
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (column_min > static_cast<size_t>(effective_max)) {
-            return max_string_length;
+        if (column_min > static_cast<int>(effective_max)) {
+            return max + 1;
         }
     }
-    buffer.resize(DAMLEV_MAX_EDIT_DIST);
-    return (static_cast<int>(buffer[idx(n, m)]));
+
+    return buffer[idx(n, m)];
 }

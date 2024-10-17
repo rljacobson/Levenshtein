@@ -8,20 +8,20 @@
             __—R.__
 
     <hr>
-    `DAMLEVLIM()` computes the Damarau Levenshtein edit distance between two strings when the
+    `DAMLEVLIMOPT()` computes the Damarau Levenshtein edit distance between two strings when the
     edit distance is less than a given number.
 
     Syntax:
 
-        DAMLEVLIM(String1, String2, PosInt);
+        DAMLEVLIMOPT(String1, String2, PosInt);
 
     `String1`:  A string constant or column.
     `String2`:  A string constant or column to be compared to `String1`.
     `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its
+                `String2` is greater than `PosInt`, `DAMLEVLIMOPT()` will stop its
                 computation at `PosInt` and return `PosInt`. Make `PosInt` as
                 small as you can to improve speed and efficiency. For example,
-                if you put `WHERE DAMLEVLIM(...) < k` in a `WHERE`-clause, make
+                if you put `WHERE DAMLEVLIMOPT(...) < k` in a `WHERE`-clause, make
                 `PosInt` be `k`.
 
     Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
@@ -29,8 +29,8 @@
 
     Example Usage:
 
-        SELECT Name, DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
+        SELECT Name, DAMLEVLIMOPT(Name, "Vladimir Iosifovich Levenshtein", 6) AS
+            EditDist FROM CUSTOMERS WHERE  DAMLEVLIMOPT(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
     where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
@@ -70,45 +70,45 @@
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVLIM_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVLIM() requires three arguments:\n"
+        DAMLEVLIMOPT_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVLIMOPT() requires three arguments:\n"
                                     "\t1. A string\n"
                                     "\t2. A string\n"
-                                    "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_NUM_ERROR_LEN = std::size(DAMLEVLIM_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVLIM_MEM_ERROR[] = "Failed to allocate memory for DAMLEVLIM"
+                                    "\t3. A maximum distance (0 <= int < ${DAMLEVLIMOPT_MAX_EDIT_DIST}).";
+constexpr const auto DAMLEVLIMOPT_ARG_NUM_ERROR_LEN = std::size(DAMLEVLIMOPT_ARG_NUM_ERROR) + 1;
+constexpr const char DAMLEVLIMOPT_MEM_ERROR[] = "Failed to allocate memory for DAMLEVLIMOPT"
                                              " function.";
-constexpr const auto DAMLEVLIM_MEM_ERROR_LEN = std::size(DAMLEVLIM_MEM_ERROR) + 1;
+constexpr const auto DAMLEVLIMOPT_MEM_ERROR_LEN = std::size(DAMLEVLIMOPT_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVLIM_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVLIM() requires three arguments:\n"
+        DAMLEVLIMOPT_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVLIMOPT() requires three arguments:\n"
                                      "\t1. A string\n"
                                      "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIM_ARG_TYPE_ERROR) + 1;
+                                     "\t3. A maximum distance (0 <= int < ${DAMLEVLIMOPT_MAX_EDIT_DIST}).";
+constexpr const auto DAMLEVLIMOPT_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIMOPT_ARG_TYPE_ERROR) + 1;
 
 // Use a "C" calling convention.
 extern "C" {
-    [[maybe_unused]] int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    [[maybe_unused]] long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    [[maybe_unused]] void damlevlim_deinit(UDF_INIT *initid);
+    [[maybe_unused]] int damlevlimopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+    [[maybe_unused]] long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+    [[maybe_unused]] void damlevlimopt_deinit(UDF_INIT *initid);
 }
 
 [[maybe_unused]]
-int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int damlevlimopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, DAMLEVLIM_ARG_NUM_ERROR, DAMLEVLIM_ARG_NUM_ERROR_LEN);
+        strncpy(message, DAMLEVLIMOPT_ARG_NUM_ERROR, DAMLEVLIMOPT_ARG_NUM_ERROR_LEN);
         return 1;
     }
     // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        strncpy(message, DAMLEVLIM_ARG_TYPE_ERROR, DAMLEVLIM_ARG_TYPE_ERROR_LEN);
+        strncpy(message, DAMLEVLIMOPT_ARG_TYPE_ERROR, DAMLEVLIMOPT_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to preallocate a buffer.
     initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEVLIM_MEM_ERROR, DAMLEVLIM_MEM_ERROR_LEN);
+        strncpy(message, DAMLEVLIMOPT_MEM_ERROR, DAMLEVLIMOPT_MEM_ERROR_LEN);
         return 1;
     }
 
@@ -126,13 +126,13 @@ int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlevlim_deinit(UDF_INIT *initid) {
+void damlevlimopt_deinit(UDF_INIT *initid) {
     delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
-    // Fetch preallocated buffer. The only difference between damlevmin and damlevlim is that damlevmin also persists
+long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+    // Fetch preallocated buffer. The only difference between damlevmin and damlevlimopt is that damlevmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
     long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);

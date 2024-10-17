@@ -6,6 +6,7 @@ set(DAMLEV_SOURCES
         algorithms/damlevp.cpp
         algorithms/damlevmin.cpp
         algorithms/damlevlim.cpp
+        algorithms/damlevlimopt.cpp
         algorithms/damlev2D.cpp
         algorithms/noop.cpp
 )

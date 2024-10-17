@@ -130,49 +130,35 @@ void damlev2D_deinit(UDF_INIT *initid) {
 }
 
 [[maybe_unused]]
-long long damlev2D(UDF_INIT, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
+long long damlev2D(UDF_INIT *, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
 
     std::string_view S1{args->args[0], args->lengths[0]};
     std::string_view S2{args->args[1], args->lengths[1]};
 
-    //https://takeuforward.org/data-structure/edit-distance-dp-33/
     int n = static_cast<int>(S1.size());
     int m = static_cast<int>(S2.size());
 
-    std::vector<int> prev(m+1,0);
-    std::vector<int> cur(m+1,0);
+    std::vector<std::vector<int>> dp(n + 1, std::vector<int>(m + 1, 0));
 
-    int cost;
-    for(int j=0;j<=m;j++){
-        prev[j] = j;
+    for (int i = 0; i <= n; i++) {
+        dp[i][0] = i;
+    }
+    for (int j = 0; j <= m; j++) {
+        dp[0][j] = j;
     }
 
-    for(int i=1;i<n+1;i++){
-        cur[0]=i;
+    for (int i = 1; i <= n; i++) {
+        for (int j = 1; j <= m; j++) {
+            int cost = (S1[i - 1] == S2[j - 1]) ? 0 : 1;
+            dp[i][j] = std::min({dp[i - 1][j] + 1, // Deletion
+                                 dp[i][j - 1] + 1, // Insertion
+                                 dp[i - 1][j - 1] + cost}); // Substitution
 
-        for(int j=1;j<m+1;j++){
-            if(S1[i-1]==S2[j-1]){
-                cur[j] = 0+prev[j-1];
-                cost = 0;
+            if (i > 1 && j > 1 && S1[i - 1] == S2[j - 2] && S1[i - 2] == S2[j - 1]) {
+                dp[i][j] = std::min(dp[i][j], dp[i - 2][j - 2] + cost); // Transposition
             }
-
-            else {
-                cur[j] = 1 + std::min(prev[j - 1], std::min(prev[j], cur[j - 1]));
-                cost = 1;
-            }
-            if( (i > 1) &&
-                (j > 1) &&
-                (S1[i-1] == S2[j-2]) &&
-                (S1[i-2] == S2[j-1])
-                    )
-            {
-                cur[j] = std::min(
-                        cur[j],
-                        prev[j-1]  +cost  // transposition
-                );
-            }
-        } prev = cur;
+        }
     }
 
-    return prev[m];
+    return dp[n][m];
 }

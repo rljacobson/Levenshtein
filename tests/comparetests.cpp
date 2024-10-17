@@ -1,10 +1,8 @@
-// unittest_gtest.cpp
 #include <gtest/gtest.h>
 #include <chrono>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <random>
 #include <algorithm>
 #include <boost/interprocess/mapped_region.hpp>
 #include <boost/interprocess/file_mapping.hpp>
@@ -17,12 +15,8 @@
 #define WORDS_PATH "/usr/share/dict/words"
 #endif
 
-#include "edit_operations.hpp"
 #include "testharness.hpp"
 
-// Random Number Generator
-std::random_device rd;
-std::mt19937 gen(rd());
 
 struct TestCase {
     std::string a;

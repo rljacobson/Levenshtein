@@ -24,11 +24,11 @@ endif()
 # Algorithm Selection Section
 # ===============================
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevlim;damlevp;noop")
-set(ALGORITHM_ARGS "2;3;3;3;1")
+set(AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevlim;damlevlimopt;damlevp;damlev2D;noop")
+set(ALGORITHM_ARGS "2;3;3;3;3;2;1")
 
 # Define algorithm variables with default values
-set(ALGORITHM "damlevlim")
+set(ALGORITHM "damlev2D")
 
 set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.")
 set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
@@ -67,10 +67,28 @@ endfunction()
 
 # ===============================
 # Executable Definitions
-# ===============================
+# ==============================
+
+add_executable(unittest ${CMAKE_CURRENT_SOURCE_DIR}/unittests.cpp ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp)
+target_compile_definitions(unittest PRIVATE
+        LEV_FUNCTION=${TEST_ALGORITHM}
+        LEV_ALGORITHM_COUNT=${ARG_NUMBER}
+        LEV_ALGORITHM_NAME="${TEST_ALGORITHM}"
+        DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
+        WORDS_PATH="${WORDS_PATH}"
+        TEST_ALGORITHM="${TEST_ALGORITHM}"
+)
+target_include_directories(unittest PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/algorithms
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(unittest PRIVATE
+        damlev
+        gtest_main
+)
+
 # Define executables for one-off testing, unit testing, and benchmarking
 setup_executable(oneoff ${CMAKE_CURRENT_SOURCE_DIR}/testoneoff.cpp)
-setup_executable(unittest ${CMAKE_CURRENT_SOURCE_DIR}/unittests.cpp)
 setup_executable(benchmark ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp)
 
 # Adjust specific compile definitions for each executable
