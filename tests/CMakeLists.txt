@@ -50,7 +50,6 @@ function(setup_executable target source_file)
     target_compile_definitions(${target} PRIVATE
             LEV_FUNCTION=${TEST_ALGORITHM}
             LEV_ALGORITHM_COUNT=${ARG_NUMBER}
-            LEV_ALGORITHM_NAME="${TEST_ALGORITHM}"
             DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
             WORDS_PATH="${WORDS_PATH}"
             TEST_ALGORITHM="${TEST_ALGORITHM}"
@@ -69,14 +68,14 @@ endfunction()
 # Executable Definitions
 # ==============================
 
-add_executable(unittest ${CMAKE_CURRENT_SOURCE_DIR}/unittests.cpp ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp)
+add_executable(unittest ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp)
 target_compile_definitions(unittest PRIVATE
-        LEV_FUNCTION=${TEST_ALGORITHM}
-        LEV_ALGORITHM_COUNT=${ARG_NUMBER}
-        LEV_ALGORITHM_NAME="${TEST_ALGORITHM}"
+        ALGORITHM_A=damlevlim
+        ALGORITHM_A_COUNT=3
+        ALGORITHM_B=damlevlimopt
+        ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
-        TEST_ALGORITHM="${TEST_ALGORITHM}"
 )
 target_include_directories(unittest PRIVATE
         ${PROJECT_SOURCE_DIR}/src/algorithms

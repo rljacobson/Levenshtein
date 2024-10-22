@@ -59,11 +59,11 @@
 #define LEV_FUNCTION damlev
 #endif
 
-#ifndef LEV_ALGORITHM_NAME
+// This should be unconditional, as it may be a redefinition.
 #define LEV_ALGORITHM_NAME AS_STRING(LEV_FUNCTION)
-#endif
 
 #ifndef LEV_ALGORITHM_COUNT
+// Keep in synch with "default" LEV_FUNCTION
 #define LEV_ALGORITHM_COUNT 2
 #endif
 
