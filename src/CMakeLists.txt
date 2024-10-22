@@ -3,11 +3,12 @@
 # Define library sources
 set(DAMLEV_SOURCES
         algorithms/damlev.cpp
+        algorithms/damlev1D.cpp
+        algorithms/damlev2D.cpp
         algorithms/damlevp.cpp
         algorithms/damlevmin.cpp
         algorithms/damlevlim.cpp
         algorithms/damlevlimopt.cpp
-        algorithms/damlev2D.cpp
         algorithms/noop.cpp
 )
 

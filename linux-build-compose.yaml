@@ -10,4 +10,18 @@ services:
       - .:/code
       - ./build:/code/build
     working_dir: /code
-    command: /bin/bash -c "cd build && cmake .. && make"
+    command: bash
+    stdin_open: true
+    tty: true
+
+  windows-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.windows
+    container_name: windows_build
+    volumes:
+      - .:/code
+      - ./build_windows:/code/build_windows  # Removed the extra hyphen
+    command: bash
+    stdin_open: true
+    tty: true
