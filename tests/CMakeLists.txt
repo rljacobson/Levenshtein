@@ -82,7 +82,7 @@ target_compile_definitions(unittest PRIVATE
         ALGORITHM_A_COUNT=3
         ALGORITHM_B=levlimopt
         ALGORITHM_B_COUNT=3
-        DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
+        DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
         CAPTURE_METRICS
 )

@@ -156,6 +156,18 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     //     - trimming of common prefix/suffix
 #include "prealgorithm.h"
 
+    // Check if buffer size required exceeds available buffer size. This algorithm needs
+    // a buffer of size (m+1)*(n+1). Because of trimming, this may be smaller than the
+    // product of the string lengths, but this grows quickly: strings of length 100
+    // already require ~10KB.
+    if( (m+1)*(n+1) > DAMLEV_BUFFER_SIZE ) {
+#ifdef CAPTURE_METRICS
+        metrics.buffer_exceeded++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return 0;
+    }
+
     // Lambda function for 2D matrix indexing in the 1D buffer
     auto idx = [m](int i, int j) { return i * (m + 1) + j; };
 

@@ -156,39 +156,66 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     //     - trimming of common prefix/suffix
 #include "prealgorithm.h"
 
-    // Lambda function for 2D matrix indexing in the 1D buffer
-    auto idx = [m](int i, int j) { return i * (m + 1) + j; };
-    int previous_minimum_within_row = 0;
+    // Check if buffer size required exceeds available buffer size. This algorithm needs
+    // a buffer of size (m+1). Because of trimming, this may be smaller than the length
+    // of the longest string.
+    if( m+1 > DAMLEV_BUFFER_SIZE ) {
+#ifdef CAPTURE_METRICS
+        metrics.buffer_exceeded++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return 0;
+    }
 
     // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
         // Initialize first column
-        buffer[idx(i, 0)] = i;
+        buffer[0] = i;
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
         int minimum_within_row = std::max(i, m - n);
 
+        // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
+        // this cell, we need to reference (i-1, j), (i, j-1), and (i-1, j-1). We use
+        // only a single "row". When computing the current cell value,
+        //               (  matrix(i, p)    for p < j
+        //     cell[p] = |
+        //               (  matrix(i-1, p)   for p >= j.
+        // Thus, before we overwrite cell[j], it contains matrix(i-1, j). In the previous
+        // iteration, we overwrote matrix(i-1, j-1) with the value of matrix(i, j-1). Thus,
+        // we need to keep the value in cell[j] before overwriting it for use in the next
+        // iteration. We store it in the variable `previous_cell`. The invariant is that
+        // `previous_cell` = matrix(i-1, j-1).
+        int previous_cell = i-1;
+
         // We only need to look in the window between i-max <= j <= i+max, because beyond
         // that window we would need (at least) another max inserts/deletions in the
         // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - (effective_max-previous_minimum_within_row));
-        const int end_j   = std::min(m, i + (effective_max-previous_minimum_within_row));
+        const int start_j = std::max(1, i - effective_max);
+        const int end_j   = std::min(m, i + effective_max);
+
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        if (start_j > 1) buffer[idx(i, start_j-1)] = max + 1;
-        if (end_j   < m) buffer[idx(i, end_j+1)]   = max + 1;
+        if (start_j > 1) buffer[start_j-1] = max + 1;
+        if (end_j   < m) buffer[end_j+1]   = max + 1;
 #ifdef PRINT_DEBUG
         std::cout << start_j << "<= j <= " << end_j << "\n";
 #endif
 
         for (int j = start_j; j <= end_j; ++j) {
             int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
-            buffer[idx(i, j)] = std::min({buffer[idx(i - 1, j)] + 1,
-                                          buffer[idx(i, j - 1)] + 1,
-                                          buffer[idx(i - 1, j - 1)] + cost});
+            // See the declaration of `previous_cell` for an explanation of this.
+            // `previous_cell` = matrix(i-1, j-1)
+            //       cell[j-1] = matrix(i, j-1)
+            //         cell[j] = matrix(i-1, j)
+            int current_cell = std::min({buffer[j] + 1,
+                                         buffer[j - 1] + 1,
+                                         previous_cell + cost});
 
-            minimum_within_row = std::min(minimum_within_row, buffer[idx(i, j)]);
+            previous_cell = buffer[j]; // Save cell value for next iteration before overwriting.
+            buffer[j] = current_cell;  // Overwrite.
+            minimum_within_row = std::min(minimum_within_row, current_cell);
 
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
@@ -208,7 +235,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 #endif
             return max + 1;
         }
-        // previous_minimum_within_row = minimum_within_row;
     }
 
     // Return the final Damerau-Levenshtein distance
@@ -219,5 +245,5 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return buffer[idx(n, m)];
+    return buffer[m];
 }
