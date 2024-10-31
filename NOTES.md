@@ -15,6 +15,7 @@
  - Redefine `LEV_FUNCTION` (or whatever the canonical one is called) and import `testharness` multiple times to have test versions of algorithms for benchmark/unittests/whatever.
 - Need to look at CMake files and decide how to clean them up a bit for linux and windows builds.  Also NOOP should likely only be in the tests, not the build verison.
 - Test our include/mysql-8-0-39, put all mysql source code verison in the include, this removes the need to use host system for build, allows for cross complier, would alos allow other verisons to be built.
+- Policy for buffer exceeded is not implemented. We just return 0. However, policy is selectable in CMakeLists.txt.
 
 # Changes Made
 

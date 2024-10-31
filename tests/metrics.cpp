@@ -1,6 +1,8 @@
 #include "metrics.hpp"
 #include <iostream>
 #include <iomanip> // for std::setw
+#include <locale>
+#include <sstream>
 
 // Global array to hold performance metrics for each algorithm
 PerformanceMetrics performance_metrics[ALGORITHM_COUNT];
@@ -38,52 +40,42 @@ void initialize_metrics() {
         performance_metrics[i].algorithm_name = algorithm_names[i]; // Point directly to the string literal
     }
 }
-/*
 
-void print_metrics() {
-    // Print table header
-    std::cout << "Algorithm Name\tCells Computed\tEarly Exit\tExit Length Difference\tAlgorithm Time\tTotal Time\tCall Count\n";
-    std::cout << "----------------------------------------------------------------------------------------------------\n";
-
-    // Iterate through the metrics and print details for called algorithms
-    for (int i = 0; i < ALGORITHM_COUNT; i++) {
-        if (performance_metrics[i].call_count > 0) { // Only print if the algorithm was called
-            std::cout << performance_metrics[i].algorithm_name << "\t"
-                      << performance_metrics[i].cells_computed << "\t\t"
-                      << performance_metrics[i].early_exit << "\t\t"
-                      << performance_metrics[i].exit_length_difference << "\t\t\t"
-                      << performance_metrics[i].algorithm_time << "\t"
-                      << performance_metrics[i].total_time << "\t"
-                      << performance_metrics[i].call_count << "\n";
-        }
-    }
+// Custom function to format integers with comma separators
+std::string formatWithCommas(uint64_t value) {
+    // std::locale locale("");
+    std::ostringstream oss;
+    oss.imbue(std::locale("en_US.UTF-8")); // Use the user's locale
+    oss << std::fixed << value; // Convert the integer to a fixed format
+    return oss.str();
 }
-*/
+
+
 void print_metrics() {
     // Print table header
-    std::cout << std::left << std::setw(15) << "Algorithm Name"
+    std::cout << std::right << std::setw(10) << "Algorithm"
               << std::setw(12) << "Call Count"
-              << std::setw(16) << "Buffer Exceeded"
-              << std::setw(12) << "Total Time"
-              << std::setw(15) << "Algorithm Time"
-              << std::setw(17) << "Exit Via Length"
+              << std::setw(14) << "Mem Exceeded"
+              << std::setw(17) << "Total Time (ms)"
+              << std::setw(15) << "Alg Time (ms)"
+              << std::setw(14) << "Length Exit"
               << std::setw(12) << "Early Exit"
               << std::setw(16) << "Cells Computed"
               << std::endl;
 
-    std::cout << std::string(113, '-') << std::endl; // Adjusted to match the total width of the header
+    std::cout << std::string(110, '-') << std::endl; // Adjusted to match the total width of the header
 
     // Iterate through the metrics and print details for called algorithms
     for (int i = 0; i < ALGORITHM_COUNT; i++) {
         if (performance_metrics[i].call_count > 0) { // Only print if the algorithm was called
-            std::cout << std::left << std::setw(15) << performance_metrics[i].algorithm_name
-                      << std::setw(12) << performance_metrics[i].call_count
-                      << std::setw(16) << performance_metrics[i].buffer_exceeded
-                      << std::setw(12) << performance_metrics[i].total_time
-                      << std::setw(15) << performance_metrics[i].algorithm_time
-                      << std::setw(17) << performance_metrics[i].exit_length_difference
-                      << std::setw(12) << performance_metrics[i].early_exit
-                      << std::setw(16) << performance_metrics[i].cells_computed
+            std::cout << std::right << std::setw(10) << performance_metrics[i].algorithm_name
+                      << std::setw(12) << formatWithCommas(performance_metrics[i].call_count)
+                      << std::setw(14) << performance_metrics[i].buffer_exceeded
+                      << std::setw(17) << std::round(performance_metrics[i].total_time*1000.0)
+                      << std::setw(15) << std::round(performance_metrics[i].algorithm_time*1000.0)
+                      << std::setw(14) << formatWithCommas(performance_metrics[i].exit_length_difference)
+                      << std::setw(12) << formatWithCommas(performance_metrics[i].early_exit)
+                      << std::setw(16) << formatWithCommas(performance_metrics[i].cells_computed)
                       << std::endl;
         }
     }
