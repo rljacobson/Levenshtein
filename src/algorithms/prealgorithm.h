@@ -4,13 +4,22 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     - trimming of common prefix/suffix
 */
 
+#ifdef CAPTURE_METRICS
+    metrics.call_count++;
+    Timer call_timer;
+    call_timer.start();
+#endif
+
     if (!args->args[2]) {
         // Early exit if max distance is zero
         return 0;
     }
 
-    // Handle null or empty strings
-    if (!args->args[0] || args->lengths[0] == 0 || !args->args[1] || args->lengths[1] == 0) {
+    // Handle null strings
+    if (!args->args[0] || !args->args[1]) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+#endif
         return static_cast<long long>(std::max(args->lengths[0], args->lengths[1]));
     }
 
@@ -24,8 +33,14 @@ The pre-algorithm code is the same for all algorithm variants. It handles
 
     // If one of the strings is a prefix of the other, return the length difference.
     if (subject.length() == start_offset) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+#endif
         return int(query.length()) - int(start_offset);
     } else if (query.length() == start_offset) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+#endif
         return int(subject.length()) - int(start_offset);
     }
 
@@ -35,21 +50,50 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     auto end_offset = std::distance(subject.rbegin(), suffix_mismatch.first);
 
     // Extract the different part if significant.
-    if (start_offset + end_offset < subject.length()) {
-        subject = subject.substr(start_offset, subject.length() - start_offset - end_offset);
-        query = query.substr(start_offset, query.length() - start_offset - end_offset);
-    }
+
+    subject = subject.substr(start_offset, subject.length() - start_offset - end_offset);
+    query = query.substr(start_offset, query.length() - start_offset - end_offset);
+
 
     // Ensure 'subject' is the smaller string for efficiency
     if (query.length() < subject.length()) {
         std::swap(subject, query);
     }
 
-    int n = static_cast<int>(subject.length()); // Cast size_type to int
-    int m = static_cast<int>(query.length()); // Cast size_type to int
+    const int n = static_cast<int>(subject.length()); // Cast size_type to int
+    const int m = static_cast<int>(query.length()); // Cast size_type to int
 
-    // Determine the effective maximum edit distance
-    int effective_max = std::min(static_cast<int>(max), n);
+    // It's possible we "trimmed" an entire string.
+    if(n==0) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return m;
+    }
 
+    // Determine the effective maximum edit distance. The distance is at most length of the longest string.
+    const int effective_max = std::min(static_cast<int>(max), m);
+    // Distance is at least the difference in the lengths of the strings.
+    if (m-n > static_cast<int>(max)) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return max + 1; // Return max+1 by convention.
+    }
     // Re-initialize buffer before calculation
     std::iota(buffer, buffer + m + 1, 0);
+
+    // ToDo: If difference in lengths is greater or equal than effective max, return effective max.
+
+
+#ifdef CAPTURE_METRICS
+    Timer algorithm_timer;
+    algorithm_timer.start();
+#endif
+#ifdef PRINT_DEBUG
+    std::cout << "subject: " << subject << '\n';
+    std::cout << "query: " << query << '\n';
+    std::cout << "effective max: " << effective_max << '\n';
+#endif

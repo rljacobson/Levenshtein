@@ -1,16 +1,18 @@
 /**
 There are two ways to use this file.
 
- 1. Define `LEV_FUNCTION`, which is the unquoted algorithm name, and `LEV_ALGORITHM_COUNT`,
+1. Define `LEV_FUNCTION`, which is the unquoted algorithm name, and `LEV_ALGORITHM_COUNT`,
     the number of arguments the function takes. This code will then compare the output of the
     algorithm to the plain damlev2D algorithm. (The defined `LEV_FUNCTION` will be `ALGORITHM_A`,
     and damlev2D will be `ALGORITHM_B`.)
- 2. Define `ALGORITHM_A` and `ALGORITHM_A_COUNT`, the unquoted algorithm name and argument
+
+2. Define `ALGORITHM_A` and `ALGORITHM_A_COUNT`, the unquoted algorithm name and argument
     count respectively of the first algorithm to compare, and likewise `ALGORITHM_B` and
     `ALGORITHM_B_COUNT` for the second algorithm to compare. This code will then compare the
     outputs of these two algorithms.
 
 */
+#define CAPTURE_METRICS
 
 #include <gtest/gtest.h>
 #include <chrono>
@@ -23,6 +25,7 @@ There are two ways to use this file.
 #include <sstream>
 
 #include "edit_operations.hpp"
+#include "metrics.hpp"
 
 #ifndef WORD_COUNT
 #define WORD_COUNT 10000ul
@@ -31,6 +34,7 @@ There are two ways to use this file.
 #define WORDS_PATH "/usr/share/dict/words"
 #endif
 
+// region Algorithms Setup
 
 // The two algorithms will be referred to as ALGORITHM_A and ALGORITHM_B. We
 // need to capture four symbols in each case:
@@ -93,6 +97,8 @@ char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
 #endif
 
+// endregion
+
 struct TestCase {
     std::string a;
     std::string b;
@@ -149,6 +155,7 @@ protected:
     to the Levenshtein distance algorithm.
     */
     void SetUp() override {
+
         std::string primaryFilePath = "tests/taxanames";
         std::string fallbackFilePath = WORDS_PATH;
         unsigned maximum_size = WORD_COUNT;
@@ -159,31 +166,53 @@ protected:
         try {
             text_file = boost::interprocess::file_mapping(primaryFilePath.c_str(), boost::interprocess::read_only);
             text_file_buffer = boost::interprocess::mapped_region(text_file, boost::interprocess::read_only);
+            std::cout << "Using words from " << primaryFilePath << std::endl;
         } catch (const boost::interprocess::interprocess_exception&) {
             try {
                 text_file = boost::interprocess::file_mapping(fallbackFilePath.c_str(), boost::interprocess::read_only);
                 text_file_buffer = boost::interprocess::mapped_region(text_file, boost::interprocess::read_only);
+                std::cout << "Using words from " << fallbackFilePath << std::endl;
             } catch (const boost::interprocess::interprocess_exception&) {
                 FAIL() << "Could not open fallback file " << fallbackFilePath;
             }
         }
-
         wordList = readWordsFromMappedFile(text_file_buffer, maximum_size);
+
+        /*
+        int word_count = 100000;
+        int word_length = 50;
+        wordList.reserve(word_count);
+
+        auto gen_word = [word_length](){return generateRandomString(word_length);};
+
+        std::generate_n(std::back_inserter(wordList), word_count, gen_word); // Fill the string
+        */
     }
 
 };
 
-
+void PrintFailedTestCase(const TestCase& testCase, long long actualResult) {
+    std::cout << "Test Case Failed:" << std::endl;
+    std::cout << "-------------------------------------" << std::endl;
+    std::cout << "Original String: " << testCase.a << std::endl;
+    std::cout << "Modified String: " << testCase.b << std::endl;
+    std::cout << ALGORITHM_B_NAME << " Distance: " << testCase.expectedDistance << std::endl;
+    std::cout << algorithm_a_name << " Result: " << actualResult << std::endl;
+    std::cout << "Function Name: " << testCase.functionName << std::endl;
+    std::cout << "-------------------------------------" << std::endl;
+}
 
 // Maximum number of allowed failures before breaking the loop. Useful to prevent console barth during troubleshooting.
-const int MAX_FAILURES = 5;
+const int MAX_FAILURES   = 5;
+const int MAX_DISTANCE   = 7;
+const int MAX_EDITS_MADE = 5;
 
 template <typename Func>
 void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std::vector<std::string>& wordList, long long max_distance) {
     int failureCount = 0;
     for (int i = 0; i < LOOP; ++i) {
-        std::string original = getRandomString(wordList);
-        int editCount = getRandomEditCount(original);
+        std::string original = getUniformRandomString(wordList);
+        int editCount = getRandomEditCount(original, MAX_EDITS_MADE);
         std::string modified = applyEditFunc(original, editCount);
 
         // We use `ALGORITHM_B` as the "expected" value, although this is somewhat arbitrary.
@@ -213,6 +242,8 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
 
         // Record failures
         if (result != testCase.expectedDistance) {
+            PrintFailedTestCase(testCase, result);
+            std::cout << "Max distance: " << max_distance << std::endl;
             failureCount++;
             if (failureCount >= MAX_FAILURES) {
                 ADD_FAILURE() << function_name << " test failed for " << failureCount << " cases. Breaking loop.";
@@ -229,26 +260,31 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
 
 // Specific test for Transposition
 TEST_F(LevenshteinTest, Transposition) {
-    RunLevenshteinTest("Transposition", applyTransposition, wordList, 3);
+    RunLevenshteinTest("Transposition", applyTransposition, wordList, MAX_DISTANCE);
 }
 
 // Specific test for Deletion
 TEST_F(LevenshteinTest, Deletion) {
-    RunLevenshteinTest("Deletion", applyDeletion, wordList, 3);
+    RunLevenshteinTest("Deletion", applyDeletion, wordList, MAX_DISTANCE);
 }
 
 // Specific test for Insertion
 TEST_F(LevenshteinTest, Insertion) {
-    RunLevenshteinTest("Insertion", applyInsertion, wordList, 3);
+    RunLevenshteinTest("Insertion", applyInsertion, wordList, MAX_DISTANCE);
 }
 
 // Specific test for Substitution
 TEST_F(LevenshteinTest, Substitution) {
-    RunLevenshteinTest("Substitution", applySubstitution, wordList, 3);
+    RunLevenshteinTest("Substitution", applySubstitution, wordList, MAX_DISTANCE);
 }
 
 int main(int argc, char **argv) {
+    initialize_metrics();
+
     ::testing::InitGoogleTest(&argc, argv);
     std::cout << "Testing " << algorithm_a_name << " against " << ALGORITHM_B_NAME << std::endl;
-    return RUN_ALL_TESTS();
+    int result = RUN_ALL_TESTS();
+
+    print_metrics();
+    return result;
 }

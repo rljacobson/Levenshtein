@@ -9,7 +9,10 @@ set(DAMLEV_SOURCES
         algorithms/damlevmin.cpp
         algorithms/damlevlim.cpp
         algorithms/damlevlimopt.cpp
+        algorithms/levlim.cpp
+        algorithms/levlimopt.cpp
         algorithms/noop.cpp
+        algorithms/printmatrix.cpp
 )
 
 

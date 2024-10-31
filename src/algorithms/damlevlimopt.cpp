@@ -132,7 +132,13 @@ void damlevlimopt_deinit(UDF_INIT *initid) {
 
 [[maybe_unused]]
 long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
-    // Fetch preallocated buffer. The only difference between damlevmin and damlevlimopt is that damlevmin also persists
+
+#ifdef CAPTURE_METRICS
+    // std::cout << "damlevlimopt" << "\n";
+    PerformanceMetrics &metrics = performance_metrics[5];
+#endif
+
+    // Fetch preallocated buffer. The only difference between damlevmin and levlimopt is that damlevmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
     long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
@@ -151,12 +157,25 @@ long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *
 
     // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-        // Set column_min to infinity
-        int column_min = std::numeric_limits<int>::max();
         // Initialize first column
         buffer[idx(i, 0)] = i;
+        // Keep track of the minimum number of edits we have proven are necessary. If this
+        // number ever exceeds `max`, we can bail.
+        int minimum_within_row = std::max(i, m - n);
 
-        for (int j = 1; j <= m; ++j) {
+        // We only need to look in the window between i-max <= j <= i+max, because beyond
+        // that window we would need (at least) another max inserts/deletions in the
+        // "path" to arrive at the (n,m) cell.
+        const int start_j = std::max(1, i - effective_max);
+        const int end_j   = std::min(m, i + effective_max);
+        // Assume anything outside the band contains more than max. The only cells outside the
+        // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
+        // pre-fill it with max + 1.
+        if (start_j > 1) buffer[idx(i, start_j-1)] = max + 1;
+        if (end_j   < m) buffer[idx(i, end_j+1)]   = max + 1;
+        // std::cout << start_j << "<= j <= " << end_j << "\n";
+
+        for (int j = start_j; j <= end_j; ++j) {
             int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
             buffer[idx(i, j)] = std::min({buffer[idx(i - 1, j)] + 1,
                                           buffer[idx(i, j - 1)] + 1,
@@ -167,15 +186,31 @@ long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *
                 buffer[idx(i, j)] = std::min(buffer[idx(i, j)], buffer[idx(i - 2, j - 2)] + cost);
             }
 
-            column_min = std::min(column_min, buffer[idx(i, j)]);
+            minimum_within_row = std::min(minimum_within_row, buffer[idx(i, j)]);
+
+#ifdef CAPTURE_METRICS
+            metrics.cells_computed++;
+#endif
         }
 
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (column_min > static_cast<int>(effective_max)) {
+        if (minimum_within_row > static_cast<int>(effective_max)) {
+#ifdef CAPTURE_METRICS
+            metrics.early_exit++;
+            metrics.algorithm_time += algorithm_timer.elapsed();
+            metrics.total_time += call_timer.elapsed();
+#endif
+            // std::cout << "Bailing early" << '\n';
+            // printMatrix(buffer, n, m, subject, query);
             return max + 1;
         }
     }
 
     // Return the final Damerau-Levenshtein distance
+    // printMatrix(buffer, n, m, subject, query);
+#ifdef CAPTURE_METRICS
+    metrics.algorithm_time += algorithm_timer.elapsed();
+    metrics.total_time += call_timer.elapsed();
+#endif
     return buffer[idx(n, m)];
 }

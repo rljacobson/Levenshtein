@@ -11,8 +11,8 @@
 
 #include "testharness.hpp"
 
-std::string search_term {"Acanthemblemaria greenfieldi"};
-std::string db_return {  "Praeformosania intermedia fan123g"};
+std::string string_a {"Acanthemblemaria greenfieldi"};
+std::string string_b {"Praeformosania intermedia fan123g"};
 
 void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1, const std::string& S2) {
     int n = S1.size();
@@ -103,8 +103,8 @@ int calculateDamLevDistance(const std::string& S1_input, const std::string& S2_i
 }
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
-    std::string a = search_term;
-    std::string b = db_return;
+    std::string a = string_a;
+    std::string b = string_b;
     int c =3;
     long long result = 0;
     long long result2 = 0;

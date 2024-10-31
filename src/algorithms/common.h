@@ -13,6 +13,11 @@
 #include <climits>
 #include <mysql.h>
 
+#ifdef CAPTURE_METRICS
+#include "metrics.hpp"
+#include "benchtime.hpp"
+#endif
+
 
 // Limits. These are set elsewhere, but we include this here for any use case that doesn't care about these details and
 // just wants to use the code.
@@ -32,3 +37,4 @@ constexpr long long DAMLEV_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull, DAM
 inline void set_error(char *error, const char *message) {
     strncpy(error, message, MYSQL_ERRMSG_SIZE);
 }
+

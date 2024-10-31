@@ -1,5 +1,4 @@
-#ifndef LEVENSHTEIN_TESTS_BENCHTIME_HPP_
-#define LEVENSHTEIN_TESTS_BENCHTIME_HPP_
+#pragma once
 
 #include <iostream>
 #include <chrono>
@@ -36,5 +35,3 @@ private:
     std::chrono::time_point<clock_> end_time;
     bool running;
 };
-
-#endif //LEVENSHTEIN_TESTS_BENCHTIME_HPP_

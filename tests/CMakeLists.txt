@@ -24,8 +24,8 @@ endif()
 # Algorithm Selection Section
 # ===============================
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "damlev;damlevmin;damlevlim;damlevlimopt;damlevp;damlev2D;noop")
-set(ALGORITHM_ARGS "2;3;3;3;3;2;1")
+set(AVAILABLE_ALGORITHMS "levlim;levlimopt;damlev;damlevmin;damlevlim;damlevlimopt;damlevp;damlev2D;noop")
+set(ALGORITHM_ARGS "3;3;2;3;3;3;3;2;1")
 
 # Define algorithm variables with default values
 set(ALGORITHM "damlev2D")
@@ -53,6 +53,7 @@ function(setup_executable target source_file)
             DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
             WORDS_PATH="${WORDS_PATH}"
             TEST_ALGORITHM="${TEST_ALGORITHM}"
+            CAPTURE_METRICS
     )
     target_include_directories(${target} PRIVATE
             ${PROJECT_SOURCE_DIR}/src/algorithms
@@ -68,23 +69,56 @@ endfunction()
 # Executable Definitions
 # ==============================
 
-add_executable(unittest ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp)
+add_executable(unittest
+        ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlimopt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
+)
 target_compile_definitions(unittest PRIVATE
-        ALGORITHM_A=damlevlim
+        ALGORITHM_A=levlim
         ALGORITHM_A_COUNT=3
-        ALGORITHM_B=damlevlimopt
+        ALGORITHM_B=levlimopt
         ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
+        CAPTURE_METRICS
 )
 target_include_directories(unittest PRIVATE
         ${PROJECT_SOURCE_DIR}/src/algorithms
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(unittest PRIVATE
-        damlev
+#        damlev
         gtest_main
 )
+
+
+add_executable(compareoneoff
+        ${CMAKE_CURRENT_SOURCE_DIR}/compareoneoff.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlimopt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
+)
+target_compile_definitions(compareoneoff PRIVATE
+        ALGORITHM_A=levlim
+        ALGORITHM_A_COUNT=3
+        ALGORITHM_B=levlimopt
+        ALGORITHM_B_COUNT=3
+        DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
+        CAPTURE_METRICS
+        PRINT_DEBUG
+)
+target_include_directories(compareoneoff PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/algorithms
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+#target_link_libraries(compareoneoff PRIVATE
+#        damlev
+#)
 
 # Define executables for one-off testing, unit testing, and benchmarking
 setup_executable(oneoff ${CMAKE_CURRENT_SOURCE_DIR}/testoneoff.cpp)

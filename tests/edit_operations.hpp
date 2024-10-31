@@ -69,7 +69,14 @@ If the list is empty, an empty string is returned.
 @param wordList A vector of strings from which to select a random string.
 @return A random string selected from the wordList, or an empty string if the list is empty.
 */
-std::string getRandomString(const std::vector<std::string>& wordList);
+std::string getUniformRandomString(const std::vector<std::string>& wordList);
 
 /// Only return 0 for empty strings. Otherwise, return at least 1.
-int getRandomEditCount(const std::string& str);
+int getRandomEditCount(const std::string& str, int maximum_edits);
+
+/// Generate a random letter based on letter frequencies in written English.
+char getRandomLetter();
+
+/// Generate a random string of the given length based on letter
+/// frequencies in written English.
+std::string generateRandomString(int length);

@@ -422,7 +422,7 @@ The one-off test script is a specialized utility designed to manually test the c
 
 #### Usage
 
-1. **Setup Strings:** Modify the `search_term` and `db_return` variables in the script to the strings you want to compare.
+1. **Setup Strings:** Modify the `string_a` and `string_b` variables in the script to the strings you want to compare.
 2. **Select Algorithm:** Ensure the `LEV_ARGS->arg_count` is set appropriately in `testharness.hpp` for the specific Damerau-Levenshtein implementation you wish to test (e.g., `damlevconst`, `damlev`, `damlevlimp`).
 3. **Compile and Run:** Compile the script and execute it. The Damerau-Levenshtein distance between the specified strings will be displayed in the console.
 
