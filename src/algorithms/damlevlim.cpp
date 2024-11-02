@@ -64,6 +64,11 @@
 */
 #include "common.h"
 
+#ifdef PRINT_DEBUG
+#include <iostream>
+void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2);
+#endif
+
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
 // version 8.0, MYSQL_ERRMSG_SIZE == 512. However, the example says to "try to
@@ -133,8 +138,10 @@ void damlevlim_deinit(UDF_INIT *initid) {
 [[maybe_unused]]
 long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
+#ifdef PRINT_DEBUG
+    std::cout << "damlevlim" << "\n";
+#endif
 #ifdef CAPTURE_METRICS
-    // std::cout << "damlevlim" << "\n";
     PerformanceMetrics &metrics = performance_metrics[4];
 #endif
 
@@ -151,6 +158,18 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     //     - basic setup & initialization
     //     - trimming of common prefix/suffix
 #include "prealgorithm.h"
+
+    // Check if buffer size required exceeds available buffer size. This algorithm needs
+    // a buffer of size (m+1)*(n+1). Because of trimming, this may be smaller than the
+    // product of the string lengths, but this grows quickly: strings of length 100
+    // already require ~10KB.
+    if( (m+1)*(n+1) > DAMLEV_BUFFER_SIZE ) {
+#ifdef CAPTURE_METRICS
+        metrics.buffer_exceeded++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return 0;
+    }
 
     // Lambda function for 2D matrix indexing in the 1D buffer
     auto idx = [m](int i, int j) { return i * (m + 1) + j; };
@@ -188,8 +207,10 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
             metrics.algorithm_time += algorithm_timer.elapsed();
             metrics.total_time += call_timer.elapsed();
 #endif
-            // std::cout << "Bailing early" << '\n';
-            // printMatrix(buffer, n, m, subject, query);
+#ifdef PRINT_DEBUG
+            std::cout << "Bailing early" << '\n';
+            printMatrix(buffer, n, m, subject, query);
+#endif
             return max + 1;
         }
     }
@@ -198,7 +219,9 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
+#ifdef PRINT_DEBUG
+    printMatrix(buffer, n, m, subject, query);
+#endif
     // Return the final Levenshtein distance
-    // printMatrix(buffer, n, m, subject, query);
     return buffer[idx(n, m)];
 }

@@ -53,7 +53,7 @@ std::string formatWithCommas(uint64_t value) {
 
 void print_metrics() {
     // Print table header
-    std::cout << std::right << std::setw(10) << "Algorithm"
+    std::cout << std::right << std::setw(15) << "Algorithm"
               << std::setw(12) << "Call Count"
               << std::setw(14) << "Mem Exceeded"
               << std::setw(17) << "Total Time (ms)"
@@ -63,12 +63,12 @@ void print_metrics() {
               << std::setw(16) << "Cells Computed"
               << std::endl;
 
-    std::cout << std::string(110, '-') << std::endl; // Adjusted to match the total width of the header
+    std::cout << std::string(115, '-') << std::endl; // Adjusted to match the total width of the header
 
     // Iterate through the metrics and print details for called algorithms
     for (int i = 0; i < ALGORITHM_COUNT; i++) {
         if (performance_metrics[i].call_count > 0) { // Only print if the algorithm was called
-            std::cout << std::right << std::setw(10) << performance_metrics[i].algorithm_name
+            std::cout << std::right << std::setw(15) << performance_metrics[i].algorithm_name
                       << std::setw(12) << formatWithCommas(performance_metrics[i].call_count)
                       << std::setw(14) << performance_metrics[i].buffer_exceeded
                       << std::setw(17) << std::round(performance_metrics[i].total_time*1000.0)
