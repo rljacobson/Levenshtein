@@ -63,9 +63,12 @@
     IN THE SOFTWARE.
 */
 #include "common.h"
-#include <iostream>
 
+#ifdef PRINT_DEBUG
+#include <iostream>
 void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2);
+#endif
+
 
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
@@ -157,10 +160,9 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
 #include "prealgorithm.h"
 
     // Check if buffer size required exceeds available buffer size. This algorithm needs
-    // a buffer of size (m+1)*(n+1). Because of trimming, this may be smaller than the
-    // product of the string lengths, but this grows quickly: strings of length 100
-    // already require ~10KB.
-    if( (m+1)*(n+1) > DAMLEV_BUFFER_SIZE ) {
+    // a buffer of size (m+1). Because of trimming, this may be smaller than the length
+    // of the longest string.
+    if( m+1 > DAMLEV_BUFFER_SIZE ) {
 #ifdef CAPTURE_METRICS
         metrics.buffer_exceeded++;
         metrics.total_time += call_timer.elapsed();
@@ -168,30 +170,82 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         return 0;
     }
 
-    // Lambda function for 2D matrix indexing in the 1D buffer
-    auto idx = [m](int i, int j) { return i * (m + 1) + j; };
+    int minimum_within_row = 0;
+    int current_cell = 0;
+
+#ifdef PRINT_DEBUG
+    std::cout << "    ";
+    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "\n  ";
+    for(int k = 0; k <= m; k++) std::cout << k << " ";
+    std::cout << "\n";
+#endif
 
     // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
         // Initialize first column
-        buffer[idx(i, 0)] = i;
+        buffer[0] = i;
+
+        // We only need to look in the window between i-max <= j <= i+max, because beyond
+        // that window we would need (at least) another max inserts/deletions in the
+        // "path" to arrive at the (n,m) cell.
+        const int start_j = std::max(1, i - effective_max);
+        const int end_j   = std::min(m, i + effective_max);
+
+        // We use only a single "row" instead of a full matrix. Let's call it cell[*].
+        // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
+        // this cell, we need matrix(i-1, j), matrix(i, j-1), and matrix(i-1, j-1). When
+        // computing the current cell value,
+        //               (  matrix(i, p)    for p < j
+        //     cell[p] = |
+        //               (  matrix(i-1, p)   for p >= j.
+        // Thus, before we overwrite cell[j], it contains matrix(i-1, j). In the previous
+        // iteration, we overwrote matrix(i-1, j-1) with the value of matrix(i, j-1). Thus,
+        // we need to keep the value in cell[j] before overwriting it for use in the next
+        // iteration. We store it in the variable `previous_cell`. The invariant is that
+        // `previous_cell` = matrix(i-1, j-1).
+        int previous_cell = buffer[start_j-1];
+
+        // Assume anything outside the band contains more than max. The only cells outside the
+        // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
+        // pre-fill it with max + 1.
+        if (start_j > 1) buffer[start_j-1] = max + 1;
+        if (end_j   < m) buffer[end_j+1]   = max + 1;
+#ifdef PRINT_DEBUG
+        // Print column header
+        std::cout << subject[i - 1] << " " << i << " ";
+        for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
+        if (start_j > 1) std::cout << max + 1 << " ";
+#endif
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
-        int minimum_within_row = i;
+        minimum_within_row = i;
 
-        for (int j = 1; j <= m; ++j) {
+        for (int j = start_j; j <= end_j; ++j) {
             int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
-            buffer[idx(i, j)] = std::min({buffer[idx(i - 1, j)] + 1,
-                                          buffer[idx(i, j - 1)] + 1,
-                                          buffer[idx(i - 1, j - 1)] + cost});
+            // See the declaration of `previous_cell` for an explanation of this.
+            // `previous_cell` = matrix(i-1, j-1)
+            //       cell[j-1] = matrix(i, j-1)
+            //         cell[j] = matrix(i-1, j)
+            current_cell = std::min({buffer[j] + 1,
+                                     buffer[j - 1] + 1,
+                                     previous_cell + cost});
 
-            minimum_within_row = std::min(minimum_within_row, buffer[idx(i, j)]);
-
+            minimum_within_row = std::min(minimum_within_row, current_cell);
+            previous_cell      = buffer[j];    // Save cell value for next iteration
+            buffer[j]          = current_cell; // Overwrite
+#ifdef PRINT_DEBUG
+            std::cout << current_cell << " ";// << std::flush;
+#endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
 #endif
         }
-
+#ifdef PRINT_DEBUG
+        if (end_j < m) std::cout << max + 1 << " ";
+        for(int k = end_j+2; k <= m; k++) std::cout << ". ";
+        std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
+#endif
         // Early exit if the minimum edit distance exceeds the effective maximum
         if (minimum_within_row > static_cast<int>(effective_max)) {
 #ifdef CAPTURE_METRICS
@@ -201,19 +255,15 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
 #endif
 #ifdef PRINT_DEBUG
             std::cout << "Bailing early" << '\n';
-            printMatrix(buffer, n, m, subject, query);
 #endif
             return max + 1;
         }
     }
 
+    // Return the final Levenshtein distance
 #ifdef CAPTURE_METRICS
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    // Return the final Levenshtein distance
-#ifdef PRINT_DEBUG
-    printMatrix(buffer, n, m, subject, query);
-#endif
-    return buffer[idx(n, m)];
+    return std::min(max+1, static_cast<long long>(current_cell)); //buffer[m];
 }

@@ -13,9 +13,10 @@
  - One-off: make two strings configurable
  - Fix the "multiple ALGORITHM_NAME" cruft in CMake where we have several macro parameters being set to the same value or stringified version of the value.
  - Redefine `LEV_FUNCTION` (or whatever the canonical one is called) and import `testharness` multiple times to have test versions of algorithms for benchmark/unittests/whatever.
-- Need to look at CMake files and decide how to clean them up a bit for linux and windows builds.  Also NOOP should likely only be in the tests, not the build verison.
-- Test our include/mysql-8-0-39, put all mysql source code verison in the include, this removes the need to use host system for build, allows for cross complier, would alos allow other verisons to be built.
-- Policy for buffer exceeded is not implemented. We just return 0. However, policy is selectable in CMakeLists.txt.
+ - Need to look at CMake files and decide how to clean them up a bit for linux and windows builds.  Also NOOP should likely only be in the tests, not the build verison.
+ - Test our include/mysql-8-0-39, put all mysql source code verison in the include, this removes the need to use host system for build, allows for cross compiler, would also allow other verisons to be built.
+ - Policy for buffer exceeded is not implemented. We just return 0. However, policy is selectable in CMakeLists.txt.
+ - Characterize under which circumstances the condition `start_j = std::max(1, i - (effective_max - minimum_within_row))` is superior to `start_j = std::max(1, i - effective_max)`.
 
 # Changes Made
 
@@ -31,7 +32,28 @@
  * Why initialize `DAMLEV_MAX_EDIT_DISTANCE` to the buffer size?
  * How does `benchmark` differ from `unittests`? Answer: Benchmark more closely simulates our use case for correcting scientific names.
 
+# Some results
 
+## Narrowing band in banded variant
+
+The banded algorithm only computes cells within `max+1` of the diagonal. More aggressive narrowing of the band is possible. For example, the condition `start_j = std::max(1, i - (effective_max - minimum_within_row))` is superior to `start_j = std::max(1, i - effective_max)` in terms of computing fewer cells and exiting early more often. However, this condition apparently increases branch misprediction and consequently performs worse that the standard band. 
+
+Another band narrowing strategy is the following:
+
+```c++
+if(j > i && current_cell > effective_max && buffer[j] > effective_max) {
+    // Don't bother computing the remainder of the band.
+    buffer[j] = current_cell;
+    if(j<=m) buffer[j+1] = max + 1; // Set sentinel.
+    end_j = j;
+    break;
+}
+```
+
+This condition gives a modest decrease in number of cells computed and proportional increase in early exits, but again branch misprediction causes this variant to run up to twice as slow as the simple banded variant.  
+
+
+# Behavioral Quirks
 
 ### Early Exits and Transpositions: Why Results May Differ
 

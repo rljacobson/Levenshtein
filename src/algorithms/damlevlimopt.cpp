@@ -205,11 +205,10 @@ long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *
         // Print column header
         std::cout << subject[i - 1] << " " << i << " ";
         for(int k = 1; k <= start_j-1; k++) std::cout << ". ";
-        // if (start_j > 1) std::cout << "|"; //max+1;
 #endif
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
-        minimum_within_row = std::max(i, m - n);
+        minimum_within_row = i;
 
         for (int j = start_j; j <= end_j; ++j) {
             /*
