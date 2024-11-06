@@ -15,9 +15,10 @@ add_definitions("-DHAVE_DLOPEN")
 
 # START CONFIGURATION
 
-# Modify the following to set the buffer size to something other than 4096
-# characters. There is a hard max set at ~16KB. This is the wrong tool for
-# the job if you are using it for strings that large.
+# Modify the following to set the buffer size to something other than the given
+# default. Smaller is generally not faster. Make this twice your largest string.
+# There is a hard max set at ~16KB. This is the wrong tool for the job if you
+# are using it for strings that large.
 set(BUFFER_SIZE 4096ull)
 
 # Select exactly one policy for handling negative max edit distance
