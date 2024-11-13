@@ -155,6 +155,7 @@ protected:
     to the Levenshtein distance algorithm.
     */
     void SetUp() override {
+        /*
 
         std::string primaryFilePath = "tests/taxanames";
         std::string fallbackFilePath = WORDS_PATH;
@@ -177,16 +178,16 @@ protected:
             }
         }
         wordList = readWordsFromMappedFile(text_file_buffer, maximum_size);
+        */
 
-        /*
-        int word_count = 100000;
-        int word_length = 50;
+        int word_count = 200000;
+        int word_length = 40;
         wordList.reserve(word_count);
 
         auto gen_word = [word_length](){return generateRandomString(word_length);};
 
         std::generate_n(std::back_inserter(wordList), word_count, gen_word); // Fill the string
-        */
+
     }
 
 };
@@ -204,7 +205,7 @@ void PrintFailedTestCase(const TestCase& testCase, long long actualResult) {
 
 // Maximum number of allowed failures before breaking the loop. Useful to prevent console barth during troubleshooting.
 const int MAX_FAILURES   = 5;
-const int MAX_DISTANCE   = 7;
+const int MAX_DISTANCE   = 5;
 const int MAX_EDITS_MADE = 5;
 
 template <typename Func>
@@ -280,6 +281,7 @@ TEST_F(LevenshteinTest, Substitution) {
 
 int main(int argc, char **argv) {
     initialize_metrics();
+    std::cout << "BUFFER_SIZE: " << DAMLEV_BUFFER_SIZE << "\n";
 
     ::testing::InitGoogleTest(&argc, argv);
     std::cout << "Testing " << algorithm_a_name << " against " << ALGORITHM_B_NAME << std::endl;

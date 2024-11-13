@@ -9,15 +9,16 @@ PerformanceMetrics performance_metrics[ALGORITHM_COUNT];
 
 // Algorithm names
 const char *algorithm_names[ALGORITHM_COUNT] = {
-        "levlim",       // 0
-        "levlimopt",    // 1
-        "damlev",       // 2
-        "damlevmin",    // 3
+        // "damlev2D",       // 3
+        "lev",          // 0
+        "levlim",       // 1
+        "levlimopt",    // 2
+        "damlev",       // 3
         "damlevlim",    // 4
-        "damlevlimopt", // 5
-        "damlevp",      // 6
-        "damlev2D",     // 7
-        "noop"          // 8
+        "damlevmin",    // 5
+        "damlevminp",   // 6
+        "damlevp",      // 7
+        "noop",         // 8
 };
 
 // Function to initialize all performance metrics
@@ -29,13 +30,13 @@ void initialize_metrics() {
     std::cout << "PRINT_DEBUG defined." << "\n";
 #endif
     for (int i = 0; i < ALGORITHM_COUNT; i++) {
-        performance_metrics[i].cells_computed = 0;
-        performance_metrics[i].early_exit = 0;
+        performance_metrics[i].cells_computed         = 0;
+        performance_metrics[i].early_exit             = 0;
         performance_metrics[i].exit_length_difference = 0;
-        performance_metrics[i].algorithm_time = 0;
-        performance_metrics[i].total_time = 0;
-        performance_metrics[i].buffer_exceeded = 0;
-        performance_metrics[i].call_count = 0;
+        performance_metrics[i].algorithm_time         = 0;
+        performance_metrics[i].total_time             = 0;
+        performance_metrics[i].buffer_exceeded        = 0;
+        performance_metrics[i].call_count             = 0;
 
         performance_metrics[i].algorithm_name = algorithm_names[i]; // Point directly to the string literal
     }
@@ -70,9 +71,9 @@ void print_metrics() {
         if (performance_metrics[i].call_count > 0) { // Only print if the algorithm was called
             std::cout << std::right << std::setw(15) << performance_metrics[i].algorithm_name
                       << std::setw(12) << formatWithCommas(performance_metrics[i].call_count)
-                      << std::setw(14) << performance_metrics[i].buffer_exceeded
-                      << std::setw(17) << std::round(performance_metrics[i].total_time*1000.0)
-                      << std::setw(15) << std::round(performance_metrics[i].algorithm_time*1000.0)
+                      << std::setw(14) << formatWithCommas(performance_metrics[i].buffer_exceeded)
+                      << std::setw(17) << (int)std::round(performance_metrics[i].total_time*1000.0)
+                      << std::setw(15) << (int)std::round(performance_metrics[i].algorithm_time*1000.0)
                       << std::setw(14) << formatWithCommas(performance_metrics[i].exit_length_difference)
                       << std::setw(12) << formatWithCommas(performance_metrics[i].early_exit)
                       << std::setw(16) << formatWithCommas(performance_metrics[i].cells_computed)

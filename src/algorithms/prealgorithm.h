@@ -72,6 +72,7 @@ The pre-algorithm code is the same for all algorithm variants. It handles
         return m;
     }
 
+#ifndef SUPPRESS_MAX_CHECK
     // Determine the effective maximum edit distance. The distance is at most length of the longest string.
     const int effective_max = std::min(static_cast<int>(max), m);
     // Distance is at least the difference in the lengths of the strings.
@@ -82,6 +83,7 @@ The pre-algorithm code is the same for all algorithm variants. It handles
 #endif
         return max + 1; // Return max+1 by convention.
     }
+#endif
     // Re-initialize buffer before calculation
     std::iota(buffer, buffer + m + 1, 0);
 
@@ -94,6 +96,8 @@ The pre-algorithm code is the same for all algorithm variants. It handles
 #endif
 #ifdef PRINT_DEBUG
     std::cout << "subject: " << subject << '\n';
-    std::cout << "query: " << query << '\n';
-    std::cout << "effective max: " << effective_max << '\n';
+    std::cout << "query:   " << query << '\n';
+#ifndef SUPPRESS_MAX_CHECK
+    std::cout << "effective_max: " << effective_max << '\n';
+#endif
 #endif

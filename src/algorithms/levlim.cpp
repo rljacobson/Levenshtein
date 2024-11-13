@@ -1,5 +1,5 @@
 /*
-    Damerau–Levenshtein Edit Distance UDF for MySQL.
+    Levenshtein Edit Distance UDF for MySQL.
 
     17 January 2019
 
@@ -8,7 +8,7 @@
             __—R.__
 
     <hr>
-    `LEVLIM()` computes the Damarau Levenshtein edit distance between two strings when the
+    `LEVLIM()` computes the Levenshtein edit distance between two strings when the
     edit distance is less than a given number.
 
     Syntax:
@@ -65,7 +65,6 @@
 #include "common.h"
 
 #ifdef PRINT_DEBUG
-#include <iostream>
 void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2);
 #endif
 
@@ -142,10 +141,10 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     std::cout << "levlim" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[0];
+    PerformanceMetrics &metrics = performance_metrics[1];
 #endif
 
-    // Fetch preallocated buffer. The only difference between damlevmin and levlim is that damlevmin also persists
+    // Fetch preallocated buffer. The only difference between levmin and levlim is that levmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
     long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
@@ -174,6 +173,7 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     int current_cell = 0;
 
 #ifdef PRINT_DEBUG
+    // Print the matrix header
     std::cout << "    ";
     for(int k = 0; k < m; k++) std::cout << query[k] << " ";
     std::cout << "\n  ";
@@ -181,7 +181,7 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     std::cout << "\n";
 #endif
 
-    // Main loop to calculate the Damerau-Levenshtein distance
+    // Main loop to calculate the Levenshtein distance
     for (int i = 1; i <= n; ++i) {
         // Initialize first column
         buffer[0] = i;
@@ -234,8 +234,9 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
             minimum_within_row = std::min(minimum_within_row, current_cell);
             previous_cell      = buffer[j];    // Save cell value for next iteration
             buffer[j]          = current_cell; // Overwrite
+
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";// << std::flush;
+            std::cout << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
@@ -265,5 +266,5 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, static_cast<long long>(current_cell)); //buffer[m];
+    return std::min(max+1, static_cast<long long>(current_cell));
 }

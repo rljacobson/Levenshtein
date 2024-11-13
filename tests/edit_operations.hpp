@@ -8,6 +8,9 @@ Utility functions to apply random edits to a string in place.
 
 #include <string>
 #include <vector>
+#include <random>
+
+extern std::mt19937 gen;
 
 /**
 Applies transposition edits to a string.
@@ -71,12 +74,18 @@ If the list is empty, an empty string is returned.
 */
 std::string getUniformRandomString(const std::vector<std::string>& wordList);
 
+/// Generate a random string of the given length based on letter
+/// frequencies in written English.
+std::string generateRandomString(int length, int lower_bound=-1);
+
 /// Only return 0 for empty strings. Otherwise, return at least 1.
 int getRandomEditCount(const std::string& str, int maximum_edits);
 
 /// Generate a random letter based on letter frequencies in written English.
 char getRandomLetter();
 
-/// Generate a random string of the given length based on letter
-/// frequencies in written English.
-std::string generateRandomString(int length);
+/// Insert a string into another string at a random location
+std::string randomlyInsertString(const std::string& base, const std::string& to_insert);
+
+/// Applies random edits to a copy of the given string. If given a `lower_bound`, applies between `lower_bound` and `max_edits` edits.
+std::string apply_random_edits(std::string_view subject, int max_edits, int lower_bound=-1);

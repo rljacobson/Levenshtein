@@ -8,32 +8,27 @@
             __—R.__
 
     <hr>
-    `DAMLEVLIMOPT()` computes the Damarau Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+    `DAMLEVPMINP()` computes the normalized Damarau Levenshtein edit distance between two strings.
+    The normalization is the edit distance divided by the length of the longest string:
+        ("edit distance")/("length of longest string").
 
     Syntax:
 
-        DAMLEVLIMOPT(String1, String2, PosInt);
+        DAMLEVPMINP(String1, String2);
 
     `String1`:  A string constant or column.
     `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `DAMLEVLIMOPT()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE DAMLEVLIMOPT(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+    Returns: A floating point number equal to the normalized edit distance between `String1` and
+    `String2`.
 
     Example Usage:
 
-        SELECT Name, DAMLEVLIMOPT(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  DAMLEVLIMOPT(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
+        SELECT Name, DAMLEVPMINP(Name, "Vladimir Iosifovich Levenshtein") AS
+            EditDist FROM CUSTOMERS WHERE DAMLEVPMINP(Name, "Vladimir Iosifovich Levenshtein")  <= 0.2;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
+    where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
 
     <hr>
 
@@ -70,47 +65,68 @@
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVLIMOPT_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVLIMOPT() requires three arguments:\n"
-                                    "\t1. A string\n"
-                                    "\t2. A string\n"
-                                    "\t3. A maximum distance (0 <= int < ${DAMLEVLIMOPT_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIMOPT_ARG_NUM_ERROR_LEN = std::size(DAMLEVLIMOPT_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVLIMOPT_MEM_ERROR[] = "Failed to allocate memory for DAMLEVLIMOPT"
-                                             " function.";
-constexpr const auto DAMLEVLIMOPT_MEM_ERROR_LEN = std::size(DAMLEVLIMOPT_MEM_ERROR) + 1;
+        DAMLEVPMINP_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVPMINP() requires two arguments:\n"
+                                  "\t1. A string.\n"
+                                  "\t2. Another string.";
+constexpr const auto DAMLEVPMINP_ARG_NUM_ERROR_LEN = std::size(DAMLEVPMINP_ARG_NUM_ERROR) + 1;
+constexpr const char DAMLEVPMINP_MEM_ERROR[] = "Failed to allocate memory for DAMLEVPMINP"
+                                           " function.";
+constexpr const auto DAMLEVPMINP_MEM_ERROR_LEN = std::size(DAMLEVPMINP_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVLIMOPT_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVLIMOPT() requires three arguments:\n"
-                                     "\t1. A string\n"
-                                     "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${DAMLEVLIMOPT_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIMOPT_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIMOPT_ARG_TYPE_ERROR) + 1;
+        DAMLEVPMINP_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVPMINP() requires two arguments:\n"
+                                   "\t1. A string.\n"
+                                   "\t2. Another string.";
+constexpr const auto DAMLEVPMINP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVPMINP_ARG_TYPE_ERROR) + 1;
 
 // Use a "C" calling convention.
 extern "C" {
-    [[maybe_unused]] int damlevlimopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    [[maybe_unused]] long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    [[maybe_unused]] void damlevlimopt_deinit(UDF_INIT *initid);
+[[maybe_unused]] int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+[[maybe_unused]] double damlevminp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+[[maybe_unused]] void damlevminp_deinit(UDF_INIT *initid);
+}
+
+struct DamLevPMinPersistant {
+    double p;    // Only compute similarities that are at least p
+    int *buffer; // Takes ownership of this buffer
+
+    DamLevPMinPersistant(double similarity, int *buffer): p(similarity), buffer(buffer){}
+
+    ~DamLevPMinPersistant(){ delete this->buffer; }
+};
+
+/// Converts minimum allowed similarity to maximum allowed number of edits for a given string length.
+/// Assumes similarity is in the interval [0.0, 1.0].
+inline constexpr long long similarity_to_max_edits(double similarity, int length) {
+    return static_cast<int>((1.0 - similarity) * static_cast<double>(length));
+}
+/// The inverse of the above. Converts number of edits for a given string length to a similarity score.
+/// Guaranteed to return number in the interval [0.0, 1.0] for edits <= length.
+inline constexpr double edits_to_similarity(int edits, int length) {
+    return (1.0 - static_cast<double>(edits)/static_cast<double>(length));
 }
 
 [[maybe_unused]]
-int damlevlimopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, DAMLEVLIMOPT_ARG_NUM_ERROR, DAMLEVLIMOPT_ARG_NUM_ERROR_LEN);
+        strncpy(message, DAMLEVPMINP_ARG_NUM_ERROR, DAMLEVPMINP_ARG_NUM_ERROR_LEN);
         return 1;
     }
-    // The arguments needs to be of the right type.
-    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        strncpy(message, DAMLEVLIMOPT_ARG_TYPE_ERROR, DAMLEVLIMOPT_ARG_TYPE_ERROR_LEN);
+        // The arguments need to be of the right type.
+    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != REAL_RESULT) {
+        strncpy(message, DAMLEVPMINP_ARG_TYPE_ERROR, DAMLEVPMINP_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
-    // Attempt to preallocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
-    if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEVLIMOPT_MEM_ERROR, DAMLEVLIMOPT_MEM_ERROR_LEN);
+    // Initialize persistent data
+    int* buffer = new (std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
+    DamLevPMinPersistant *data = new (std::nothrow) DamLevPMinPersistant(0.0, buffer);
+    // If memory allocation failed
+    if (!buffer || !data) {
+        strncpy(message, DAMLEVPMINP_MEM_ERROR, DAMLEVPMINP_MEM_ERROR_LEN);
         return 1;
     }
+    initid->ptr = reinterpret_cast<char*>(data);
 
     // There are two error states possible within the function itself:
     //    1. Negative max distance provided
@@ -126,28 +142,31 @@ int damlevlimopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlevlimopt_deinit(UDF_INIT *initid) {
-    delete[] reinterpret_cast<int*>(initid->ptr);
+void damlevminp_deinit(UDF_INIT *initid) {
+    // As `DamLevPMinPersistant` owns its buffer, `~DamLevPMinPersistant` handles buffer deallocation.
+    delete reinterpret_cast<DamLevPMinPersistant*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
 #ifdef PRINT_DEBUG
-    std::cout << "damlevlimopt" << "\n";
+    std::cout << "damlevminp" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[5];
+    PerformanceMetrics &metrics = performance_metrics[6];
 #endif
 
-    // Fetch preallocated buffer. The only difference between damlevmin and damlevlimopt is that damlevmin also persists
-    // the max and updates it right before the final return statement.
-    int *buffer   = reinterpret_cast<int *>(initid->ptr);
-    long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
+    // Fetch persistent data
+    DamLevPMinPersistant *data = reinterpret_cast<DamLevPMinPersistant *>(initid->ptr);
 
-    // Validate max distance and update.
-    // This code is common to algorithms with limits.
-#include "validate_max.h"
+    // Retrieve the similarity and compute max.
+    double similarity = data->p;
+#include "validate_similarity.h"
+    // The algorithm works with number of edits, a positive integer. For similarity, the
+    // number of edits permitted depends on the length of the longest string.
+    long long max = similarity_to_max_edits(similarity, std::max(args->lengths[0], args->lengths[1]));
+    int *buffer = data->buffer;
 
     // The pre-algorithm code is the same for all algorithm variants. It handles
     //     - basic setup & initialization
@@ -164,6 +183,12 @@ long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *
 #endif
         return 0;
     }
+
+    // We also use the following as the similarity analog of `max+1`. This is somewhat
+    // arbitrary, but we need to be able to return a similarity smaller than the
+    // minimum required similarity.
+    double max_result = (1.0-static_cast<double>(max+1)/static_cast<double>(m));
+    max_result = std::max(0.0, max_result); // Must be positive.
 
     // We keep track of only two rows for this algorithm. See below for details.
     int *current  = buffer;
@@ -254,7 +279,7 @@ long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *
             current[j]             = current_cell;
 
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";// << std::flush;
+            std::cout << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
@@ -275,14 +300,17 @@ long long damlevlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *
 #ifdef PRINT_DEBUG
             std::cout << "Bailing early" << '\n';
 #endif
-            return max + 1;
+            return max_result;
         }
     }
 
-    // Return the final Damerau-Levenshtein distance
+    // Compute and return the final similarity score
+    double result = (1.0-static_cast<double>(current_cell)/static_cast<double>(m));
+    result = std::max(0.0, result);
+    data->p = std::max(similarity, result);
 #ifdef CAPTURE_METRICS
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return current_cell;
+    return std::max(result, max_result);
 }

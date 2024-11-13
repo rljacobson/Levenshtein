@@ -17,4 +17,13 @@ This code is common to algorithms with limits.
 #endif
         }
         max = std::min(user_max, max);
+    } else {
+        // This case should never happen.
+        set_error(error, "Maximum edit distance doesn't exist. This is a bug and should never happen.");
+#ifdef RETURN_ZERO_ON_BAD_MAX
+        return 0;
+#else
+        *is_null = 1;
+        return 1;
+#endif
     }

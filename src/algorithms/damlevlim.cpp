@@ -64,11 +64,6 @@
 */
 #include "common.h"
 
-#ifdef PRINT_DEBUG
-#include <iostream>
-void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2);
-#endif
-
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
 // version 8.0, MYSQL_ERRMSG_SIZE == 512. However, the example says to "try to
@@ -104,7 +99,7 @@ int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
         strncpy(message, DAMLEVLIM_ARG_NUM_ERROR, DAMLEVLIM_ARG_NUM_ERROR_LEN);
         return 1;
     }
-    // The arguments needs to be of the right type.
+    // The arguments need to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
         strncpy(message, DAMLEVLIM_ARG_TYPE_ERROR, DAMLEVLIM_ARG_TYPE_ERROR_LEN);
         return 1;
@@ -160,10 +155,9 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 #include "prealgorithm.h"
 
     // Check if buffer size required exceeds available buffer size. This algorithm needs
-    // a buffer of size (m+1)*(n+1). Because of trimming, this may be smaller than the
-    // product of the string lengths, but this grows quickly: strings of length 100
-    // already require ~10KB.
-    if( (m+1)*(n+1) > DAMLEV_BUFFER_SIZE ) {
+    // a buffer of size 2*(m+1). Because of trimming, m may be smaller than the length
+    // of the longest string.
+    if( 2*(m+1) > DAMLEV_BUFFER_SIZE ) {
 #ifdef CAPTURE_METRICS
         metrics.buffer_exceeded++;
         metrics.total_time += call_timer.elapsed();
@@ -171,35 +165,107 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         return 0;
     }
 
-    // Lambda function for 2D matrix indexing in the 1D buffer
-    auto idx = [m](int i, int j) { return i * (m + 1) + j; };
+    // We keep track of only two rows for this algorithm. See below for details.
+    int *current  = buffer;
+    int *previous = buffer + m + 1;
+    std::iota(previous, previous + m + 1, 0);
+
+    int minimum_within_row     = 0;
+    int previous_cell          = 0;
+    int previous_previous_cell = 0;
+    int current_cell           = 0;
+
+#ifdef PRINT_DEBUG
+    // Print the matrix header
+    std::cout << "    ";
+    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "\n  ";
+    for(int k = 0; k < m+1; k++) std::cout << k << " ";
+    std::cout << "\n";
+#endif
 
     // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
         // Initialize first column
-        buffer[idx(i, 0)] = i;
+        current[0] = i;
+        previous_cell = i-1; // = matrix(i-1, 0)
+
+        // We only need to look in the window between i-max <= j <= i+max, because beyond
+        // that window we would need (at least) another max inserts/deletions in the
+        // "path" to arrive at the (n,m) cell.
+        const int start_j = std::max(1, i - effective_max);
+        const int end_j   = std::min(m, i + effective_max);
+
+        // Assume anything outside the band contains more than max. The only cells outside the
+        // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
+        // pre-fill it with max + 1.
+        if (start_j > 1) current[start_j - 1] = max + 1;
+        if (end_j   < m) current[end_j + 1]   = max + 1;
+#ifdef PRINT_DEBUG
+        // Print column header
+        std::cout << subject[i - 1] << " " << i << " ";
+        for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
+        if (start_j > 1) std::cout << max + 1 << " ";
+#endif
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
-        int minimum_within_row = i;
+        minimum_within_row = i;
 
-        for (int j = 1; j <= m; ++j) {
-            int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
-            buffer[idx(i, j)] = std::min({buffer[idx(i - 1, j)] + 1,
-                                          buffer[idx(i, j - 1)] + 1,
-                                          buffer[idx(i - 1, j - 1)] + cost});
+        for (int j = start_j; j <= end_j; ++j) {
+            /*
+            At the start of the computation of matrix(i, j) we have:
+                current[p]  = {  matrix(i, p)     for p < j
+                              {  matrix(i-1, p)   for p >= j
+                previous[p] = {  matrix(i-1, p)   for p < j - 2
+                              {  matrix(i-2, p)   for p >= j - 2
+                previous_cell          = matrix(i-1, j-1)
+                previous_previous_cell = matrix(i-1, j-2)
+
+            To compute matrix(i, j), we need to use the following:
+                matrix(i  , j-1) = current[j-1]
+                matrix(i-2, j-2) = previous[j-2]
+                matrix(i-1, j-1) = previous_cell
+                matrix(i-1, j  ) = current[j]
+            */
+
+            int cost     = (subject[i - 1] == query[j - 1]) ? 0 : 1;
+            current_cell = std::min({current[j]    + 1,
+                                     current[j-1]  + 1,
+                                     previous_cell + cost});
 
             // Check for transpositions
             if (i > 1 && j > 1 && subject[i - 1] == query[j - 2] && subject[i - 2] == query[j - 1]) {
-                buffer[idx(i, j)] = std::min(buffer[idx(i, j)], buffer[idx(i - 2, j - 2)] + cost);
+                current_cell = std::min(current_cell, previous[j-2] + cost);
             }
 
-            minimum_within_row = std::min(minimum_within_row, buffer[idx(i, j)]);
+            /*
+            We compute current_cell = matrix(i, j) and then perform the update for the next iteration:
+                previous[j-2]          <-- previous_previous_cell := matrix(i-1, j-2)
+                previous_previous_cell <-- previous_cell          := matrix(i-1, j-1)
+                previous_cell          <-- current[j]             := matrix(i-1, j)
+                current[j]             <-- current_cell           := matrix(i, j)
+            */
 
+            minimum_within_row     = std::min(minimum_within_row, current_cell);
+            if(j>1){
+                previous[j-2]      = previous_previous_cell;
+            }
+            previous_previous_cell = previous_cell;
+            previous_cell          = current[j];
+            current[j]             = current_cell;
+
+#ifdef PRINT_DEBUG
+            std::cout << current_cell << " ";
+#endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
 #endif
         }
-
+#ifdef PRINT_DEBUG
+        if (end_j < m) std::cout << max + 1 << " ";
+        for(int k = end_j+2; k <= m; k++) std::cout << ". ";
+        std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
+#endif
         // Early exit if the minimum edit distance exceeds the effective maximum
         if (minimum_within_row > static_cast<int>(effective_max)) {
 #ifdef CAPTURE_METRICS
@@ -209,19 +275,15 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 #endif
 #ifdef PRINT_DEBUG
             std::cout << "Bailing early" << '\n';
-            printMatrix(buffer, n, m, subject, query);
 #endif
             return max + 1;
         }
     }
 
+    // Return the final Damerau-Levenshtein distance
 #ifdef CAPTURE_METRICS
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-#ifdef PRINT_DEBUG
-    printMatrix(buffer, n, m, subject, query);
-#endif
-    // Return the final Levenshtein distance
-    return buffer[idx(n, m)];
+    return std::min(max+1, static_cast<long long>(current_cell));
 }

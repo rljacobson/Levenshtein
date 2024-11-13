@@ -6,6 +6,7 @@ Utility functions to apply random edits to a string in place.
 
 
 #include <random>
+#include <iostream>
 
 #include "edit_operations.hpp"
 
@@ -27,6 +28,7 @@ const double cumulativeFrequencies[26] = {
 
 // A few random utility functions.
 
+/// Returns a random integer in the closed interval [min, max].
 int getRandomInt(int min, int max) {
     std::uniform_int_distribution<> dis(min, max);
     return dis(gen);
@@ -158,7 +160,14 @@ char getRandomLetter() {
 
 /// Generate a random string of the given length based on letter
 /// frequencies in written English.
-std::string generateRandomString(int length) {
+std::string generateRandomString(int length, int lower_bound) {
+    // If the user is giving a range of lengths instead of a single length...
+    if (lower_bound >= 0) {
+        // ...then randomly choose a length in that range.
+        std::uniform_int_distribution<int> distribution(lower_bound, length);
+        length = distribution(gen);
+    }
+
     std::string result;
     result.reserve(length);
 
@@ -166,4 +175,45 @@ std::string generateRandomString(int length) {
         result += getRandomLetter();
     }
     return result;
+}
+
+/// Insert a string into another string at a random location
+std::string randomlyInsertString(const std::string& base, const std::string& to_insert) {
+    if (base.empty()) return to_insert; // Handle empty base string
+
+    // Allow insertion at position 0 and base.size()
+    int insert_pos = getRandomInt(0, base.size());
+
+    std::string modified_base = base;
+    modified_base.insert(insert_pos, to_insert);
+
+    return modified_base;
+}
+
+/// Applies random edits to a copy of the given string. If given a `lower_bound`, applies between `lower_bound` and `max_edits` edits.
+std::string apply_random_edits(std::string_view subject, int max_edits, int lower_bound) {
+    if (lower_bound > -1 && max_edits > 0) {
+        max_edits = getRandomInt(lower_bound, max_edits);
+    }
+
+    if (subject.empty()) return std::string(subject);
+
+    std::string mangled(subject);
+
+    for(int i = 0; i < max_edits; i++){
+        switch (getRandomInt(0, 3)) {
+            case 0:
+                mangled = applyDeletion(mangled, 1);
+                break;
+            case 1:
+                mangled = applyInsertion(mangled, 1);
+                break;
+            case 2:
+                mangled = applySubstitution(mangled, 1);
+                break;
+            case 3:
+                mangled = applyTransposition(mangled, 1);
+        }
+    }
+    return mangled;
 }

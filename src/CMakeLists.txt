@@ -3,12 +3,12 @@
 # Define library sources
 set(DAMLEV_SOURCES
         algorithms/damlev.cpp
-        algorithms/damlev1D.cpp
         algorithms/damlev2D.cpp
-        algorithms/damlevp.cpp
-        algorithms/damlevmin.cpp
         algorithms/damlevlim.cpp
-        algorithms/damlevlimopt.cpp
+        algorithms/damlevmin.cpp
+        algorithms/damlevminp.cpp
+        algorithms/damlevp.cpp
+        algorithms/lev.cpp
         algorithms/levlim.cpp
         algorithms/levlimopt.cpp
         algorithms/noop.cpp
@@ -18,6 +18,7 @@ set(DAMLEV_SOURCES
 
 # Add the damlev library as SHARED
 add_library(damlev SHARED ${DAMLEV_SOURCES})
+target_compile_options(damlev PRIVATE -O3 -ffast-math)
 
 # Set compile definitions
 target_compile_definitions(damlev PRIVATE

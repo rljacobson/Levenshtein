@@ -1,3 +1,17 @@
+# Table of Algorithms
+
+| Name       | Description                               | Use case                        | delete? |
+|:-----------|:------------------------------------------|:--------------------------------|:-------:|
+| damlev     | 2 row                                     | Accurate distances in all cases |   no    |
+| damlev2D   | 2D, no trimming, no max                   | Benchmark and unit tests only   |   no    |
+| damlevlim  | 2 row, banded, max early exit             | Compute distances less than k   |   no    |
+| damlevmin  | 2 row, banded, max early exit, tracks min | Find closest to const string    |   no    |
+| damlevp    | 2 row, banded, max early exit             | Similarity Score at least p     |   no    |
+| damlevpmin | replace with variant of damlevmin         | Find closest similarity         | replace |
+| levlim     | 1 row, banded, max early exit             | Compute Edit Distance           |   no    |
+| levlimopt  | 1 row, aggressive banding                 | Benchmarks only                 |   no    |
+| noop       | does nothing                              | Benchmarks only                 |   no    |
+
 # To Do
 
  - Bring up bit-rotted algorithms
@@ -32,7 +46,9 @@
  * Why initialize `DAMLEV_MAX_EDIT_DISTANCE` to the buffer size?
  * How does `benchmark` differ from `unittests`? Answer: Benchmark more closely simulates our use case for correcting scientific names.
 
+
 # Some results
+
 
 ## Narrowing band in banded variant
 

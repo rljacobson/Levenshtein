@@ -24,8 +24,8 @@ endif()
 # Algorithm Selection Section
 # ===============================
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "levlim;levlimopt;damlev;damlevmin;damlevlim;damlevlimopt;damlevp;damlev2D;noop")
-set(ALGORITHM_ARGS "3;3;2;3;3;3;3;2;1")
+set(AVAILABLE_ALGORITHMS "lev;levlim;levlimopt;damlev;damlev2D;damlevlim;damlevmin;damlevminp;damlevp;noop")
+set(ALGORITHM_ARGS "2;3;3;2;2;3;3;3;3;3")
 
 # Define algorithm variables with default values
 set(ALGORITHM "damlev2D")
@@ -72,16 +72,16 @@ endfunction()
 add_executable(unittest
         ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlimopt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/lev.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlev.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(unittest PRIVATE
-        ALGORITHM_A=levlim
-        ALGORITHM_A_COUNT=3
-        ALGORITHM_B=levlimopt
-        ALGORITHM_B_COUNT=3
+        ALGORITHM_A=lev
+        ALGORITHM_A_COUNT=2
+        ALGORITHM_B=damlev
+        ALGORITHM_B_COUNT=2
         DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
         CAPTURE_METRICS
@@ -98,15 +98,15 @@ target_link_libraries(unittest PRIVATE
 
 add_executable(compareoneoff
         ${CMAKE_CURRENT_SOURCE_DIR}/compareoneoff.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlimopt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevmin.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(compareoneoff PRIVATE
-        ALGORITHM_A=levlim
+        ALGORITHM_A=damlevlim
         ALGORITHM_A_COUNT=3
-        ALGORITHM_B=levlimopt
+        ALGORITHM_B=damlevmin
         ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         CAPTURE_METRICS
@@ -116,13 +116,42 @@ target_include_directories(compareoneoff PRIVATE
         ${PROJECT_SOURCE_DIR}/src/algorithms
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
-#target_link_libraries(compareoneoff PRIVATE
-#        damlev
-#)
+
+add_executable(benchmark
+        ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlev.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlev2D.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevmin.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevminp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/lev.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlimopt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/noop.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
+)
+target_compile_definitions(benchmark PRIVATE
+#        ALGORITHM_A=damlevlim
+#        ALGORITHM_A_COUNT=3
+#        ALGORITHM_B=damlev1D
+#        ALGORITHM_B_COUNT=3
+        DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
+        WORDS_PATH="${WORDS_PATH}"
+        CAPTURE_METRICS
+#        PRINT_DEBUG
+)
+target_compile_options(benchmark PRIVATE -O3 -ffast-math)
+target_include_directories(benchmark PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/algorithms
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 # Define executables for one-off testing, unit testing, and benchmarking
 setup_executable(oneoff ${CMAKE_CURRENT_SOURCE_DIR}/testoneoff.cpp)
-setup_executable(benchmark ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp)
+#setup_executable(benchmark ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp)
 
 # Adjust specific compile definitions for each executable
 target_compile_definitions(benchmark PRIVATE
