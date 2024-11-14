@@ -78,12 +78,9 @@ constexpr const char
                                    "\t2. Another string.";
 constexpr const auto DAMLEVP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVP_ARG_TYPE_ERROR) + 1;
 
-// Use a "C" calling convention.
-extern "C" {
-[[maybe_unused]] int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-[[maybe_unused]] double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-[[maybe_unused]] void damlevp_deinit(UDF_INIT *initid);
-}
+
+UDF_SIGNATURES_TYPE(damlevp, double)
+
 
 [[maybe_unused]]
 int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {

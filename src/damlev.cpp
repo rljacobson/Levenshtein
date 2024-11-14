@@ -8,20 +8,20 @@
             __—R.__
 
     <hr>
-    `DAMLEVLIM()` computes the Damarau Levenshtein edit distance between two strings when the
+    `DAMLEV()` computes the Damarau Levenshtein edit distance between two strings when the
     edit distance is less than a given number.
 
     Syntax:
 
-        DAMLEVLIM(String1, String2, PosInt);
+        DAMLEV(String1, String2, PosInt);
 
     `String1`:  A string constant or column.
     `String2`:  A string constant or column to be compared to `String1`.
     `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its
+                `String2` is greater than `PosInt`, `DAMLEV()` will stop its
                 computation at `PosInt` and return `PosInt`. Make `PosInt` as
                 small as you can to improve speed and efficiency. For example,
-                if you put `WHERE DAMLEVLIM(...) < k` in a `WHERE`-clause, make
+                if you put `WHERE DAMLEV(...) < k` in a `WHERE`-clause, make
                 `PosInt` be `k`.
 
     Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
@@ -29,8 +29,8 @@
 
     Example Usage:
 
-        SELECT Name, DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
+        SELECT Name, DAMLEV(Name, "Vladimir Iosifovich Levenshtein", 6) AS
+            EditDist FROM CUSTOMERS WHERE  DAMLEV(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
     The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
     where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
@@ -70,45 +70,40 @@
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVLIM_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVLIM() requires three arguments:\n"
+        DAMLEV_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEV() requires two arguments:\n"
                                     "\t1. A string\n"
-                                    "\t2. A string\n"
-                                    "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_NUM_ERROR_LEN = std::size(DAMLEVLIM_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVLIM_MEM_ERROR[] = "Failed to allocate memory for DAMLEVLIM"
+                                    "\t2. A string";
+constexpr const auto DAMLEV_ARG_NUM_ERROR_LEN = std::size(DAMLEV_ARG_NUM_ERROR) + 1;
+constexpr const char DAMLEV_MEM_ERROR[] = "Failed to allocate memory for DAMLEV"
                                              " function.";
-constexpr const auto DAMLEVLIM_MEM_ERROR_LEN = std::size(DAMLEVLIM_MEM_ERROR) + 1;
+constexpr const auto DAMLEV_MEM_ERROR_LEN = std::size(DAMLEV_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVLIM_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVLIM() requires three arguments:\n"
+        DAMLEV_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEV() requires two arguments:\n"
                                      "\t1. A string\n"
-                                     "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIM_ARG_TYPE_ERROR) + 1;
+                                     "\t2. A string";
+constexpr const auto DAMLEV_ARG_TYPE_ERROR_LEN = std::size(DAMLEV_ARG_TYPE_ERROR) + 1;
 
-// Use a "C" calling convention.
-extern "C" {
-    [[maybe_unused]] int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    [[maybe_unused]] long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    [[maybe_unused]] void damlevlim_deinit(UDF_INIT *initid);
-}
+
+UDF_SIGNATURES(damlev)
+
 
 [[maybe_unused]]
-int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
-    // We require 3 arguments:
-    if (args->arg_count != 3) {
-        strncpy(message, DAMLEVLIM_ARG_NUM_ERROR, DAMLEVLIM_ARG_NUM_ERROR_LEN);
+int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+    // We require 2 arguments:
+    if (args->arg_count != 2) {
+        strncpy(message, DAMLEV_ARG_NUM_ERROR, DAMLEV_ARG_NUM_ERROR_LEN);
         return 1;
     }
     // The arguments need to be of the right type.
-    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        strncpy(message, DAMLEVLIM_ARG_TYPE_ERROR, DAMLEVLIM_ARG_TYPE_ERROR_LEN);
+    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
+        strncpy(message, DAMLEV_ARG_TYPE_ERROR, DAMLEV_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to preallocate a buffer.
     initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEVLIM_MEM_ERROR, DAMLEVLIM_MEM_ERROR_LEN);
+        strncpy(message, DAMLEV_MEM_ERROR, DAMLEV_MEM_ERROR_LEN);
         return 1;
     }
 
@@ -126,33 +121,29 @@ int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlevlim_deinit(UDF_INIT *initid) {
+void damlev_deinit(UDF_INIT *initid) {
     delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
 #ifdef PRINT_DEBUG
-    std::cout << "damlevlim" << "\n";
+    std::cout << "damlev" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[4];
+    PerformanceMetrics &metrics = performance_metrics[3];
 #endif
 
-    // Fetch preallocated buffer. The only difference between damlevmin and damlevlim is that damlevmin also persists
-    // the max and updates it right before the final return statement.
+    // Fetch preallocated buffer.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
-    long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
-
-    // Validate max distance and update.
-    // This code is common to algorithms with limits.
-#include "validate_max.h"
 
     // The pre-algorithm code is the same for all algorithm variants. It handles
     //     - basic setup & initialization
     //     - trimming of common prefix/suffix
+#define SUPPRESS_MAX_CHECK
 #include "prealgorithm.h"
+#undef SUPPRESS_MAX_CHECK
 
     // Check if buffer size required exceeds available buffer size. This algorithm needs
     // a buffer of size 2*(m+1). Because of trimming, m may be smaller than the length
@@ -170,7 +161,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     int *previous = buffer + m + 1;
     std::iota(previous, previous + m + 1, 0);
 
-    int minimum_within_row     = 0;
+    // int minimum_within_row     = 0;
     int previous_cell          = 0;
     int previous_previous_cell = 0;
     int current_cell           = 0;
@@ -190,28 +181,17 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         current[0] = i;
         previous_cell = i-1; // = matrix(i-1, 0)
 
-        // We only need to look in the window between i-max <= j <= i+max, because beyond
-        // that window we would need (at least) another max inserts/deletions in the
-        // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - effective_max);
-        const int end_j   = std::min(m, i + effective_max);
-
-        // Assume anything outside the band contains more than max. The only cells outside the
-        // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
-        // pre-fill it with max + 1.
-        if (start_j > 1) current[start_j - 1] = max + 1;
-        if (end_j   < m) current[end_j + 1]   = max + 1;
 #ifdef PRINT_DEBUG
         // Print column header
         std::cout << subject[i - 1] << " " << i << " ";
-        for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
-        if (start_j > 1) std::cout << max + 1 << " ";
+        // for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
+        // if (start_j > 1) std::cout << max + 1 << " ";
 #endif
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
-        minimum_within_row = i;
+        // minimum_within_row = i;
 
-        for (int j = start_j; j <= end_j; ++j) {
+        for (int j = 1; j <= m; ++j) {
             /*
             At the start of the computation of matrix(i, j) we have:
                 current[p]  = {  matrix(i, p)     for p < j
@@ -246,7 +226,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
                 current[j]             <-- current_cell           := matrix(i, j)
             */
 
-            minimum_within_row     = std::min(minimum_within_row, current_cell);
+            // minimum_within_row     = std::min(minimum_within_row, current_cell);
             if(j>1){
                 previous[j-2]      = previous_previous_cell;
             }
@@ -261,23 +241,13 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
             metrics.cells_computed++;
 #endif
         }
+
 #ifdef PRINT_DEBUG
-        if (end_j < m) std::cout << max + 1 << " ";
-        for(int k = end_j+2; k <= m; k++) std::cout << ". ";
-        std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
+        // if (end_j < m) std::cout << max + 1 << " ";
+        // for(int k = end_j+2; k <= m; k++) std::cout << ". ";
+        // std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
+        std::cout << '\n';
 #endif
-        // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(effective_max)) {
-#ifdef CAPTURE_METRICS
-            metrics.early_exit++;
-            metrics.algorithm_time += algorithm_timer.elapsed();
-            metrics.total_time += call_timer.elapsed();
-#endif
-#ifdef PRINT_DEBUG
-            std::cout << "Bailing early" << '\n';
-#endif
-            return max + 1;
-        }
     }
 
     // Return the final Damerau-Levenshtein distance
@@ -285,5 +255,5 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, static_cast<long long>(current_cell));
+    return static_cast<long long>(current_cell);
 }

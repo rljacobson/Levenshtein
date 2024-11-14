@@ -89,16 +89,15 @@ int calculateDamLevDistance(const std::string& S1_input, const std::string& S2_i
         }
 
 
-        // Print matrix after processing each row
-        printMatrix(dp, S1, S2);
-
         // Early exit if the minimum edit distance in this row exceeds effective_max
         if (column_min > effective_max) {
             std::cout << "Early exit: minimum distance " << column_min << " exceeds effective_max " << effective_max << std::endl;
+            printMatrix(dp, S1, S2);
             return effective_max + 1; // Return effective_max + 1 on early exit
         }
     }
 
+    printMatrix(dp, S1, S2);
     return dp[n][m];
 }
 

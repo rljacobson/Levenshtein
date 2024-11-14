@@ -8,6 +8,7 @@
 PerformanceMetrics performance_metrics[ALGORITHM_COUNT];
 
 // Algorithm names
+// ToDo: Surely there is a better way to do this.
 const char *algorithm_names[ALGORITHM_COUNT] = {
         // "damlev2D",       // 3
         "lev",          // 0
@@ -19,6 +20,7 @@ const char *algorithm_names[ALGORITHM_COUNT] = {
         "damlevminp",   // 6
         "damlevp",      // 7
         "noop",         // 8
+        "levmin",       // 9
 };
 
 // Function to initialize all performance metrics

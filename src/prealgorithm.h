@@ -18,6 +18,7 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     // Handle null strings
     if (!args->args[0] || !args->args[1]) {
 #ifdef CAPTURE_METRICS
+        metrics.total_time += call_timer.elapsed();
         metrics.exit_length_difference++;
 #endif
         return static_cast<long long>(std::max(args->lengths[0], args->lengths[1]));
@@ -34,11 +35,13 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     // If one of the strings is a prefix of the other, return the length difference.
     if (subject.length() == start_offset) {
 #ifdef CAPTURE_METRICS
+        metrics.total_time += call_timer.elapsed();
         metrics.exit_length_difference++;
 #endif
         return int(query.length()) - int(start_offset);
     } else if (query.length() == start_offset) {
 #ifdef CAPTURE_METRICS
+        metrics.total_time += call_timer.elapsed();
         metrics.exit_length_difference++;
 #endif
         return int(subject.length()) - int(start_offset);

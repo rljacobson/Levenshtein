@@ -35,24 +35,7 @@
 // We do not have `#pragma once` because we need to be able to include this file
 // multiple times.
 
-#include "common.h"
-
-/*
- * Concatenate preprocessor tokens A and B without expanding macro definitions
- * (however, if invoked from a macro, macro arguments are expanded).
- */
-#ifndef PPCAT_NX
-#define PPCAT_NX(A, B) A ## B
-#endif
-/*
- * Concatenate preprocessor tokens A and B after macro-expanding them.
- */
-#ifndef PPCAT
-#define PPCAT(A, B) PPCAT_NX(A, B)
-#endif
-
-#define STRINGIFY(x) #x
-#define AS_STRING(x) STRINGIFY(x)
+#include "../src/common.h"
 
 // Default definitions in case CMake does not define them.
 #ifndef LEV_FUNCTION
@@ -64,24 +47,27 @@
 
 #ifndef LEV_ALGORITHM_COUNT
 // Keep in synch with "default" LEV_FUNCTION
-#define LEV_ALGORITHM_COUNT 2
+#define LEV_ALGORITHM_COUNT 3
 #endif
 
-#define LEV_ARGS PPCAT(LEV_FUNCTION,args)
-#define LEV_INITID PPCAT(LEV_FUNCTION,initid)
-#define LEV_MESSAGE PPCAT(LEV_FUNCTION,message)
-#define LEV_CALL PPCAT(LEV_FUNCTION,_call)
-#define LEV_INIT PPCAT(LEV_FUNCTION,_init)
-#define LEV_DEINIT PPCAT(LEV_FUNCTION,_deinit)
-#define LEV_SETUP PPCAT(LEV_FUNCTION,_setup)
-#define LEV_TEARDOWN PPCAT(LEV_FUNCTION,_teardown)
+// The following avoids name collisions
+#define LEV_ARGS MACRO_CONCAT(LEV_FUNCTION,args)
+#define LEV_INITID MACRO_CONCAT(LEV_FUNCTION,initid)
+#define LEV_MESSAGE MACRO_CONCAT(LEV_FUNCTION,message)
+#define LEV_CALL MACRO_CONCAT(LEV_FUNCTION,_call)
+#define LEV_INIT MACRO_CONCAT(LEV_FUNCTION,_init)
+#define LEV_DEINIT MACRO_CONCAT(LEV_FUNCTION,_deinit)
+#define LEV_SETUP MACRO_CONCAT(LEV_FUNCTION,_setup)
+#define LEV_TEARDOWN MACRO_CONCAT(LEV_FUNCTION,_teardown)
 
 // Use a "C" calling convention.
-extern "C" {
-int LEV_INIT(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long LEV_FUNCTION(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void LEV_DEINIT(UDF_INIT *initid);
-}
+// extern "C" {
+// int LEV_INIT(UDF_INIT *initid, UDF_ARGS *args, char *message);
+// long long LEV_FUNCTION(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+// void LEV_DEINIT(UDF_INIT *initid);
+// }
+
+UDF_SIGNATURES(LEV_FUNCTION)
 
 UDF_ARGS *LEV_ARGS;
 UDF_INIT *LEV_INITID;
@@ -93,13 +79,15 @@ void LEV_SETUP(){
     LEV_MESSAGE = new char[512];
 
     // Initialize UDF_ARGS
-    LEV_ARGS->arg_type    = new Item_result[3];
-    LEV_ARGS->args        = new char*[3];
-    LEV_ARGS->lengths     = new unsigned long[3];
+    LEV_ARGS->arg_type    = new Item_result[LEV_ALGORITHM_COUNT];
+    LEV_ARGS->args        = new char*[LEV_ALGORITHM_COUNT];
+    LEV_ARGS->lengths     = new unsigned long[2]; // There are only ever two strings
     LEV_ARGS->arg_count   = LEV_ALGORITHM_COUNT;
     LEV_ARGS->arg_type[0] = STRING_RESULT;
     LEV_ARGS->arg_type[1] = STRING_RESULT;
+#if LEV_ALGORITHM_COUNT==3
     LEV_ARGS->arg_type[2] = INT_RESULT;
+#endif
     // LEV_ARGS->arg_type[2] = DECIMAL_RESULT;
     // Initialize UDF_INIT
     int result = LEV_INIT(LEV_INITID, LEV_ARGS, LEV_MESSAGE);
@@ -122,17 +110,23 @@ void LEV_TEARDOWN(){
     delete[] LEV_MESSAGE;
 }
 
-//long long LEV_CALL(char * subject, char * query){
-
+// The following is for two argument algorithms
+#if LEV_ALGORITHM_COUNT==2
+long long LEV_CALL(char *subject, size_t subject_len, char *query, size_t query_len){
+#else
 long long LEV_CALL(char *subject, size_t subject_len, char *query, size_t query_len, long long max){
+#endif
     long long result;
 
     LEV_ARGS->args[0] = subject;
     LEV_ARGS->lengths[0] = subject_len;
     LEV_ARGS->args[1] = query;
     LEV_ARGS->lengths[1] = query_len;
+
+#if LEV_ALGORITHM_COUNT==3
     LEV_ARGS->args[2] = (char *)(&max);
     LEV_ARGS->lengths[2] = sizeof(max);
+#endif
 
     result = LEV_FUNCTION(LEV_INITID, LEV_ARGS, nullptr, LEV_MESSAGE);
 

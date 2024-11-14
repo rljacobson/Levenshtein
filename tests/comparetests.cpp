@@ -27,9 +27,6 @@ There are two ways to use this file.
 #include "edit_operations.hpp"
 #include "metrics.hpp"
 
-#ifndef WORD_COUNT
-#define WORD_COUNT 10000ul
-#endif
 #ifndef WORDS_PATH
 #define WORDS_PATH "/usr/share/dict/words"
 #endif
@@ -150,7 +147,7 @@ protected:
     If both file openings fail, the test will fail with an error message
     indicating that the fallback file could not be opened. Upon successful
     file access, the words are read into the `wordList` vector, limited by
-    the maximum size defined by WORD_COUNT. This word list is then used
+    the maximum size defined by word_count. This word list is then used
     in the tests for string manipulation and comparison operations related
     to the Levenshtein distance algorithm.
     */
@@ -159,7 +156,7 @@ protected:
 
         std::string primaryFilePath = "tests/taxanames";
         std::string fallbackFilePath = WORDS_PATH;
-        unsigned maximum_size = WORD_COUNT;
+        unsigned maximum_size = 200000;
 
         boost::interprocess::file_mapping text_file;
         boost::interprocess::mapped_region text_file_buffer;

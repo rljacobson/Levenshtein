@@ -93,12 +93,9 @@ constexpr const char
                                   "\t2. Another string.";
 constexpr const auto EDIT_DISTANCE_ARG_TYPE_ERROR_LEN = std::size(EDIT_DISTANCE_ARG_TYPE_ERROR) + 1;
 
-// Use a "C" calling convention.
-extern "C" {
-    [[maybe_unused]] int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    [[maybe_unused]] long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    [[maybe_unused]] void damlev2D_deinit(UDF_INIT *initid);
-}
+
+UDF_SIGNATURES(damlev2D)
+
 
 [[maybe_unused]]
 int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {

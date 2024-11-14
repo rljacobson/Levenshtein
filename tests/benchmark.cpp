@@ -8,105 +8,76 @@
 #include <sstream>
 #include <boost/range/iterator_range_core.hpp>
 #include <iomanip> // For output formatting
-#include <random>
 #include <chrono> // For precise timing
 #include <cctype> // For character classification
-#include <cassert> // For assertions
 #include <cstring> // For memset
 #include <map>     // For storing sample results
 
 #include "testharness.hpp"  // Include the test harness for LEV_FUNCTION macros
 #include "benchtime.hpp"
-#include "algorithms.h"
+// #include "algorithms.h"
 #include "edit_operations.hpp"
 
 int benchmark_on_list(std::vector<std::string_view> &subject_words, std::vector<std::string_view> &mangled_words);
 std::vector<std::string> mangle_word_list(std::vector<std::string> &words, int max_edits);
 
+// Levenshtein
+UDF_SIGNATURES(lev)
+UDF_SIGNATURES(levlim)
+UDF_SIGNATURES(levlimopt)
+UDF_SIGNATURES(levmin)
+
+// Damerau–Levenshtein
+UDF_SIGNATURES(damlev2D)
+UDF_SIGNATURES(damlev)
+UDF_SIGNATURES(damlevlim)
+UDF_SIGNATURES(damlevmin)
+
+// Benchmarking only
+UDF_SIGNATURES(noop)
+
+// The next two are special, as they return a `double` instead of a `long long`.
+UDF_SIGNATURES_TYPE(damlevp, double)
+UDF_SIGNATURES_TYPE(damlevminp, double)
+
 // Structure to hold function pointers and their metadata
 struct UDF_Function {
-    std::string name;  // Name of the function (e.g., "damlev")
-    int (*init)(UDF_INIT*, UDF_ARGS*, char*);      // Pointer to init function
-    long long (*func)(UDF_INIT*, UDF_ARGS*, char*, char*); // Pointer to main function
-    void (*deinit)(UDF_INIT*);                     // Pointer to deinit function
-    int arg_count;         // Number of arguments
-    bool has_max_distance; // Flag indicating if max_distance is required
+    int (*init)(UDF_INIT*, UDF_ARGS*, char*);                // Pointer to init function
+    long long (*func)(UDF_INIT*, UDF_ARGS*, char*  , char*); // Pointer to main function
+    void (*deinit)(UDF_INIT*);  // Pointer to deinit function
+    std::string name;           // Name of the function (e.g., "damlev")
+    int arg_count;              // Number of arguments
+    bool has_max_distance;      // Flag indicating if max_distance is required
 };
+
+#define INITIALIZE_ALGORITHM_ARGS(algorithm, arg_count_x) \
+{                                                   \
+    UDF_Function udf;                               \
+    udf.name = AS_STRING(algorithm);                \
+    udf.arg_count =  arg_count_x;                   \
+    udf.has_max_distance = (udf.arg_count == 3);    \
+    udf.init = &MACRO_CONCAT(algorithm, _init);     \
+    udf.func = &algorithm;                          \
+    udf.deinit = &MACRO_CONCAT(algorithm, _deinit); \
+    udf_functions.push_back(udf);                   \
+}
+
 
 // Function to initialize the list of UDF_Functions
 std::vector<UDF_Function> get_udf_functions() {
-    std::vector<std::string> algorithms = { "lev", "levlim", "levlimopt", "damlev", "damlevlim", "damlevmin", "damlevminp", "damlevp", "noop" };
-    std::vector<int> algorithm_args = { 2, 3, 3, 2, 3, 3, 3, 3, 3 };
-
     // List to hold UDF_Function structs
     std::vector<UDF_Function> udf_functions;
 
-    for(size_t i = 0; i < algorithms.size(); ++i) {
-        UDF_Function udf;
-        udf.name = algorithms[i];
-        udf.arg_count = algorithm_args[i];
-        udf.has_max_distance = (udf.arg_count == 3); // Assuming arg_count==3 means max_distance is required
-
-        // Assign function pointers based on the algorithm name
-        if (udf.name == "damlev") {
-            udf.init = &damlev_init;
-            udf.func = &damlev;
-            udf.deinit = &damlev_deinit;
-        }
-        else if(udf.name == "damlev2D") {
-            udf.init = &damlev2D_init;
-            udf.func = &damlev2D;
-            udf.deinit = &damlev2D_deinit;
-        }
-        else if(udf.name == "damlevlim") {
-            udf.init = &damlevlim_init;
-            udf.func = &damlevlim;
-            udf.deinit = &damlevlim_deinit;
-        }
-        else if(udf.name == "damlevmin") {
-            udf.init = &damlevmin_init;
-            udf.func = &damlevmin;
-            udf.deinit = &damlevmin_deinit;
-        }
-        /* These require an argument of type `double` instead of `long long`.
-        else if(udf.name == "damlevminp") {
-            udf.init = &damlevminp_init;
-            udf.func = &damlevminp;
-            udf.deinit = &damlevminp_deinit;
-        }
-        else if(udf.name == "damlevp") {
-            udf.init = &damlevp_init;
-            udf.func = &damlevp;
-            udf.deinit = &damlevp_deinit;
-        }
-        */
-        else if(udf.name == "lev") {
-            udf.init = &lev_init;
-            udf.func = &lev;
-            udf.deinit = &lev_deinit;
-        }
-        else if(udf.name == "levlim") {
-            udf.init = &levlim_init;
-            udf.func = &levlim;
-            udf.deinit = &levlim_deinit;
-        }
-        else if(udf.name == "levlimopt") {
-            udf.init = &levlimopt_init;
-            udf.func = &levlimopt;
-            udf.deinit = &levlimopt_deinit;
-        }
-        else if(udf.name == "noop") {
-            udf.init = &noop_init;
-            udf.func = &noop;
-            udf.deinit = &noop_deinit;
-        }
-        else {
-            std::cerr << "Unknown algorithm: " << udf.name << std::endl;
-            continue; // Skip unknown algorithms
-        }
-
-        udf_functions.push_back(udf);
-    }
+    INITIALIZE_ALGORITHM_ARGS(lev, 2)
+    INITIALIZE_ALGORITHM_ARGS(levlim, 3)
+    INITIALIZE_ALGORITHM_ARGS(levmin, 3)
+    INITIALIZE_ALGORITHM_ARGS(levlimopt, 3)
+    INITIALIZE_ALGORITHM_ARGS(damlev, 2)
+    INITIALIZE_ALGORITHM_ARGS(damlevlim, 3)
+    INITIALIZE_ALGORITHM_ARGS(damlevmin, 3)
+    // INITIALIZE_ALGORITHM_ARGS(damlevminp, 3)
+    // INITIALIZE_ALGORITHM_ARGS(damlevp, 3)
+    INITIALIZE_ALGORITHM_ARGS(noop, 3)
 
     return udf_functions;
 }
@@ -130,8 +101,6 @@ std::string remove_internal_control_chars(const std::string_view s) {
 /// Reads `max_total_words` from the wordlist file, randomly selects `max_subject_words` of that total, shuffles, and
 /// returns a vector of strings if successful. Returns empty vector on error.
 std::vector<std::string> generate_word_list_from_file(int max_subject_words, int max_total_words) {
-    initialize_metrics();
-
     // Define file paths and configurations
     std::string primaryFilePath = "tests/taxanames";  // Primary file path
     std::string fallbackFilePath = WORDS_PATH;//"words.txt";        // Default fallback file path
@@ -164,7 +133,6 @@ std::vector<std::string> generate_word_list_from_file(int max_subject_words, int
     words.reserve(max_total_words); // Reserve space to avoid frequent reallocations
 
     // Load words
-    size_t word_count = 0;
     std::istringstream iss(
             std::string(static_cast<const char *>(text_file_buffer.get_address()), text_file_buffer.get_size()));
     std::string line;
@@ -181,20 +149,19 @@ std::vector<std::string> generate_word_list_from_file(int max_subject_words, int
 
     std::cout << "Loaded " << words.size() << " words from the file." << std::endl;
 
-
-    /*
-
-    // Select a subset of words to use as subject words
-    std::vector<std::string> subject_words;
-    if (words.size() <= max_subject_words) {
-        subject_words = words;
-    } else {
-        // Randomly sample max_subject_words from words
+    // Randomly sample max_subject_words from words to use as subject words
+    if (words.size() > max_subject_words) {
+        std::vector<std::string> subject_words;
         subject_words.reserve(max_subject_words);
-        std::sample(words.begin(), words.end(), std::back_inserter(subject_words),
-                    max_subject_words, gen);
+        std::sample(
+            words.begin(),
+            words.end(),
+            std::back_inserter(subject_words),
+            max_subject_words,
+            gen
+        );
+        return subject_words;
     }
-    */
 
     return words;
 }
@@ -413,30 +380,32 @@ int benchmark_on_list(std::vector<std::string> &subject_words, std::vector<std::
         }
     }
 
-    std::cout << "\n========================================" << std::endl;
-    std::cout << "Benchmark Summary:" << std::endl;
-    std::cout << "----------------------------------------" << std::endl;
+    if (false){
+        std::cout << "\n========================================" << std::endl;
+        std::cout << "Benchmark Summary:" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
 
-    // Define column headers with fixed widths
-    std::cout << std::left << std::setw(10) << "Function"
-              << std::right << std::setw(10) << "Time (s)"
-              << std::right << std::setw(15) << "Function Calls" << std::endl;
+        // Define column headers with fixed widths
+        std::cout << std::left << std::setw(10) << "Function"
+                  << std::right << std::setw(10) << "Time (s)"
+                  << std::right << std::setw(15) << "Function Calls" << std::endl;
 
-    // Print a separator line
-    std::cout << "----------------------------------------" << std::endl;
+        // Print a separator line
+        std::cout << "----------------------------------------" << std::endl;
 
-    // Set formatting for floating-point numbers
-    std::cout << std::fixed << std::setprecision(6);
+        // Set formatting for floating-point numbers
+        std::cout << std::fixed << std::setprecision(6);
 
-    // Iterate over the results and print each row with proper alignment
-    for(const auto& br : results) {
-        std::cout << std::left << std::setw(10) << br.name
-                  << std::right << std::setw(10) << br.time_elapsed
-                  << std::right << std::setw(15) << br.function_calls << std::endl;
+        // Iterate over the results and print each row with proper alignment
+        for (const auto &br: results) {
+            std::cout << std::left << std::setw(10) << br.name
+                      << std::right << std::setw(10) << br.time_elapsed
+                      << std::right << std::setw(15) << br.function_calls << std::endl;
+        }
+
+        // Print a closing line
+        std::cout << "========================================" << std::endl;
     }
-
-    // Print a closing line
-    std::cout << "========================================" << std::endl;
 
     print_metrics();
 
@@ -444,30 +413,31 @@ int benchmark_on_list(std::vector<std::string> &subject_words, std::vector<std::
 }
 
 
-
-
 int main(int argc, char *argv[]) {
     initialize_metrics();
 
-    int max_subject_words = 100;    // Number of subject words to test
-    int max_total_words   = 2000; // Total number of words to load
-    long long max_distance     = 5;      // The max given to the algorithms (NOT max number of edits)
-    int max_edits              = 5;      // The maximum number of edits used when mangling the strings (NOT algorithm limit)
-    int max_edits_lower_bound = -1; // -1 is disabled = do exactly max_edits
+    int max_subject_words     = 100;  // Number of subject words to test
+    int max_total_words       = 2000; // Total number of words to load from file and sample from.
+    long long max_distance    = 5;    // The max given to the algorithms (NOT max number of edits)
+    int max_edits             = 5;    // The maximum number of edits used when mangling the strings (NOT algorithm limit)
+    int max_edits_lower_bound = -1;   // -1 is disabled = do exactly max_edits
+
     // For randomly generated strings
-    int word_length = 40;
+    int word_length             = 40;
     int word_length_lower_bound = -1; // -1 is disabled = all strings have length `word_length`
 
-    // std::vector<std::string> subject_words(generate_word_list_from_file(max_subject_words, max_total_words));
-    std::vector<std::string> subject_words = generate_list_of_random_words(max_total_words, word_length, word_length_lower_bound);
-    std::vector<std::string> mangled_words = mangle_word_list(subject_words, max_edits, max_edits_lower_bound);
-
+    std::vector<std::string> subject_words =
+            generate_word_list_from_file(max_subject_words, max_total_words);
+    // std::vector<std::string> subject_words =
+    //         generate_list_of_random_words(max_total_words, word_length, word_length_lower_bound);
+    std::vector<std::string> mangled_words =
+            mangle_word_list(subject_words, max_edits, max_edits_lower_bound);
 
     std::cout << std::right << std::setw(20) << "max_subject_words: " << max_subject_words << '\n';
-    std::cout << std::right << std::setw(20) << "max_total_words: " << max_total_words << '\n';
-    std::cout << std::right << std::setw(20) << "max_distance: " << max_subject_words << '\n';
-    std::cout << std::right << std::setw(20) << "max_edits: " << max_subject_words << std::endl;
-    std::cout << std::right << std::setw(20) << "word_length: " << word_length << std::endl;
+    std::cout << std::right << std::setw(20) << "max_total_words: "   << max_total_words   << '\n';
+    std::cout << std::right << std::setw(20) << "max_distance: "      << max_subject_words << '\n';
+    std::cout << std::right << std::setw(20) << "max_edits: "         << max_subject_words << std::endl;
+    std::cout << std::right << std::setw(20) << "word_length: "       << word_length       << std::endl;
 
     return benchmark_on_list(subject_words, mangled_words, max_distance);
 }

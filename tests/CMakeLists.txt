@@ -20,12 +20,14 @@ if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
-# ===============================
-# Algorithm Selection Section
-# ===============================
+
 # Define available algorithms and their argument counts
-set(AVAILABLE_ALGORITHMS "lev;levlim;levlimopt;damlev;damlev2D;damlevlim;damlevmin;damlevminp;damlevp;noop")
-set(ALGORITHM_ARGS "2;3;3;2;2;3;3;3;3;3")
+#set(AVAILABLE_ALGORITHMS
+#        "lev;levlim;levmin;levlimopt;damlev;damlev2D;damlevlim;damlevmin;damlevminp;damlevp;noop"
+#)
+#set(ALGORITHM_ARGS
+#        "2;3;3;3;2;2;3;3;3;3;3"
+#)
 
 # Define algorithm variables with default values
 set(ALGORITHM "damlev2D")
@@ -34,12 +36,12 @@ set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.
 set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
 
 # Validate selected algorithm and extract its argument count
-list(FIND AVAILABLE_ALGORITHMS ${ALGORITHM} ALGORITHM_INDEX)
-if(ALGORITHM_INDEX EQUAL -1)
-    message(FATAL_ERROR "Invalid ALGORITHM specified: ${ALGORITHM}. Available options: ${AVAILABLE_ALGORITHMS}")
-endif()
-list(GET AVAILABLE_ALGORITHMS ${ALGORITHM_INDEX} TEST_ALGORITHM)
-list(GET ALGORITHM_ARGS ${ALGORITHM_INDEX} ARG_NUMBER)
+#list(FIND AVAILABLE_ALGORITHMS ${ALGORITHM} ALGORITHM_INDEX)
+#if(ALGORITHM_INDEX EQUAL -1)
+#    message(FATAL_ERROR "Invalid ALGORITHM specified: ${ALGORITHM}. Available options: ${AVAILABLE_ALGORITHMS}")
+#endif()
+#list(GET AVAILABLE_ALGORITHMS ${ALGORITHM_INDEX} TEST_ALGORITHM)
+#list(GET ALGORITHM_ARGS ${ALGORITHM_INDEX} ARG_NUMBER)
 
 # ===============================
 # Functions for Common Operations
@@ -72,9 +74,9 @@ endfunction()
 add_executable(unittest
         ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/lev.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlev.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
+        ../src/lev.cpp
+        ../src/damlev.cpp
+        printmatrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(unittest PRIVATE
@@ -87,20 +89,19 @@ target_compile_definitions(unittest PRIVATE
         CAPTURE_METRICS
 )
 target_include_directories(unittest PRIVATE
-        ${PROJECT_SOURCE_DIR}/src/algorithms
+#        ${PROJECT_SOURCE_DIR}/src/algorithms
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(unittest PRIVATE
-#        damlev
         gtest_main
 )
 
 
 add_executable(compareoneoff
         ${CMAKE_CURRENT_SOURCE_DIR}/compareoneoff.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevmin.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
+        ../src/damlevlim.cpp
+        ../src/damlevmin.cpp
+        printmatrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(compareoneoff PRIVATE
@@ -119,49 +120,50 @@ target_include_directories(compareoneoff PRIVATE
 
 add_executable(benchmark
         ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlev.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlev2D.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevmin.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevminp.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/damlevp.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/lev.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/levlimopt.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/noop.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/algorithms/printmatrix.cpp
+        ${DAMLEV_SOURCES}
+        ../src/noop.cpp
+        printmatrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(benchmark PRIVATE
-#        ALGORITHM_A=damlevlim
-#        ALGORITHM_A_COUNT=3
-#        ALGORITHM_B=damlev1D
-#        ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
         CAPTURE_METRICS
-#        PRINT_DEBUG
 )
 target_compile_options(benchmark PRIVATE -O3 -ffast-math)
 target_include_directories(benchmark PRIVATE
-        ${PROJECT_SOURCE_DIR}/src/algorithms
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # Define executables for one-off testing, unit testing, and benchmarking
-setup_executable(oneoff ${CMAKE_CURRENT_SOURCE_DIR}/testoneoff.cpp)
+#setup_executable(oneoff ${CMAKE_CURRENT_SOURCE_DIR}/testoneoff.cpp)
 #setup_executable(benchmark ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp)
 
-# Adjust specific compile definitions for each executable
-target_compile_definitions(benchmark PRIVATE
-        WORD_COUNT=235000ul
-        BENCH_FUNCTION="${TEST_ALGORITHM}"
+
+add_executable(oneoff
+        ${DAMLEV_SOURCES}
+        ${CMAKE_CURRENT_SOURCE_DIR}/testoneoff.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
+)
+target_compile_definitions(oneoff PRIVATE
+        LEV_FUNCTION=levmin
+        LEV_ALGORITHM_COUNT=3
+        DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
+        WORDS_PATH="${WORDS_PATH}"
+        CAPTURE_METRICS
+)
+target_include_directories(oneoff PRIVATE
+#        ${PROJECT_SOURCE_DIR}/src/algorithms
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_link_libraries(oneoff PRIVATE
+        gtest_main
 )
 
-# ===============================
-# Testing and Benchmarking
-# ===============================
-# Discover and add GoogleTest
+
+# Discover and add GoogleTest. This is so we don't have to explicitly
+# define all of our tests. We can just add the code and it magically
+# works.
 include(GoogleTest)
 gtest_discover_tests(unittest)

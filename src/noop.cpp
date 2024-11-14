@@ -67,25 +67,22 @@ constexpr const char
                                  "\t3. A maximum distance (0 <= int < ${NOOP_MAX_EDIT_DIST}).";
 constexpr const auto NOOP_ARG_TYPE_ERROR_LEN = std::size(NOOP_ARG_TYPE_ERROR) + 1;
 
-// Use a "C" calling convention.
-extern "C" {
-    [[maybe_unused]] bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    [[maybe_unused]] long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    [[maybe_unused]] void noop_deinit(UDF_INIT *initid);
-}
+
+UDF_SIGNATURES(noop)
+
 
 struct DamLevConstMinData {
-    // Holds the min edit distance seen so far, which is the maximum distance that can be
-    // computed before the algorithm bails early.
-    long long max;
-    size_t const_len;
-    char * const_string;
-    // A buffer we only need to allocate once.
-    std::vector<size_t> *buffer;
+    int max;
+    int *buffer; // Takes ownership of this buffer
+
+    DamLevConstMinData(int max, int *buffer): max(max), buffer(buffer){}
+
+    ~DamLevConstMinData(){ delete this->buffer; }
 };
 
 [[maybe_unused]]
-bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+
     // We require 3 arguments:
     if (args->arg_count != 3) {
         strncpy(message, NOOP_ARG_NUM_ERROR, NOOP_ARG_NUM_ERROR_LEN);
@@ -98,68 +95,66 @@ bool noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
         return 1;
     }
 
-    // Attempt to allocate persistent data.
-    DamLevConstMinData *data = new DamLevConstMinData();
-    // (NOOP_MAX_EDIT_DIST);
-    if (nullptr == data) {
+    // Initialize persistent data
+    int* buffer = new (std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
+    DamLevConstMinData *data = new (std::nothrow) DamLevConstMinData(DAMLEV_MAX_EDIT_DIST, buffer);
+    // If memory allocation failed
+    if (!buffer || !data) {
         strncpy(message, NOOP_MEM_ERROR, NOOP_MEM_ERROR_LEN);
         return 1;
     }
-    // Initialize persistent data.
-    initid->ptr = (char *)data;
-    data->max = NOOP_MAX_EDIT_DIST;
-    data->buffer = new std::vector<size_t>(NOOP_MAX_EDIT_DIST);
-    data->const_string = new(std::nothrow) char[NOOP_MAX_EDIT_DIST];
-    if (nullptr == data->const_string) {
-        strncpy(message, NOOP_MEM_ERROR, NOOP_MEM_ERROR_LEN);
-        return 1;
-    }
-    // Initialized on first call to noop.
-    data->const_len = 0;
+    initid->ptr = reinterpret_cast<char*>(data);
 
-    // noop does not return null.
+
+    // There are two error states possible within the function itself:
+    //    1. Negative max distance provided
+    //    2. Buffer size required is greater than available buffer allocated.
+    // The policy for how to handle these cases is selectable in the CMakeLists.txt file.
+#if defined(RETURN_NULL_ON_BAD_MAX) || defined(RETURN_NULL_ON_BUFFER_EXCEEDED)
+    initid->maybe_null = 1;
+#else
     initid->maybe_null = 0;
+#endif
+
     return 0;
 }
 
 [[maybe_unused]]
 void noop_deinit(UDF_INIT *initid) {
-    DamLevConstMinData &data = *(DamLevConstMinData *)initid->ptr;
-    if(nullptr != data.const_string){
-        delete[] data.const_string;
-        data.const_string = nullptr;
-    }
-    if(nullptr != data.buffer){
-        delete data.buffer;
-        data.buffer = nullptr;
-    }
-    delete[] initid->ptr;
+    // As `DamLevMinPersistant` owns its buffer, `~DamLevMinPersistant` handles buffer deallocation.
+    delete reinterpret_cast<DamLevConstMinData*>(initid->ptr);
 }
 
 [[maybe_unused]]
 long long noop(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, [[maybe_unused]] char *error) {
-    // Retrieve the arguments, setting maximum edit distance and the strings accordingly.
-    if ((long long *)args->args[2] == 0) {
-        // This is the case that the user gave 0 as max distance.
-        return 0ll;
-    }
+
+#ifdef PRINT_DEBUG
+    std::cout << "noop" << "\n";
+#endif
+#ifdef CAPTURE_METRICS
+    PerformanceMetrics &metrics = performance_metrics[8];
+#endif
 
     // Retrieve the persistent data.
-    DamLevConstMinData &data = *(DamLevConstMinData *)initid->ptr;
+    DamLevConstMinData *data = reinterpret_cast<DamLevConstMinData *>(initid->ptr);
+    long long max = std::min(
+            *(reinterpret_cast<long long *>(args->args[2])),
+            static_cast<long long>(data->max)
+    );
+    int *buffer = data->buffer;
 
-    // Retrieve buffer.
-    //std::vector<size_t> &buffer = *data.buffer; // Initialized later.
-    // Retrieve max edit distance.
-    long long &max = data.max;
+    // Validate max distance and update.
+    // This code is common to algorithms with limits.
+#include "validate_max.h"
 
-    // For purposes of the algorithm, set max to the smallest distance seen so far.
-    max = std::min(*((long long *)args->args[2]), max);
-    if (args->args[0] == nullptr || args->lengths[0] == 0 || args->args[1] == nullptr ||
-        args->lengths[1] == 0) {
-        // Either one of the strings doesn't exist, or one of the strings has
-        // length zero. In either case
-        return (long long)std::max(args->lengths[0], args->lengths[1]);
-    }
+    // The pre-algorithm code is the same for all algorithm variants. It handles
+    //     - basic setup & initialization
+    //     - trimming of common prefix/suffix
+#include "prealgorithm.h"
+
+#ifdef CAPTURE_METRICS
+    metrics.total_time += call_timer.elapsed();
+#endif
 
     return 0;
 }

@@ -90,12 +90,9 @@ constexpr const char
                                      "\t3. A maximum distance (0 <= int < ${LEVLIM_MAX_EDIT_DIST}).";
 constexpr const auto LEVLIM_ARG_TYPE_ERROR_LEN = std::size(LEVLIM_ARG_TYPE_ERROR) + 1;
 
-// Use a "C" calling convention.
-extern "C" {
-    [[maybe_unused]] int levlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-    [[maybe_unused]] long long levlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-    [[maybe_unused]] void levlim_deinit(UDF_INIT *initid);
-}
+
+UDF_SIGNATURES(levlim)
+
 
 [[maybe_unused]]
 int levlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {

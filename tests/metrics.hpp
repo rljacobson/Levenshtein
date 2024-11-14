@@ -2,7 +2,7 @@
 
 #include <cstdint> // for uint64_t
 
-#define ALGORITHM_COUNT 9
+#define ALGORITHM_COUNT 10
 
 typedef struct {
     uint64_t cells_computed;         // Number of cells computed in the matrix

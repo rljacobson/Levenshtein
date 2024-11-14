@@ -1,52 +1,36 @@
 #pragma once
 
-
+#include "../src/common.h"
 #include <mysql.h>
 
-// Declare all UDF functions with C linkage
-extern "C" {
+// #define UDF_SIGNATURES(algorithm) int MACRO_CONCAT(algorithm, _init)(UDF_INIT *initid, UDF_ARGS *args, char *message); \
+//     long long algorithm(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error); \
+//     void MACRO_CONCAT(algorithm, _deinit)(UDF_INIT *initid);
+
 // Levenshtein
-
-int lev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long lev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void lev_deinit(UDF_INIT *initid);
-
-int levlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long levlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void levlim_deinit(UDF_INIT *initid);
-
-int levlimopt_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void levlimopt_deinit(UDF_INIT *initid);
-
+UDF_SIGNATURES(lev)
+UDF_SIGNATURES(levlim)
+UDF_SIGNATURES(levlimopt)
+UDF_SIGNATURES(levmin)
 
 // Damerau–Levenshtein
+UDF_SIGNATURES(damlev2D)
+UDF_SIGNATURES(damlev)
+UDF_SIGNATURES(damlevlim)
+UDF_SIGNATURES(damlevmin)
 
-int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlev2D(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlev2D_deinit(UDF_INIT *initid);
+// The next two are special, as they return a `double` instead of a `long long`.
+UDF_SIGNATURES_TYPE(damlevp, double)
+UDF_SIGNATURES_TYPE(damlevminp, double)
 
-int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlev(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlev_deinit(UDF_INIT *initid);
+// int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+// double damlevminp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+// void damlevminp_deinit(UDF_INIT *initid);
 
-int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevlim_deinit(UDF_INIT *initid);
+// int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+// double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+// void damlevp_deinit(UDF_INIT *initid);
 
-int damlevmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevmin(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevmin_deinit(UDF_INIT *initid);
+// Benchmarking only
+UDF_SIGNATURES(noop)
 
-int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevminp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevminp_deinit(UDF_INIT *initid);
-
-int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void damlevp_deinit(UDF_INIT *initid);
-
-int noop_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-long long noop(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-void noop_deinit(UDF_INIT *initid);
-}

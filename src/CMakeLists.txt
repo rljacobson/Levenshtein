@@ -2,18 +2,20 @@
 
 # Define library sources
 set(DAMLEV_SOURCES
-        algorithms/damlev.cpp
-        algorithms/damlev2D.cpp
-        algorithms/damlevlim.cpp
-        algorithms/damlevmin.cpp
-        algorithms/damlevminp.cpp
-        algorithms/damlevp.cpp
-        algorithms/lev.cpp
-        algorithms/levlim.cpp
-        algorithms/levlimopt.cpp
-        algorithms/noop.cpp
-        algorithms/printmatrix.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/damlev.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/damlev2D.cpp // Only used for testing/debugging
+        ${CMAKE_CURRENT_SOURCE_DIR}/damlevlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/damlevmin.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/damlevminp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/damlevp.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/lev.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/levlim.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/levlimopt.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/levmin.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/noop.cpp
 )
+# CMake is an abomination
+set(DAMLEV_SOURCES ${DAMLEV_SOURCES} PARENT_SCOPE)
 
 
 # Add the damlev library as SHARED
