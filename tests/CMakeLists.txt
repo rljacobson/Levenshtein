@@ -76,7 +76,7 @@ add_executable(unittest
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
         ../src/lev.cpp
         ../src/damlev.cpp
-        printmatrix.cpp
+        print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(unittest PRIVATE
@@ -101,7 +101,7 @@ add_executable(compareoneoff
         ${CMAKE_CURRENT_SOURCE_DIR}/compareoneoff.cpp
         ../src/damlevlim.cpp
         ../src/damlevmin.cpp
-        printmatrix.cpp
+        print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(compareoneoff PRIVATE
@@ -122,14 +122,16 @@ add_executable(benchmark
         ${CMAKE_CURRENT_SOURCE_DIR}/benchmark.cpp
         ${DAMLEV_SOURCES}
         ../src/noop.cpp
-        printmatrix.cpp
+        print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(benchmark PRIVATE
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
-        CAPTURE_METRICS
+#        CAPTURE_METRICS
+        USE_GENERATED_WORDS # Comment this out to use words from WORDS_PATH
+        EXCLUDE_PREPROCESSING_FROM_NOOP
 )
 target_compile_options(benchmark PRIVATE -O3 -ffast-math)
 target_include_directories(benchmark PRIVATE

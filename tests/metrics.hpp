@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstdint> // for uint64_t
+#include <string>
 
-#define ALGORITHM_COUNT 10
+#define ALGORITHM_COUNT 9
 
 typedef struct {
     uint64_t cells_computed;         // Number of cells computed in the matrix
@@ -23,5 +24,7 @@ extern const char *algorithm_names[ALGORITHM_COUNT];
 
 // Function to initialize all performance metrics
 void initialize_metrics();
+
+std::string formatWithCommas(uint64_t value);
 
 void print_metrics();

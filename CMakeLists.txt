@@ -40,7 +40,8 @@ add_compile_definitions(TRUNCATE_ON_BUFFER_EXCEEDED) # Truncates the strings to 
 #set(MYSQL_INCLUDE "/opt/homebrew/include/mysql/")
 
 # Use this file for a list of words for testing/benchmarking.
-set(WORDS_FILE "/usr/share/dict/words")
+set(WORDS_FILE ${CMAKE_CURRENT_SOURCE_DIR}/tests/taxanames)
+#set(WORDS_FILE "/usr/share/dict/words")
 
 # END CONFIGURATION
 

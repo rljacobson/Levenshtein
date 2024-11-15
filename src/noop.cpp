@@ -135,6 +135,18 @@ long long noop(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
     PerformanceMetrics &metrics = performance_metrics[8];
 #endif
 
+#ifdef EXCLUDE_PREPROCESSING_FROM_NOOP
+    #ifdef CAPTURE_METRICS
+    metrics.call_count++;
+    Timer call_timer;
+    call_timer.start();
+#endif
+#ifdef CAPTURE_METRICS
+    metrics.total_time += call_timer.elapsed();
+#endif
+
+    return 0;
+#else
     // Retrieve the persistent data.
     DamLevConstMinData *data = reinterpret_cast<DamLevConstMinData *>(initid->ptr);
     long long max = std::min(
@@ -157,4 +169,5 @@ long long noop(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
 #endif
 
     return 0;
+#endif
 }

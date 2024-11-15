@@ -8,14 +8,13 @@
 #include <sstream>
 #include <boost/range/iterator_range_core.hpp>
 #include <iomanip> // For output formatting
-#include <chrono> // For precise timing
-#include <cctype> // For character classification
+#include <chrono>  // For precise timing
+#include <cctype>  // For character classification
 #include <cstring> // For memset
 #include <map>     // For storing sample results
 
 #include "testharness.hpp"  // Include the test harness for LEV_FUNCTION macros
 #include "benchtime.hpp"
-// #include "algorithms.h"
 #include "edit_operations.hpp"
 
 int benchmark_on_list(std::vector<std::string_view> &subject_words, std::vector<std::string_view> &mangled_words);
@@ -24,11 +23,11 @@ std::vector<std::string> mangle_word_list(std::vector<std::string> &words, int m
 // Levenshtein
 UDF_SIGNATURES(lev)
 UDF_SIGNATURES(levlim)
-UDF_SIGNATURES(levlimopt)
+// UDF_SIGNATURES(levlimopt)
 UDF_SIGNATURES(levmin)
 
 // Damerau–Levenshtein
-UDF_SIGNATURES(damlev2D)
+// UDF_SIGNATURES(damlev2D)
 UDF_SIGNATURES(damlev)
 UDF_SIGNATURES(damlevlim)
 UDF_SIGNATURES(damlevmin)
@@ -51,28 +50,30 @@ struct UDF_Function {
 };
 
 #define INITIALIZE_ALGORITHM_ARGS(algorithm, arg_count_x) \
-{                                                   \
-    UDF_Function udf;                               \
-    udf.name = AS_STRING(algorithm);                \
-    udf.arg_count =  arg_count_x;                   \
-    udf.has_max_distance = (udf.arg_count == 3);    \
-    udf.init = &MACRO_CONCAT(algorithm, _init);     \
-    udf.func = &algorithm;                          \
-    udf.deinit = &MACRO_CONCAT(algorithm, _deinit); \
-    udf_functions.push_back(udf);                   \
+{                                                      \
+    UDF_Function udf;                                  \
+    udf.name      = AS_STRING(algorithm);              \
+    udf.arg_count =  arg_count_x;                      \
+    udf.has_max_distance = (udf.arg_count == 3);       \
+    udf.init      = &MACRO_CONCAT(algorithm, _init);   \
+    udf.func      = &algorithm;                        \
+    udf.deinit    = &MACRO_CONCAT(algorithm, _deinit); \
+    udf_functions.push_back(udf);                      \
 }
 
 
 // Function to initialize the list of UDF_Functions
 std::vector<UDF_Function> get_udf_functions() {
-    // List to hold UDF_Function structs
     std::vector<UDF_Function> udf_functions;
+
+    // If you don't want a benchmark to run, comment it out here.
 
     INITIALIZE_ALGORITHM_ARGS(lev, 2)
     INITIALIZE_ALGORITHM_ARGS(levlim, 3)
     INITIALIZE_ALGORITHM_ARGS(levmin, 3)
-    INITIALIZE_ALGORITHM_ARGS(levlimopt, 3)
+    // INITIALIZE_ALGORITHM_ARGS(levlimopt, 3)
     INITIALIZE_ALGORITHM_ARGS(damlev, 2)
+    // INITIALIZE_ALGORITHM_ARGS(damlev2D, 2)
     INITIALIZE_ALGORITHM_ARGS(damlevlim, 3)
     INITIALIZE_ALGORITHM_ARGS(damlevmin, 3)
     // INITIALIZE_ALGORITHM_ARGS(damlevminp, 3)
@@ -81,6 +82,11 @@ std::vector<UDF_Function> get_udf_functions() {
 
     return udf_functions;
 }
+
+#ifndef CAPTURE_METRICS
+// Custom function to format integers with comma separators
+std::string formatWithCommas(uint64_t value);
+#endif
 
 // region Benchmark with words from a file
 
@@ -222,7 +228,6 @@ int benchmark_on_list(std::vector<std::string> &subject_words, std::vector<std::
 
     // Iterate over each UDF function
     for(const auto& udf : udf_functions) {
-        // std::cout << "----------------------------------------" << std::endl;
         std::cout << "Benchmarking function: " << udf.name << std::endl;
 
         // Initialize UDF_INIT
@@ -380,14 +385,14 @@ int benchmark_on_list(std::vector<std::string> &subject_words, std::vector<std::
         }
     }
 
-    if (false){
+    if (true){
         std::cout << "\n========================================" << std::endl;
-        std::cout << "Benchmark Summary:" << std::endl;
+        std::cout << "Time including call overhead" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
 
         // Define column headers with fixed widths
         std::cout << std::left << std::setw(10) << "Function"
-                  << std::right << std::setw(10) << "Time (s)"
+                  << std::right << std::setw(10) << "Time (ms)"
                   << std::right << std::setw(15) << "Function Calls" << std::endl;
 
         // Print a separator line
@@ -399,25 +404,28 @@ int benchmark_on_list(std::vector<std::string> &subject_words, std::vector<std::
         // Iterate over the results and print each row with proper alignment
         for (const auto &br: results) {
             std::cout << std::left << std::setw(10) << br.name
-                      << std::right << std::setw(10) << br.time_elapsed
-                      << std::right << std::setw(15) << br.function_calls << std::endl;
+                      << std::right << std::setw(10) << formatWithCommas(std::round(1000.0*(br.time_elapsed)))
+                      << std::right << std::setw(15) << formatWithCommas(br.function_calls) << '\n';
         }
 
         // Print a closing line
         std::cout << "========================================" << std::endl;
     }
 
+#ifdef CAPTURE_METRICS
     print_metrics();
-
+#endif
     return 0;
 }
 
 
 int main(int argc, char *argv[]) {
+#ifdef CAPTURE_METRICS
     initialize_metrics();
+#endif
 
-    int max_subject_words     = 100;  // Number of subject words to test
-    int max_total_words       = 2000; // Total number of words to load from file and sample from.
+    int max_subject_words     = 2000; // Number of subject words to test
+    int max_total_words       = 200000; // Total number of words to load from file and sample from.
     long long max_distance    = 5;    // The max given to the algorithms (NOT max number of edits)
     int max_edits             = 5;    // The maximum number of edits used when mangling the strings (NOT algorithm limit)
     int max_edits_lower_bound = -1;   // -1 is disabled = do exactly max_edits
@@ -426,17 +434,20 @@ int main(int argc, char *argv[]) {
     int word_length             = 40;
     int word_length_lower_bound = -1; // -1 is disabled = all strings have length `word_length`
 
+#ifndef USE_GENERATED_WORDS
     std::vector<std::string> subject_words =
             generate_word_list_from_file(max_subject_words, max_total_words);
-    // std::vector<std::string> subject_words =
-    //         generate_list_of_random_words(max_total_words, word_length, word_length_lower_bound);
+#else
+    std::vector<std::string> subject_words =
+            generate_list_of_random_words(max_subject_words, word_length, word_length_lower_bound);
+#endif
     std::vector<std::string> mangled_words =
             mangle_word_list(subject_words, max_edits, max_edits_lower_bound);
 
     std::cout << std::right << std::setw(20) << "max_subject_words: " << max_subject_words << '\n';
     std::cout << std::right << std::setw(20) << "max_total_words: "   << max_total_words   << '\n';
-    std::cout << std::right << std::setw(20) << "max_distance: "      << max_subject_words << '\n';
-    std::cout << std::right << std::setw(20) << "max_edits: "         << max_subject_words << std::endl;
+    std::cout << std::right << std::setw(20) << "max_distance: "      << max_distance      << '\n';
+    std::cout << std::right << std::setw(20) << "max_edits: "         << max_edits         << '\n';
     std::cout << std::right << std::setw(20) << "word_length: "       << word_length       << std::endl;
 
     return benchmark_on_list(subject_words, mangled_words, max_distance);

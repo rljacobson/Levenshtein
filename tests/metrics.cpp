@@ -13,14 +13,13 @@ const char *algorithm_names[ALGORITHM_COUNT] = {
         // "damlev2D",       // 3
         "lev",          // 0
         "levlim",       // 1
-        "levlimopt",    // 2
+        "levmin",       // 2
         "damlev",       // 3
         "damlevlim",    // 4
         "damlevmin",    // 5
         "damlevminp",   // 6
         "damlevp",      // 7
         "noop",         // 8
-        "levmin",       // 9
 };
 
 // Function to initialize all performance metrics

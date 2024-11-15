@@ -151,7 +151,7 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     std::cout << "levmin" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[9];
+    PerformanceMetrics &metrics = performance_metrics[2];
 #endif
 
     // Fetch persistent data
