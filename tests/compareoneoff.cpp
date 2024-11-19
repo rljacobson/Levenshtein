@@ -69,8 +69,10 @@ char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
 // endregion
 
-std::string string_a {"brevifrontalis"};
-std::string string_b {"brefontals"};
+// std::string string_a {"brevifrontalis"};
+// std::string string_b {"brefontals"};
+std::string string_a {"ztebtrarhiupnukmgieewrerhfkesemdeisltcio"};
+std::string string_b {"ztebtrarhiupnukmgieewreChfkrsemdeisOtcto"};
 
 void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1, const std::string& S2) {
     int n = S1.size();
@@ -103,7 +105,7 @@ void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1,
 }
 
 // This algorithm is "plain vanilla" edit distance. The only optimization it supports is
-// a maximum disntace
+// a maximum distance
 int calculateLevDistance(const std::string& S1_input, const std::string& S2_input, int max) {
     std::string S1 = S1_input;
     std::string S2 = S2_input;
@@ -173,8 +175,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
             const_cast<char*>(string_a.c_str()),
             string_a.size(),
             const_cast<char*>(string_b.c_str()),
-            string_b.size(),
-            max_distance
+            string_b.size()
+#if ALGORITHM_B_COUNT==3
+            , max_distance
+#endif
     );
     ALGORITHM_B_TEARDOWN();
 
@@ -184,8 +188,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
             const_cast<char*>(string_a.c_str()),
             string_a.size(),
             const_cast<char*>(string_b.c_str()),
-            string_b.size(),
-            max_distance
+            string_b.size()
+#if ALGORITHM_A_COUNT==3
+            , max_distance
+#endif
     );
     algorithm_a_teardown();
 

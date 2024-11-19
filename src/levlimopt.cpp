@@ -136,7 +136,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     std::cout << "levlimopt" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[2];
+    PerformanceMetrics &metrics = performance_metrics[9];
 #endif
 
     // Fetch preallocated buffer. The only difference between levmin and levlimopt is that levmin also persists
@@ -169,10 +169,10 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 
 #ifdef PRINT_DEBUG
     // Print the matrix header
-    std::cout << "    ";
-    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "     ";
+    for(int k = 0; k < m; k++) std::cout << " " << query[k] << " ";
     std::cout << "\n  ";
-    for(int k = 0; k <= m; k++) std::cout << k << " ";
+    for(int k = 0; k <= m; k++) std::cout << (k < 10? " ": "") << k << " ";
     std::cout << "\n";
 #endif
 
@@ -208,9 +208,9 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         if (end_j   < m) buffer[end_j+1]   = max + 1;
 #ifdef PRINT_DEBUG
         // Print column header
-        std::cout << subject[i - 1] << " " << i << " ";
-        for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
-        if (start_j > 1) std::cout << max + 1 << " ";
+        std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
+        for(int k = 1; k <= start_j-2; k++) std::cout << " . ";
+        if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
@@ -227,7 +227,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
                                      previous_cell + cost});
 
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";
+            std::cout << (current_cell<10? " ": "") << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
@@ -245,8 +245,8 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
             buffer[j]          = current_cell; // Overwrite
         }
 #ifdef PRINT_DEBUG
-        if (end_j < m) std::cout << max + 1 << " ";
-        for(int k = end_j+2; k <= m; k++) std::cout << ". ";
+        if (end_j < m) std::cout << (max < 9? " " : "") << max + 1 << " ";
+        for(int k = end_j+2; k <= m; k++) std::cout << " . ";
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
         // Early exit if the minimum edit distance exceeds the effective maximum

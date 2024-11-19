@@ -1,3 +1,6 @@
+# Copyright (C) 2019 Robert Jacobson
+# Distributed under the MIT License. See LICENSE.txt for details.
+
 ### Targets ###
 
 # Define library sources
@@ -12,6 +15,7 @@ set(DAMLEV_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/levlim.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/levlimopt.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/levmin.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/postgres.cpp
 #        ${CMAKE_CURRENT_SOURCE_DIR}/noop.cpp
 )
 # CMake is an abomination

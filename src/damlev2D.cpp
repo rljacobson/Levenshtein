@@ -1,61 +1,34 @@
 /*
-    Damerau–Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2019 Robert Jacobson
+Distributed under the MIT License. See LICENSE.txt for details.
 
-    17 January 2019
+<hr>
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+`DAMLEV2D(String1, String2)`
 
-    <hr>
-    `DAMLEV2D()` computes the Levenshtein edit distance between two strings.
+Computes the Damarau-Levenshtein edit distance between two strings. This
+function should not be used. It exists for testing and benchmarking purposes
+only.
 
-    Syntax:
+Syntax:
 
-        DAMLEV2D(String1, String2);
+    DAMLEV2D(String1, String2);
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
 
-    Returns: An integer equal to the edit distance between `String1` and `String2`.
+Returns: An integer equal to the Damarau-Levenshtein edit distance between
+`String1` and `String2`.
 
-    Example Usage:
+Example Usage:
 
-        SELECT Name, DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") AS
-            EditDist FROM CUSTOMERS WHERE DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") < 6;
+    SELECT Name, DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") AS EditDist
+        FROM CUSTOMERS
+        WHERE DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") < 6;
 
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
+The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
+where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    The 2 row approach used to compute edit-distance can be found here:
-    https://takeuforward.org/data-structure/edit-distance-dp-33/
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 
 #include "common.h"

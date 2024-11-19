@@ -1,61 +1,58 @@
 /*
-    Damerau–Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2019 Robert Jacobson
+Distributed under the MIT License. See LICENSE.txt for details.
 
-    17 January 2019
+<hr>
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+`DAMLEVMINP(String1, String2, RealNumber)`
 
-    <hr>
-    `DAMLEVPMINP()` computes the normalized Damarau Levenshtein edit distance between two strings.
-    The normalization is the edit distance divided by the length of the longest string:
-        ("edit distance")/("length of longest string").
+Computes a similarity score in the range [0.0, 1.0] of two strings
+unless that similarity score will be less than `current_max_similarity`,
+the largest similarity score it has computed in the query so far, in
+which case it will return some smaller value. The `current_max_similarity`
+is initialized to `RealNumber`.
 
-    Syntax:
+In the common case that we wish to find the rows that have the *greatest*
+similarity between strings, we can achieve *significant* performance
+improvements if we stop the computation when we know the similarity will be
+*smaller* than some other similarity we have already computed. Under reasonable
+conditions, the speed of this function (excluding overhead) can be only twice
+as slow as doing nothing at all!
 
-        DAMLEVPMINP(String1, String2);
+Similarity is computed from Damarau-Levenshtein edit distance by "normalizing"
+using the length of the longest string:
+    similarity = 1.0 - EditDistance(String1, String2)/max(len(String1), len(String2))
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
+Syntax:
 
-    Returns: A floating point number equal to the normalized edit distance between `String1` and
-    `String2`.
+    DAMLEVMINP(String1, String2, RealNumber);
 
-    Example Usage:
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
+`PosInt`:   A positive integer. If the similarity between `String1` and
+            `String2` is less than `RealNumber`, `DAMLEVMINP()` will stop its
+            computation at `RealNumber` and return a number smaller than
+            `RealNumber`. Make `RealNumber` as large as you can to improve
+            speed and efficiency. For example, if you put
+            `WHERE DAMLEVMINP(...) >= p` in a `WHERE`-clause, make
+            `RealNumber` be `p`.
 
-        SELECT Name, DAMLEVPMINP(Name, "Vladimir Iosifovich Levenshtein") AS
-            EditDist FROM CUSTOMERS WHERE DAMLEVPMINP(Name, "Vladimir Iosifovich Levenshtein")  <= 0.2;
+Returns: Either a real number equal to the similarity between `String1` and `String2`,
+if that distance is minimal among all distances computed in the query, or some
+unspecified number smaller than the minimum distance computed in the query.
 
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
+Example Usage:
 
-    <hr>
+    SELECT Name, DAMLEVMINP(Name, "Vladimir Iosifovich Levenshtein", 0.95) AS Similarity
+         FROM CUSTOMERS
+         ORDER BY Similarity, Name DESC;
 
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
+The above will return all rows `(Name, Similarity)` from the `CUSTOMERS` table.
+The rows will be sorted in descending order by `Similarity` and then by `Name`,
+and the first row(s) will have `Similarity` equal to the similarity between
+`Name` and "Vladimir Iosifovich Levenshtein" or 0.95, whichever is larger. All
+other rows will have `EditDist` equal to some other unspecified smaller number.
 
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
 

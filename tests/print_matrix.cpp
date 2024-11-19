@@ -1,4 +1,4 @@
-#pragma once
+
 #include <iostream>
 
 void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2) {

@@ -132,7 +132,7 @@ long long noop(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
     std::cout << "noop" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[8];
+    PerformanceMetrics &metrics = performance_metrics[10];
 #endif
 
 #ifdef EXCLUDE_PREPROCESSING_FROM_NOOP

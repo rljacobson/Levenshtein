@@ -10,11 +10,6 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     call_timer.start();
 #endif
 
-    if (!args->args[2]) {
-        // Early exit if max distance is zero
-        return 0;
-    }
-
     // Handle null strings
     if (!args->args[0] || !args->args[1]) {
 #ifdef CAPTURE_METRICS

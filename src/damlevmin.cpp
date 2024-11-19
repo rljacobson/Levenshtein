@@ -1,66 +1,54 @@
 /*
-    Damerau–Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2019 Robert Jacobson
+Distributed under the MIT License. See LICENSE.txt for details.
 
-    17 January 2019
+<hr>
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+`DAMLEVMIN(String1, String2, PosInt)`
 
-    <hr>
-    `DAMLEVMIN()` computes the Damarau Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+Computes the Damarau-Levenshtein edit distance between two strings unless
+that distance will exceed `current_min_distance`, the minimum edit distance
+it has computed in the query so far, in which case it will return
+`current_min_distance + 1`. The `current_min_distance` is initialized to
+`PosInt`.
 
-    Syntax:
+In the common case that we wish to find the rows that have the *smallest*
+distance between strings, we can achieve *significant* performance
+improvements if we stop the computation when we know the distance will be
+*greater* than some other distance we have already computed. Under reasonable
+conditions, the speed of this function (excluding overhead) can be only twice
+as slow as doing nothing at all!
 
-        DAMLEVMIN(String1, String2, PosInt);
+Syntax:
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `DAMLEVMIN()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE DAMLEVMIN(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
+    DAMLEVMIN(String1, String2, PosInt);
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
+`PosInt`:   A positive integer. If the distance between `String1` and
+            `String2` is greater than `PosInt`, `DAMLEVMIN()` will stop its
+            computation at `PosInt` and return `PosInt`. Make `PosInt` as
+            small as you can to improve speed and efficiency. For example,
+            if you put `WHERE DAMLEVMIN(...) <= k` in a `WHERE`-clause, make
+            `PosInt` be `k`.
 
-    Example Usage:
+Returns: Either an integer equal to the Damarau-Levenshtein edit distance between
+`String1` and `String2`, if that distance is minimal among all distances computed
+in the query, or some unspecified number greater than the minimum distance computed
+in the query.
 
-        SELECT Name, DAMLEVMIN(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  DAMLEVMIN(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
+Example Usage:
 
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
+    SELECT Name, DAMLEVMIN(Name, "Vladimir Iosifovich Levenshtein", 6) AS EditDist
+         FROM CUSTOMERS
+         ORDER BY EditDist, Name ASC;
 
-    <hr>
+The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table.
+The rows will be sorted in ascending order by `EditDist` and then by `Name`,
+and the first row(s) will have `EditDist` equal to the edit distance between
+`Name` and "Vladimir Iosifovich Levenshtein" or 6, whichever is smaller. All
+other rows will have `EditDist` equal to some other unspecified larger number.
 
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
 

@@ -1,34 +1,9 @@
 /*
-    Test harness for Levenshtein MySQL UDF.
 
-    30 July 2019
+Test harness for Levenshtein MySQL UDF. This defines the data structures and
+a setup, teardown, and call method that allows you to use the UDF function
+from your code.
 
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 
 
@@ -39,7 +14,7 @@
 
 // Default definitions in case CMake does not define them.
 #ifndef LEV_FUNCTION
-#define LEV_FUNCTION damlev
+#define LEV_FUNCTION damlevlim
 #endif
 
 // This should be unconditional, as it may be a redefinition.
@@ -59,13 +34,6 @@
 #define LEV_DEINIT MACRO_CONCAT(LEV_FUNCTION,_deinit)
 #define LEV_SETUP MACRO_CONCAT(LEV_FUNCTION,_setup)
 #define LEV_TEARDOWN MACRO_CONCAT(LEV_FUNCTION,_teardown)
-
-// Use a "C" calling convention.
-// extern "C" {
-// int LEV_INIT(UDF_INIT *initid, UDF_ARGS *args, char *message);
-// long long LEV_FUNCTION(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-// void LEV_DEINIT(UDF_INIT *initid);
-// }
 
 UDF_SIGNATURES(LEV_FUNCTION)
 

@@ -19,7 +19,9 @@ const char *algorithm_names[ALGORITHM_COUNT] = {
         "damlevmin",    // 5
         "damlevminp",   // 6
         "damlevp",      // 7
-        "noop",         // 8
+        "postgres",     // 8
+        "levlimopt",    // 9
+        "noop",         // 10
 };
 
 // Function to initialize all performance metrics

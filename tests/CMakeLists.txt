@@ -74,16 +74,16 @@ endfunction()
 add_executable(unittest
         ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
-        ../src/lev.cpp
-        ../src/damlev.cpp
+        ../src/levlimopt.cpp
+        ../src/postgres.cpp
         print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(unittest PRIVATE
-        ALGORITHM_A=lev
-        ALGORITHM_A_COUNT=2
-        ALGORITHM_B=damlev
-        ALGORITHM_B_COUNT=2
+        ALGORITHM_A=levlimopt
+        ALGORITHM_A_COUNT=3
+        ALGORITHM_B=postgres
+        ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
         CAPTURE_METRICS
@@ -99,15 +99,15 @@ target_link_libraries(unittest PRIVATE
 
 add_executable(compareoneoff
         ${CMAKE_CURRENT_SOURCE_DIR}/compareoneoff.cpp
-        ../src/damlevlim.cpp
-        ../src/damlevmin.cpp
+        ../src/levlimopt.cpp
+        ../src/postgres.cpp
         print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(compareoneoff PRIVATE
-        ALGORITHM_A=damlevlim
+        ALGORITHM_A=levlimopt
         ALGORITHM_A_COUNT=3
-        ALGORITHM_B=damlevmin
+        ALGORITHM_B=postgres
         ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         CAPTURE_METRICS
@@ -129,7 +129,7 @@ add_executable(benchmark
 target_compile_definitions(benchmark PRIVATE
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
-#        CAPTURE_METRICS
+        CAPTURE_METRICS
         USE_GENERATED_WORDS # Comment this out to use words from WORDS_PATH
         EXCLUDE_PREPROCESSING_FROM_NOOP
 )

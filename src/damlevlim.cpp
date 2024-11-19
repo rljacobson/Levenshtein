@@ -1,66 +1,39 @@
 /*
-    Damerau–Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2019 Robert Jacobson
+Distributed under the MIT License. See LICENSE.txt for details.
 
-    17 January 2019
+<hr>
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+`DAMLEVLIM(String1, String2, PosInt)`
 
-    <hr>
-    `DAMLEVLIM()` computes the Damarau Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+Computes the Damarau-Levenshtein edit distance between two strings when the
+edit distance is less than a given number.
 
-    Syntax:
+Syntax:
 
-        DAMLEVLIM(String1, String2, PosInt);
+    DAMLEVLIM(String1, String2, PosInt);
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE DAMLEVLIM(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
+`PosInt`:   A positive integer. If the distance between `String1` and
+            `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its
+            computation at `PosInt` and return `PosInt + 1`. Make `PosInt`
+            as small as you can to improve speed and efficiency. For example,
+            if you put `WHERE DAMLEVLIM(...) <= k` in a `WHERE`-clause, make
+            `PosInt` be `k`.
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+Returns: Either an integer equal to the Damarau-Levenshtein edit distance between
+`String1` and `String2` or `k+1`, whichever is smaller.
 
-    Example Usage:
+Example Usage:
 
-        SELECT Name, DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
+    SELECT Name, DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS EditDist
+        FROM CUSTOMERS
+        WHERE  DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
+The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
+where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
 
