@@ -164,7 +164,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         return 0;
     }
 
-    int minimum_within_row = 0;
     int current_cell = 0;
 
     /*
@@ -248,9 +247,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         for(int k = 1; k <= start_j-2; k++) std::cout << " . ";
         if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
-        // Keep track of the minimum number of edits we have proven are necessary. If this
-        // number ever exceeds `max`, we can bail.
-        minimum_within_row = i;
 
         for (int j = start_j; j <= end_j; ++j) {
             int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
@@ -269,7 +265,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
             metrics.cells_computed++;
 #endif
 
-            minimum_within_row = std::min(minimum_within_row, current_cell);
             previous_cell      = buffer[j];    // Save cell value for next iteration
             buffer[j]          = current_cell; // Overwrite
         }
@@ -307,18 +302,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         left_band++;
         // ...unless we can prove it can shrink.
 
-        // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(max) ) {
-#ifdef CAPTURE_METRICS
-            metrics.early_exit++;
-            metrics.algorithm_time += algorithm_timer.elapsed();
-            metrics.total_time += call_timer.elapsed();
-#endif
-#ifdef PRINT_DEBUG
-            std::cout << "Bailing early" << '\n';
-#endif
-            return max + 1;
-        }
         if (right_band <= -left_band) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
