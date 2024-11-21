@@ -60,7 +60,7 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
     int *buffer = reinterpret_cast<int *>(initid->ptr);
     int max_d;
     {
-        long long max = Min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
+        int max = Min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
 
 #include "validate_max.h"
 
@@ -139,7 +139,7 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
     int		   *prev;
     int		   *curr;
     // int		   *s_char_len = NULL;
-    int			j;
+    int			i;
     const char *y;
 
     int			start_column,
@@ -148,7 +148,6 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
     /*
      * We can transform an empty s into t with n insertions, or a non-empty t
      * into an empty s with m deletions.
-     */
     if (!m) {
 #ifdef CAPTURE_METRICS
         metrics.exit_length_difference++;
@@ -163,18 +162,12 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
 #endif
         return m * del_c;
     }
+     */
 
-    // postgres optionally checks if lengths exceed max_d length here
     /* Initialize start and stop columns. */
     start_column = 0;
     stop_column = m + 1;
 
-    // postgres allows max_d < 0, while we do not. It's not clear if we should
-    // allow it here. This looks like it's just a check to see if we can take
-    // an early exit (taking into account nonconstant penalties). We will assume
-    // that `(max_d >= max_theo_d)` is always false. We also insert a
-    // `CAPTURE_METRICS` block. Also, we use `validate_max.h`, as it feels like
-    // it depends on the API.
     /*
      * If max_d >= 0, determine whether the bound is impossibly tight.  If so,
      * return max_d + 1 immediately.  Otherwise, determine whether it's tight
@@ -205,7 +198,7 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
         else if (ins_c + del_c > 0)
         {
             /*
-             * Figure out how much of the first row of the notional matrix we
+             * Figure out how much of the first i of the notional matrix we
              * need to fill in.  If the string is growing, the theoretical
              * minimum distance already incorporates the cost of deleting the
              * number of characters necessary to make the two strings equal in
@@ -228,7 +221,7 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
 #ifdef PRINT_DEBUG
     // Print the matrix header
     std::cout << "     ";
-    for(int k = 0; k < m; k++) std::cout << " " << target[k] << " ";
+    for(int k = 0; k < m; k++) std::cout << " " << source[k] << " ";
     std::cout << "\n  ";
     for(int k = 0; k <= m; k++) std::cout << (k < 10? " ": "") << k << " ";
     std::cout << "\n";
@@ -238,7 +231,7 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
     // It stores the length of 'source' character i in s_char_len[i].
     // We omit that here.
 
-    /* One more cell for initialization column and row. */
+    /* One more cell for initialization column and i. */
     ++m;
     ++n;
 
@@ -250,17 +243,17 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
 	 * To transform the first i characters of s into the first 0 characters of
 	 * t, we must perform i deletions.
 	 */
-    for (int i = start_column; i < stop_column; i++)
-        prev[i] = i * del_c;
+    for (int j = start_column; j < stop_column; j++)
+        prev[j] = j * del_c;
 
     /* Loop through rows of the notional array */
-    for (y = target, j = 1; j < n; j++) {
+    for (y = target, i = 1; i < n; i++) {
 
         int *temp;
         const char *x = source;
         const int y_char_len = 1;
         // int			y_char_len = n != tlen + 1 ? pg_mblen(y) : 1;
-        int i;
+        int j;
 
 
         /*
@@ -276,19 +269,19 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
 
         /*
          * The main loop fills in curr, but curr[0] needs a special case: to
-         * transform the first 0 characters of s into the first j characters
-         * of t, we must perform j insertions.  However, if start_column > 0,
+         * transform the first 0 characters of s into the first i characters
+         * of t, we must perform i insertions.  However, if start_column > 0,
          * this special case does not apply.
          */
         if (start_column == 0) {
-            curr[0] = j * ins_c;
-            i = 1;
+            curr[0] = i * ins_c;
+            j = 1;
         } else
-            i = start_column;
+            j = start_column;
 
 #ifdef PRINT_DEBUG
         // Print column header
-        std::cout << source[i - 1] << (i<10? "  ": " ") << i << " ";
+        std::cout << target[i - 1] << (i < 10 ? "  " : " ") << i << " ";
         for(int k = 1; k <= start_column-2; k++) std::cout << " . ";
         if (start_column > 1) std::cout << (max_d < 9? " " : "") << max_d + 1 << " ";
 #endif
@@ -302,24 +295,24 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
 		 * that if s_char_len is not initialized then BOTH strings contain
 		 * only single-byte characters.
 		 */
-        for (; i < stop_column; i++) {
+        for (; j < stop_column; j++) {
             int ins;
             int del;
             int sub;
 
             /* Calculate costs for insertion, deletion, and substitution. */
-            ins = prev[i] + ins_c;
-            del = curr[i - 1] + del_c;
-            sub = prev[i - 1] + ((*x == *y) ? 0 : sub_c);
+            ins = prev[j] + ins_c;
+            del = curr[j - 1] + del_c;
+            sub = prev[j - 1] + ((*x == *y) ? 0 : sub_c);
 
             /* Take the one with minimum cost. */
-            curr[i] = Min(ins, del);
-            curr[i] = Min(curr[i], sub);
+            curr[j] = Min(ins, del);
+            curr[j] = Min(curr[j], sub);
 
             /* Point to next character. */
             x++;
 #ifdef PRINT_DEBUG
-            std::cout << (curr[i]<10? " ": "") << curr[i] << " ";
+            std::cout << (curr[j] < 10 ? " " : "") << curr[j] << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
@@ -328,10 +321,10 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
 #ifdef PRINT_DEBUG
         if (stop_column < m) std::cout << (max_d < 9? " " : "") << max_d + 1 << " ";
         for(int k = stop_column+2; k <= m; k++) std::cout << " . ";
-        std::cout << "   " << stop_column << " <= j <= " << stop_column << "\n";
+        std::cout << "   " << (start_column==0?1:start_column) << " <= i <= " << stop_column - 1 << "\n";
 #endif
 
-        /* Swap current row with previous row. */
+        /* Swap current i with previous i. */
         temp = curr;
         curr = prev;
         prev = temp;
@@ -352,14 +345,14 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
         // if (max_d >= 0)
         { // preserve scope
             /*
-             * The "zero point" is the column of the current row where the
+             * The "zero point" is the column of the current i where the
              * remaining portions of the strings are of equal length.  There
-             * are (n - 1) characters in the target string, of which j have
+             * are (n - 1) characters in the target string, of which i have
              * been transformed.  There are (m - 1) characters in the source
-             * string, so we want to find the value for zp where (n - 1) - j =
+             * string, so we want to find the value for zp where (n - 1) - i =
              * (m - 1) - zp.
              */
-            int			zp = j - (n - m);
+            int			zp = i - (n - m);
 
             /* Check whether the stop column can slide left. */
             while (stop_column > 0)
@@ -402,14 +395,17 @@ long long postgres(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_n
                 metrics.algorithm_time += algorithm_timer.elapsed();
                 metrics.total_time += call_timer.elapsed();
 #endif
+#ifdef PRINT_DEBUG
+                std::cout << "Bailing early" << '\n';
+#endif
                 return max_d + 1;
             }
         }
 
     }
     /*
-     * Because the final value was swapped from the previous row to the
-     * current row, that's where we'll find it.
+     * Because the final value was swapped from the previous i to the
+     * current i, that's where we'll find it.
      */
 #ifdef CAPTURE_METRICS
     metrics.algorithm_time += algorithm_timer.elapsed();

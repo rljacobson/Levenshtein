@@ -20,8 +20,8 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     }
 
     // Let's make some string views so we can use the STL.
-    std::string_view query{args->args[1], args->lengths[1]};
-    std::string_view subject{args->args[0], args->lengths[0]};
+    std::string_view query{args->args[0], args->lengths[0]};
+    std::string_view subject{args->args[1], args->lengths[1]};
 
     // Skip any common prefix.
     auto prefix_mismatch = std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
@@ -60,6 +60,7 @@ The pre-algorithm code is the same for all algorithm variants. It handles
 
     const int n = static_cast<int>(subject.length()); // Cast size_type to int
     const int m = static_cast<int>(query.length()); // Cast size_type to int
+    const int m_n = m-n; // We use this a lot.
 
     // It's possible we "trimmed" an entire string.
     if(n==0) {
@@ -71,8 +72,6 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     }
 
 #ifndef SUPPRESS_MAX_CHECK
-    // Determine the effective maximum edit distance. The distance is at most length of the longest string.
-    const int effective_max = std::min(static_cast<int>(max), m);
     // Distance is at least the difference in the lengths of the strings.
     if (m-n > static_cast<int>(max)) {
 #ifdef CAPTURE_METRICS
@@ -96,6 +95,6 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     std::cout << "subject: " << subject << '\n';
     std::cout << "query:   " << query << '\n';
 #ifndef SUPPRESS_MAX_CHECK
-    std::cout << "effective_max: " << effective_max << '\n';
+    std::cout << "max: " << max << '\n';
 #endif
 #endif

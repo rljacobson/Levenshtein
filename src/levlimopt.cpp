@@ -142,7 +142,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     // Fetch preallocated buffer. The only difference between levmin and levlimopt is that levmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
-    long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
+    int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -167,6 +167,41 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     int minimum_within_row = 0;
     int current_cell = 0;
 
+    /*
+    The quantity `max_d - (m-n)` represents the remaining cost budget after accounting for the `(m-n)` insertions
+    we know are required. It is possible for there to be additional insertions beyond the required `(m-n)`
+    insertions, but for every additional insertion beyond the `(m-n)`, there will have to be a corresponding
+    deletion for the strings to end up the same length. Therefore, for every additional insertion, the total cost
+    will be 2, one for the insertion and one for the corresponding deletion. There can be at most `(max_d -
+    (m-n))/2`, because $2\times$ `(max_d - (m-n))/2` $=$ `max_d - (m-n)`, our remaining cost budget.
+
+    As we move along in our computation, we will "spend" more and more of our remaining cost budget, allowing us to
+    narrow our band even farther.
+
+    The diagonal cells of the matrix *starting from the upper left corner* represent when the strings are the same
+    length. The diagonal cells of the matrix *starting from the lower right corner* represent when the strings have the
+    same number of characters remaining (to be inserted or substituted). You can think of this second diagonal as where
+    you are after spending the `(m-n)` inserts into the shorter string to obtain the longer string (or equivalently, the
+    deletions from the longer string to obtain the shorter string). We shall call it the *right diagonal*.
+
+    After computing a row, we have additional information about our remaining cost budget. The cell `curr[stop_column -
+    1]` represents both the insertions needed to reach the right diagonal, the additional insertions to reach
+    `stop_column-1`, and any additional edits that may have occurred. But recall that for every insertion beyond the
+    right diagonal (beyond `(m-n)` insertions) must necessarily be paired with a deletion. The number of additional
+    insertions at `stop_column - 1` is `(stop_column-1) - (m-n)`. Therefore,  `curr[stop_column - 1] + (stop_column-1) -
+    (m-n)` is a lower bound on the final number of edits required to transform one string into the other.  We require
+    this lower bound to be no greater than `max_d`: `curr[stop_column - 1] + (stop_column-1) - (m-n) <= max_d`. What
+    should `stop_column` be? Solving the inequality for `stop_column`, we have `stop_column <= max_d -
+    curr[stop_column-1] + (m-n) + 1`. We can compute the RHS value explicitly, and if `stop_column` is too large, we
+    decrement it and recheck the inequality (since the RHS depends on `stop_column`), and continue decrementing
+    `stop_column` until the inequality holds. If ever `start_column == stop_column-1` (the case of an "empty band"), we
+    know we will exceed `max_d`.
+    */
+    // We dynamically adjust the left and right bands independently.
+    // m_n + (max - (m_n))/2;
+    int right_band = (max + m_n) / 2;
+    int left_band  = 0;
+
 #ifdef PRINT_DEBUG
     // Print the matrix header
     std::cout << "     ";
@@ -178,14 +213,9 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 
     // Main loop to calculate the Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-        // Initialize first column
-        buffer[0] = i;
 
-        // We only need to look in the window between i-max <= j <= i+max, because beyond
-        // that window we would need (at least) another max inserts/deletions in the
-        // "path" to arrive at the (n,m) cell.
-        int start_j = std::max(1, i - (effective_max - minimum_within_row));
-        int end_j   = std::min(m, i + effective_max);
+        int start_j = std::max(1, i - left_band); // first cell computed
+        int end_j   = std::min(m, i + right_band); // last cell computed
 
         // We use only a single "row" instead of a full matrix. Let's call it cell[*].
         // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
@@ -201,11 +231,17 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         // `previous_cell` = matrix(i-1, j-1).
         int previous_cell = buffer[start_j-1];
 
+        // Initialize first column
+        // if (start_j == 1) // This line seems to make no difference.
+        buffer[0] = i;
+
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
         if (start_j > 1) buffer[start_j-1] = max + 1;
         if (end_j   < m) buffer[end_j+1]   = max + 1;
+
+
 #ifdef PRINT_DEBUG
         // Print column header
         std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
@@ -232,13 +268,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
 #endif
-            if(j > i && current_cell > effective_max && buffer[j] > effective_max) {
-                // Don't bother computing the remainder of the band.
-                buffer[j] = current_cell;
-                if(j<=m) buffer[j+1] = max + 1; // Set sentinel.
-                end_j = j;
-                break;
-            }
 
             minimum_within_row = std::min(minimum_within_row, current_cell);
             previous_cell      = buffer[j];    // Save cell value for next iteration
@@ -249,8 +278,37 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         for(int k = end_j+2; k <= m; k++) std::cout << " . ";
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
+
+
+        // See if we can make the band narrower based on the row just computed
+        // `curr[stop_column - 1] + (stop_column-1) - (m-n) <= max_d`
+        // We require:
+        //   buffer[i + right_band] + i + right_band - m_n <= max
+        while(
+                i + right_band < m
+                && i + right_band > 0
+                && buffer[i + right_band] + std::abs(right_band - m_n) > max
+              ) {
+            right_band--;
+        }
+        // We require:
+        //   left_band + m_n + buffer[i-left_band] <= max
+        while(
+                i - left_band > 0
+                && -left_band < right_band
+                // && i - left_band < m
+                && left_band + m_n + buffer[i-left_band] > max
+              ) {
+            previous_cell = max+1;
+            left_band--;
+        }
+
+        // The left band is a little different. It is "sticky"...
+        left_band++;
+        // ...unless we can prove it can shrink.
+
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(effective_max)) {
+        if (minimum_within_row > static_cast<int>(max) ) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
@@ -261,6 +319,17 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 #endif
             return max + 1;
         }
+        if (right_band <= -left_band) {
+#ifdef CAPTURE_METRICS
+            metrics.early_exit++;
+            metrics.algorithm_time += algorithm_timer.elapsed();
+            metrics.total_time += call_timer.elapsed();
+#endif
+#ifdef PRINT_DEBUG
+            std::cout << "EMPTY BAND: " << i-left_band << " <= j <= " << i+right_band << '\n';
+#endif
+            return max + 1;
+        }
     }
 
     // Return the final Levenshtein distance
@@ -268,5 +337,5 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, static_cast<long long>(current_cell)); //buffer[m];
+    return std::min(max+1, current_cell); //buffer[m];
 }

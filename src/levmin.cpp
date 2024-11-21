@@ -158,7 +158,7 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     LevMinPersistant *data = reinterpret_cast<LevMinPersistant *>(initid->ptr);
     // This line and the line updating `data->max` right before the final `return` statement are the only differences
     // between levmin and levlim.
-    long long max = std::min(
+    int max = std::min(
             *(reinterpret_cast<long long *>(args->args[2])),
             static_cast<long long>(data->max)
     );
@@ -204,8 +204,8 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         // We only need to look in the window between i-max <= j <= i+max, because beyond
         // that window we would need (at least) another max inserts/deletions in the
         // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - effective_max);
-        const int end_j   = std::min(m, i + effective_max);
+        const int start_j = std::max(1, i - max);
+        const int end_j   = std::min(m, i + max);
 
         // We use only a single "row" instead of a full matrix. Let's call it cell[*].
         // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
@@ -263,7 +263,7 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(effective_max)) {
+        if (minimum_within_row > static_cast<int>(max)) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
@@ -285,5 +285,5 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, static_cast<long long>(current_cell));
+    return std::min(max+1, current_cell);
 }

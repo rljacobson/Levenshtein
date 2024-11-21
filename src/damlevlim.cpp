@@ -113,7 +113,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     // Fetch preallocated buffer. The only difference between damlevmin and damlevlim is that damlevmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
-    long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
+    int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -163,8 +163,8 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         // We only need to look in the window between i-max <= j <= i+max, because beyond
         // that window we would need (at least) another max inserts/deletions in the
         // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - effective_max);
-        const int end_j   = std::min(m, i + effective_max);
+        const int start_j = std::max(1, i - max);
+        const int end_j   = std::min(m, i + max);
 
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
@@ -237,7 +237,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(effective_max)) {
+        if (minimum_within_row > static_cast<int>(max)) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
@@ -255,5 +255,5 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, static_cast<long long>(current_cell));
+    return std::min(max+1, current_cell);
 }

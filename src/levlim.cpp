@@ -144,7 +144,7 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     // Fetch preallocated buffer. The only difference between levmin and levlim is that levmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
-    long long max = std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST);
+    int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -171,23 +171,22 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
 
 #ifdef PRINT_DEBUG
     // Print the matrix header
-    std::cout << "    ";
-    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "     ";
+    for(int k = 0; k < m; k++) std::cout << " " << query[k] << " ";
     std::cout << "\n  ";
-    for(int k = 0; k <= m; k++) std::cout << k << " ";
+    for(int k = 0; k <= m; k++) std::cout << (k < 10? " ": "") << k << " ";
     std::cout << "\n";
 #endif
 
     // Main loop to calculate the Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-        // Initialize first column
-        buffer[0] = i;
+
 
         // We only need to look in the window between i-max <= j <= i+max, because beyond
         // that window we would need (at least) another max inserts/deletions in the
         // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - effective_max);
-        const int end_j   = std::min(m, i + effective_max);
+        const int start_j = std::max(1, i - max);
+        const int end_j   = std::min(m, i + max);
 
         // We use only a single "row" instead of a full matrix. Let's call it cell[*].
         // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
@@ -203,6 +202,9 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         // `previous_cell` = matrix(i-1, j-1).
         int previous_cell = buffer[start_j-1];
 
+        // Initialize first column
+        buffer[0] = i;
+
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
@@ -210,9 +212,9 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         if (end_j   < m) buffer[end_j+1]   = max + 1;
 #ifdef PRINT_DEBUG
         // Print column header
-        std::cout << subject[i - 1] << " " << i << " ";
-        for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
-        if (start_j > 1) std::cout << max + 1 << " ";
+        std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
+        for(int k = 1; k <= start_j-2; k++) std::cout << " . ";
+        if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
         // Keep track of the minimum number of edits we have proven are necessary. If this
         // number ever exceeds `max`, we can bail.
@@ -233,19 +235,19 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
             buffer[j]          = current_cell; // Overwrite
 
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";
+            std::cout << (current_cell<10? " ": "") << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
 #endif
         }
 #ifdef PRINT_DEBUG
-        if (end_j < m) std::cout << max + 1 << " ";
-        for(int k = end_j+2; k <= m; k++) std::cout << ". ";
+        if (end_j < m) std::cout << (max < 9? " " : "") << max + 1 << " ";
+        for(int k = end_j+2; k <= m; k++) std::cout << " . ";
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(effective_max)) {
+        if (minimum_within_row > static_cast<int>(max)) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
@@ -263,5 +265,5 @@ long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, static_cast<long long>(current_cell));
+    return std::min(max+1, current_cell);
 }

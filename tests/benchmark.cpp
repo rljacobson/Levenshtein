@@ -23,7 +23,7 @@ std::vector<std::string> mangle_word_list(std::vector<std::string> &words, int m
 // Levenshtein
 UDF_SIGNATURES(lev)
 UDF_SIGNATURES(levlim)
-// UDF_SIGNATURES(levlimopt)
+UDF_SIGNATURES(levlimopt)
 UDF_SIGNATURES(levmin)
 
 // Damerau–Levenshtein
@@ -72,7 +72,7 @@ std::vector<UDF_Function> get_udf_functions() {
     // INITIALIZE_ALGORITHM_ARGS(lev, 2)
     INITIALIZE_ALGORITHM_ARGS(levlim, 3)
     // INITIALIZE_ALGORITHM_ARGS(levmin, 3)
-    // INITIALIZE_ALGORITHM_ARGS(levlimopt, 3)
+    INITIALIZE_ALGORITHM_ARGS(levlimopt, 3)
     // INITIALIZE_ALGORITHM_ARGS(damlev, 2)
     // INITIALIZE_ALGORITHM_ARGS(damlev2D, 2)
     // INITIALIZE_ALGORITHM_ARGS(damlevlim, 3)
@@ -428,12 +428,12 @@ int main(int argc, char *argv[]) {
 
     int max_subject_words     = 2000; // Number of subject words to test
     int max_total_words       = 200000; // Total number of words to load from file and sample from.
-    long long max_distance    = 4;    // The max given to the algorithms (NOT max number of edits)
-    int max_edits             = 4;    // The maximum number of edits used when mangling the strings (NOT algorithm limit)
-    int max_edits_lower_bound = -1;   // -1 is disabled = do exactly max_edits
+    long long max_distance    = 5;    // The max given to the algorithms (NOT max number of edits)
+    int max_edits             = 5;    // The maximum number of edits used when mangling the strings (NOT algorithm limit)
+    int max_edits_lower_bound = 1;   // -1 is disabled = do exactly max_edits
 
     // For randomly generated strings
-    int word_length             = 20;
+    int word_length             = 40;
     int word_length_lower_bound = -1; // -1 is disabled = all strings have length `word_length`
 
 #ifndef USE_GENERATED_WORDS

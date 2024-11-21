@@ -159,7 +159,7 @@ double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nu
 #include "validate_similarity.h"
     // The algorithm works with number of edits, a positive integer. For similarity, the
     // number of edits permitted depends on the length of the longest string.
-    long long max = similarity_to_max_edits(similarity, std::max(args->lengths[0], args->lengths[1]));
+    int max = static_cast<int>(similarity_to_max_edits(similarity, std::max(args->lengths[0], args->lengths[1])));
     int *buffer = data->buffer;
 
     // The pre-algorithm code is the same for all algorithm variants. It handles
@@ -212,8 +212,8 @@ double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nu
         // We only need to look in the window between i-max <= j <= i+max, because beyond
         // that window we would need (at least) another max inserts/deletions in the
         // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - effective_max);
-        const int end_j   = std::min(m, i + effective_max);
+        const int start_j = std::max(1, i - max);
+        const int end_j   = std::min(m, i + max);
 
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
@@ -285,7 +285,7 @@ double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nu
         std::cout << "\n";
 #endif
         // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(effective_max)) {
+        if (minimum_within_row > static_cast<int>(max)) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
