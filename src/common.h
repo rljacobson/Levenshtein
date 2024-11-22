@@ -63,10 +63,6 @@ void set_error(char *error, const char *message) {
     strncpy(error, message, MYSQL_ERRMSG_SIZE);
 }
 
-
-#define Max(x, y)		((x) > (y) ? (x) : (y))
-#define Min(x, y)		((x) < (y) ? (x) : (y))
-
 #define UDF_SIGNATURES_TYPE(algorithm, type) \
     extern "C" { \
         [[maybe_unused]] int MACRO_CONCAT(algorithm, _init)(UDF_INIT *initid, UDF_ARGS *args, char *message); \

@@ -84,9 +84,6 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     // Re-initialize buffer before calculation
     std::iota(buffer, buffer + m + 1, 0);
 
-    // ToDo: If difference in lengths is greater or equal than effective max, return effective max.
-
-
 #ifdef CAPTURE_METRICS
     Timer algorithm_timer;
     algorithm_timer.start();

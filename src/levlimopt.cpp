@@ -196,6 +196,10 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     `stop_column` until the inequality holds. If ever `start_column == stop_column-1` (the case of an "empty band"), we
     know we will exceed `max_d`.
     */
+
+
+    // Keeping track of start and end is slightly faster than keeping track of
+    // right/left band for reasons I don't understand.
     // first cell computed
     int start_j = 1;
     // last cell computed, +1 because we start at second row (index 1)
@@ -224,6 +228,8 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         // we need to keep the value in cell[j] before overwriting it for use in the next
         // iteration. We store it in the variable `previous_cell`. The invariant is that
         // `previous_cell` = matrix(i-1, j-1).
+
+        // The order of these initializations is crucial. This comes first so the value in the buffer isn't overwritten.
         int previous_cell = buffer[start_j-1];
 
         // Initialize first column
@@ -244,7 +250,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 #endif
 
         for (int j = start_j; j <= end_j; ++j) {
-            int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
+            int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1;
             // See the declaration of `previous_cell` for an explanation of this.
             // `previous_cell` = matrix(i-1, j-1)
             //       cell[j-1] = matrix(i, j-1)
@@ -269,25 +275,25 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
 
-        // See if we can make the band narrower based on the row just computed
+        // See if we can make the band narrower based on the row just computed.
         while(
                 // end_j < m && // This should always be true
                 end_j > 0
                 && buffer[end_j] + std::abs(end_j - i - m_n) > max
               ) {
-            end_j--; // We can make the band tighter
+            end_j--;
         }
         // Increment for next row
         end_j = std::min(m, end_j + 1);
 
         // The starting point is a little different. It is "sticky" unless we
-        // can prove it can shrink.
+        // can prove it can shrink. Think of it as, both start and end do
+        // the most conservative thing.
         while(
-                start_j < end_j
+                start_j <= end_j
                 && std::abs(i + m_n - start_j) + buffer[start_j] > max
               ) {
-            previous_cell = max + 1;
-            start_j++; // We can make the band tighter
+            start_j++;
         }
 
         if (end_j < start_j) {

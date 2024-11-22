@@ -8,6 +8,11 @@ The implementation from postgres modified to fit my test harness.
 
 UDF_SIGNATURES(postgres)
 
+#define Max(x, y)  std::max(x, y)
+//((x) > (y) ? (x) : (y))
+#define Min(x, y)  std::min(x, y)
+//((x) < (y) ? (x) : (y))
+
 
 [[maybe_unused]]
 int postgres_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
