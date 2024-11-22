@@ -196,10 +196,10 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     `stop_column` until the inequality holds. If ever `start_column == stop_column-1` (the case of an "empty band"), we
     know we will exceed `max_d`.
     */
-    // We dynamically adjust the left and right bands independently.
-    // m_n + (max - (m_n))/2;
-    int right_band = (max + m_n) / 2;
-    int left_band  = 0;
+    // first cell computed
+    int start_j = 1;
+    // last cell computed, +1 because we start at second row (index 1)
+    int end_j   = std::min((max + m_n) / 2 + 1, m);
 
 #ifdef PRINT_DEBUG
     // Print the matrix header
@@ -212,10 +212,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 
     // Main loop to calculate the Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-
-        int start_j = std::max(1, i - left_band); // first cell computed
-        int end_j   = std::min(m, i + right_band); // last cell computed
-
         // We use only a single "row" instead of a full matrix. Let's call it cell[*].
         // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
         // this cell, we need matrix(i-1, j), matrix(i, j-1), and matrix(i-1, j-1). When
@@ -240,7 +236,6 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         if (start_j > 1) buffer[start_j-1] = max + 1;
         if (end_j   < m) buffer[end_j+1]   = max + 1;
 
-
 #ifdef PRINT_DEBUG
         // Print column header
         std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
@@ -259,14 +254,14 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
                                      previous_cell + cost});
 
 #ifdef PRINT_DEBUG
-            std::cout << (current_cell<10? " ": "") << current_cell << " ";
+            std::cout << (current_cell < 10 ? " ": "") << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
 #endif
 
-            previous_cell      = buffer[j];    // Save cell value for next iteration
-            buffer[j]          = current_cell; // Overwrite
+            previous_cell = buffer[j];    // Save cell value for next iteration
+            buffer[j]     = current_cell; // Overwrite
         }
 #ifdef PRINT_DEBUG
         if (end_j < m) std::cout << (max < 9? " " : "") << max + 1 << " ";
@@ -274,42 +269,35 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
 
-
         // See if we can make the band narrower based on the row just computed
-        // `curr[stop_column - 1] + (stop_column-1) - (m-n) <= max_d`
-        // We require:
-        //   buffer[i + right_band] + i + right_band - m_n <= max
         while(
-                i + right_band < m
-                && i + right_band > 0
-                && buffer[i + right_band] + std::abs(right_band - m_n) > max
+                // end_j < m && // This should always be true
+                end_j > 0
+                && buffer[end_j] + std::abs(end_j - i - m_n) > max
               ) {
-            right_band--;
+            end_j--; // We can make the band tighter
         }
-        // We require:
-        //   left_band + m_n + buffer[i-left_band] <= max
+        // Increment for next row
+        end_j = std::min(m, end_j + 1);
+
+        // The starting point is a little different. It is "sticky" unless we
+        // can prove it can shrink.
         while(
-                i - left_band > 0
-                && -left_band < right_band
-                // && i - left_band < m
-                && left_band + m_n + buffer[i-left_band] > max
+                start_j < end_j
+                && std::abs(i + m_n - start_j) + buffer[start_j] > max
               ) {
-            previous_cell = max+1;
-            left_band--;
+            previous_cell = max + 1;
+            start_j++; // We can make the band tighter
         }
 
-        // The left band is a little different. It is "sticky"...
-        left_band++;
-        // ...unless we can prove it can shrink.
-
-        if (right_band <= -left_band) {
+        if (end_j < start_j) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
             metrics.total_time += call_timer.elapsed();
 #endif
 #ifdef PRINT_DEBUG
-            std::cout << "EMPTY BAND: " << i-left_band << " <= j <= " << i+right_band << '\n';
+            std::cout << "EMPTY BAND: " << start_j << " <= j <= " << end_j << '\n';
 #endif
             return max + 1;
         }
@@ -320,5 +308,5 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, current_cell); //buffer[m];
+    return std::min(max + 1, current_cell); //buffer[m];
 }

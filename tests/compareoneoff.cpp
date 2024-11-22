@@ -71,8 +71,8 @@ char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
 // std::string string_a {"brevifrontalis"};
 // std::string string_b {"brefontals"};
-std::string string_a {"ztebtrarhiupnukmgieewrerhfkesemdeisltcio"};
-std::string string_b {"ztebtrarhiupnukmgieewreChfkrsemdeisOtcto"};
+std::string string_a {"kacrhth"};
+std::string string_b {"dkacnrhthf"};
 
 void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1, const std::string& S2) {
     int n = S1.size();
@@ -118,9 +118,6 @@ int calculateLevDistance(const std::string& S1_input, const std::string& S2_inpu
     int n = S1.size();
     int m = S2.size();
 
-    // Calculate effective_max using the length of the shorter string
-    int effective_max = std::min(max, n);
-
     std::vector<std::vector<int>> dp(n + 1, std::vector<int>(m + 1, 0));
 
     // Initialize dp table
@@ -154,10 +151,10 @@ int calculateLevDistance(const std::string& S1_input, const std::string& S2_inpu
         // Print matrix after processing each row
         // printMatrix(dp, S1, S2);
 
-        // Early exit if the minimum edit distance in this row exceeds effective_max
-        if (column_min > effective_max) {
-            std::cout << "Early exit: minimum distance " << column_min << " exceeds effective_max " << effective_max << std::endl;
-            return effective_max + 1; // Return effective_max + 1 on early exit
+        // Early exit if the minimum edit distance in this row exceeds max
+        if (column_min > max) {
+            std::cout << "Early exit: minimum distance " << column_min << " exceeds max " << max << std::endl;
+            return max + 1; // Return max + 1 on early exit
         }
     }
 
