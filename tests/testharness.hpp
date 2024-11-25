@@ -93,7 +93,6 @@ long long LEV_CALL(char *subject, size_t subject_len, char *query, size_t query_
 
 #if LEV_ALGORITHM_COUNT==3
     LEV_ARGS->args[2] = (char *)(&max);
-    LEV_ARGS->lengths[2] = sizeof(max);
 #endif
 
     result = LEV_FUNCTION(LEV_INITID, LEV_ARGS, nullptr, LEV_MESSAGE);

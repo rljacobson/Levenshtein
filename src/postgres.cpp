@@ -8,10 +8,10 @@ The implementation from postgres modified to fit my test harness.
 
 UDF_SIGNATURES(postgres)
 
-#define Max(x, y)  std::max(x, y)
-//((x) > (y) ? (x) : (y))
-#define Min(x, y)  std::min(x, y)
-//((x) < (y) ? (x) : (y))
+#define Max(x, y) ((x) > (y) ? (x) : (y))
+// std::max(x, y)
+#define Min(x, y) ((x) < (y) ? (x) : (y))
+// std::min(x, y)
 
 
 [[maybe_unused]]

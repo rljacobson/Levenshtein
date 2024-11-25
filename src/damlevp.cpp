@@ -65,22 +65,29 @@
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVP_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVP() requires two arguments:\n"
+        DAMLEVP_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVP() requires three arguments:\n"
                                   "\t1. A string.\n"
-                                  "\t2. Another string.";
+                                  "\t2. Another string.\n"
+                                  "\t3. A real number.";
 constexpr const auto DAMLEVP_ARG_NUM_ERROR_LEN = std::size(DAMLEVP_ARG_NUM_ERROR) + 1;
 constexpr const char DAMLEVP_MEM_ERROR[] = "Failed to allocate memory for DAMLEVP"
                                            " function.";
 constexpr const auto DAMLEVP_MEM_ERROR_LEN = std::size(DAMLEVP_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVP_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVP() requires two arguments:\n"
+        DAMLEVP_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVP() requires three arguments:\n"
                                    "\t1. A string.\n"
-                                   "\t2. Another string.";
+                                   "\t2. Another string.\n"
+                                   "\t3. A real number.";
 constexpr const auto DAMLEVP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVP_ARG_TYPE_ERROR) + 1;
 
 
 UDF_SIGNATURES_TYPE(damlevp, double)
 
+/// Converts minimum allowed similarity to maximum allowed number of edits for a given string length.
+/// Assumes similarity is in the interval [0.0, 1.0].
+inline constexpr long long similarity_to_max_edits(double similarity, int length) {
+    return static_cast<int>((1.0 - similarity) * static_cast<double>(length));
+}
 
 [[maybe_unused]]
 int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
@@ -130,23 +137,17 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
     PerformanceMetrics &metrics = performance_metrics[5];
 #endif
 
-    // Fetch preallocated buffer. The only difference between damlevmin and damlevp is that damlevmin also persists
+    // Fetch preallocated buffer. The only difference between damlevminp and damlevp is that damlevmin also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
     // Retrieve the similarity and compute max.
-    double similarity = *(reinterpret_cast<double *>(args->args[7]));
+    double similarity = *(reinterpret_cast<double *>(args->args[2]));
+
+#include "validate_similarity.h"
+
     // The algorithm works with number of edits, a positive integer. For similarity, the
     // number of edits permitted depends on the length of the longest string.
-    int max = std::min(
-            static_cast<long long>(
-                (1.0-similarity)*std::max(args->lengths[0], args->lengths[1])
-            ),
-            DAMLEV_MAX_EDIT_DIST
-        );
-
-    // Validate max distance and update.
-    // This code is common to algorithms with limits.
-#include "validate_max.h"
+    int max = static_cast<int>(similarity_to_max_edits(similarity, std::max(args->lengths[0], args->lengths[1])));
 
     // The pre-algorithm code is the same for all algorithm variants. It handles
     //     - basic setup & initialization
@@ -175,46 +176,48 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
     int *previous = buffer + m + 1;
     std::iota(previous, previous + m + 1, 0);
 
-    int minimum_within_row     = 0;
-    int previous_cell          = 0;
     int previous_previous_cell = 0;
     int current_cell           = 0;
 
+    // Keeping track of start and end is slightly faster than keeping track of
+    // right/left band for reasons I don't understand.
+    // first cell computed
+    int start_j = 1;
+    // last cell computed, +1 because we start at second row (index 1)
+    int end_j   = std::min((max + m_n) / 2 + 1, m);
+
 #ifdef PRINT_DEBUG
     // Print the matrix header
-    std::cout << "    ";
-    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "     ";
+    for(int k = 0; k < m; k++) std::cout << " " << query[k] << " ";
     std::cout << "\n  ";
-    for(int k = 0; k < m+1; k++) std::cout << k << " ";
+    for(int k = 0; k <= m; k++) std::cout << (k < 10? " ": "") << k << " ";
     std::cout << "\n";
 #endif
 
     // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-        // Initialize first column
-        current[0] = i;
-        previous_cell = i-1; // = matrix(i-1, 0)
+        // The order of these initializations is crucial. This comes first so the value in the buffer isn't overwritten.
+        int previous_cell = buffer[start_j-1]; // = matrix(i-1, 0)
 
-        // We only need to look in the window between i-max <= j <= i+max, because beyond
-        // that window we would need (at least) another max inserts/deletions in the
-        // "path" to arrive at the (n,m) cell.
-        const int start_j = std::max(1, i - max);
-        const int end_j   = std::min(m, i + max);
+        // Initialize first column
+        // if (start_j == 1) // This line seems to make no difference.
+        buffer[0] = i;
 
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        if (start_j > 1) current[start_j - 1] = max + 1;
-        if (end_j   < m) current[end_j + 1]   = max + 1;
+        if (start_j > 1) buffer[start_j-1] = max + 1;
+        if (end_j   < m) buffer[end_j+1]   = max + 1;
+
 #ifdef PRINT_DEBUG
         // Print column header
-        std::cout << subject[i - 1] << " " << i << " ";
-        for(int k = 1; k <= start_j-1; k++) std::cout << ". ";
+        std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
+        for(int k = 1; k <= start_j-2; k++) std::cout << " . ";
+        if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
-        // Keep track of the minimum number of edits we have proven are necessary. If this
-        // number ever exceeds `max`, we can bail.
-        minimum_within_row = i;
 
+        // Main inner loop
         for (int j = start_j; j <= end_j; ++j) {
             /*
             At the start of the computation of matrix(i, j) we have:
@@ -250,7 +253,6 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
                 current[j]             <-- current_cell           := matrix(i, j)
             */
 
-            minimum_within_row     = std::min(minimum_within_row, current_cell);
             if(j>1){
                 previous[j-2]      = previous_previous_cell;
             }
@@ -259,26 +261,47 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
             current[j]             = current_cell;
 
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";
+            std::cout << (current_cell < 10 ? " ": "") << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
 #endif
         }
 #ifdef PRINT_DEBUG
-        if (end_j < m) std::cout << max + 1;
-        for(int k = end_j+2; k <= m; k++) std::cout << " .";
-        std::cout << "\n";
+        if (end_j < m) std::cout << (max < 9? " " : "") << max + 1 << " ";
+        for(int k = end_j+2; k <= m; k++) std::cout << " . ";
+        std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
-        // Early exit if the minimum edit distance exceeds the effective maximum
-        if (minimum_within_row > static_cast<int>(max)) {
+
+        // See if we can make the band narrower based on the row just computed.
+        while(
+            // end_j < m && // This should always be true
+                end_j > 0
+                && buffer[end_j] + std::abs(end_j - i - m_n) > max
+                ) {
+            end_j--;
+        }
+        // Increment for next row
+        end_j = std::min(m, end_j + 1);
+
+        // The starting point is a little different. It is "sticky" unless we
+        // can prove it can shrink. Think of it as, both start and end do
+        // the most conservative thing.
+        while(
+                start_j <= end_j
+                && std::abs(i + m_n - start_j) + buffer[start_j] > max
+                ) {
+            start_j++;
+        }
+
+        if (end_j < start_j) {
 #ifdef CAPTURE_METRICS
             metrics.early_exit++;
             metrics.algorithm_time += algorithm_timer.elapsed();
             metrics.total_time += call_timer.elapsed();
 #endif
 #ifdef PRINT_DEBUG
-            std::cout << "Bailing early" << '\n';
+            std::cout << "EMPTY BAND: " << start_j << " <= j <= " << end_j << '\n';
 #endif
             return max_result;
         }

@@ -161,22 +161,20 @@ long long lev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, 
         return 0;
     }
 
-    // int minimum_within_row = 0;
     int current_cell = 0;
 
 #ifdef PRINT_DEBUG
     // Print the matrix header
-    std::cout << "    ";
-    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "     ";
+    for(int k = 0; k < m; k++) std::cout << " " << query[k] << " ";
     std::cout << "\n  ";
-    for(int k = 0; k <= m; k++) std::cout << k << " ";
+    for(int k = 0; k <= m; k++) std::cout << (k < 10? " ": "") << k << " ";
     std::cout << "\n";
 #endif
 
     // Main loop to calculate the Levenshtein distance
     for (int i = 1; i <= n; ++i) {
-        // Initialize first column
-        buffer[0] = i;
+
 
         // We use only a single "row" instead of a full matrix. Let's call it cell[*].
         // The current cell, cell[j], is matrix position (row, col) = (i, j).  To compute
@@ -190,18 +188,19 @@ long long lev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, 
         // we need to keep the value in cell[j] before overwriting it for use in the next
         // iteration. We store it in the variable `previous_cell`. The invariant is that
         // `previous_cell` = matrix(i-1, j-1).
-        int previous_cell = i-1; // = matrix(i-1, 0)
+        int previous_cell = i-1; // = buffer[start_j-1];
+
+        // Initialize first column
+        buffer[0] = i;
 
 #ifdef PRINT_DEBUG
         // Print column header
-        std::cout << subject[i - 1] << " " << i << " ";
-        // for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
-        // if (start_j > 1) std::cout << max + 1 << " ";
+        std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
+        for(int k = 1; k <= start_j-2; k++) std::cout << " . ";
+        if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
-        // Keep track of the minimum number of edits we have proven are necessary. If this
-        // number ever exceeds `max`, we can bail.
-        // minimum_within_row = i;
 
+        // Main inner loop
         for (int j = 1; j <= m; ++j) {
             int cost          = (subject[i - 1] == query[j - 1]) ? 0 : 1;
             // See the declaration of `previous_cell` for an explanation of this.
@@ -212,12 +211,11 @@ long long lev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, 
                                      buffer[j - 1] + 1,
                                      previous_cell + cost});
 
-            // minimum_within_row = std::min(minimum_within_row, current_cell);
             previous_cell      = buffer[j];    // Save cell value for next iteration
             buffer[j]          = current_cell; // Overwrite
 
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";
+            std::cout << (current_cell < 10 ? " ": "") << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;
@@ -225,8 +223,8 @@ long long lev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, 
         }
         /*
 #ifdef PRINT_DEBUG
-        if (end_j < m) std::cout << max + 1 << " ";
-        for(int k = end_j+2; k <= m; k++) std::cout << ". ";
+        if (end_j < m) std::cout << (max < 9? " " : "") << max + 1 << " ";
+        for(int k = end_j+2; k <= m; k++) std::cout << " . ";
         std::cout << "   " << start_j << " <= j <= " << end_j << "\n";
 #endif
         */

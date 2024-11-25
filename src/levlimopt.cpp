@@ -141,7 +141,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
 
     // Fetch preallocated buffer. The only difference between levmin and levlimopt is that levmin also persists
     // the max and updates it right before the final return statement.
-    int *buffer   = reinterpret_cast<int *>(initid->ptr);
+    int *buffer = reinterpret_cast<int *>(initid->ptr);
     int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));
 
     // Validate max distance and update.
@@ -249,6 +249,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
 
+        // Main inner loop
         for (int j = start_j; j <= end_j; ++j) {
             int cost = (subject[i - 1] == query[j - 1]) ? 0 : 1;
             // See the declaration of `previous_cell` for an explanation of this.
