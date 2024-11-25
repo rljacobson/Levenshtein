@@ -5,14 +5,14 @@ def print_matrix(s1, s2, dp, arrows):
     for i in range(len(s2)):
         print(f"{s2[i]}   ", end='')
     print("\n  ", end='')
-    
+
     # First row is special
     for i in range(len(s2)+1):
         print(f"{dp[0][i]:>2}", end='')
         if i < len(s2):
             print(' →', end='')
-    
-    
+
+
     for i in range(1, len(s1)+1):
         print("\n   ", end='')
 
@@ -72,7 +72,7 @@ def levenshtein_distance(s1, s2):
                 # print(f"Insertion: {s1[i-1]} -> {s2[j-1]}")
             if dp[i][j] == dp[i - 1][j - 1] + 1:
                 cell_arrows.append('↘')  # Substitution
-            
+
             arrows[i][j] = cell_arrows
 
     return dp, arrows
@@ -109,7 +109,7 @@ def levbanded(s1, s2, max_cost):
             dp[i][j] = min(dp[i - 1][j] + 1,      # Deletion
                            dp[i][j - 1] + 1,      # Insertion
                            dp[i - 1][j - 1] + cost)  # Substitution
-            
+
             min_in_row = min(min_in_row, dp[i][j])
 
             # Determine the arrow direction
@@ -123,7 +123,7 @@ def levbanded(s1, s2, max_cost):
                 # print(f"Insertion: {s1[i-1]} -> {s2[j-1]}")
             if dp[i][j] == dp[i - 1][j - 1] + 1:
                 cell_arrows.append('↘')  # Substitution
-            
+
             arrows[i][j] = cell_arrows
 
         if min_in_row > max_cost:
@@ -146,13 +146,12 @@ def levbandedopt(s1, s2, max_cost):
         dp[0][j] = j
         arrows[0][j] = ['→']  # Insertion
 
-    min_in_row = 0
+    # initialize start and end
+    start_j = 1
+    end_j = min(int((max_cost + m-n)/2 + 1), m)
 
     # Compute the distance
     for i in range(1, n + 1):
-
-        start_j = max(1, i - (max_cost-min_in_row))
-        end_j = min(m, i + (max_cost))
 
         if start_j > 1:
             dp[i][start_j-1] = max_cost + 1
@@ -166,7 +165,7 @@ def levbandedopt(s1, s2, max_cost):
             dp[i][j] = min(dp[i - 1][j] + 1,      # Deletion
                            dp[i][j - 1] + 1,      # Insertion
                            dp[i - 1][j - 1] + cost)  # Substitution
-            
+
             min_in_row = min(min_in_row, dp[i][j])
 
             # Determine the arrow direction
@@ -180,10 +179,21 @@ def levbandedopt(s1, s2, max_cost):
                 # print(f"Insertion: {s1[i-1]} -> {s2[j-1]}")
             if dp[i][j] == dp[i - 1][j - 1] + 1:
                 cell_arrows.append('↘')  # Substitution
-            
+
             arrows[i][j] = cell_arrows
 
-        if min_in_row > max_cost:
+        # Update start and end
+        while end_j > 0 and \
+                dp[i][end_j] + abs(end_j - i - m + n) > max_cost:
+            end_j = end_j - 1;
+
+        end_j = min(m, end_j + 1)
+
+        while start_j <= end_j and \
+                abs(i + m - n - start_j) + dp[i][start_j] > max_cost:
+            start_j = start_j + 1
+
+        if end_j < start_j:
             dp[-1][-1] = max_cost + 1
             return dp, arrows
 
@@ -191,12 +201,12 @@ def levbandedopt(s1, s2, max_cost):
 
 
 if __name__ == "__main__":
-    s1 = "mfpamielar"
-    s2 = "fmpmiearla" # Always make this the longer string
+    s1 = "lysmata amboinensis"
+    s2 = "lysmmata amhbonensis" # Always make this the longer string
     max_cost = 4
 
     dp, arrows = levenshtein_distance(s1, s2)
-    print("\nStandard Algorithm")
+    print(f"\nStandard Algorithm (max_cost = {max_cost})")
     print_matrix(s1, s2,dp, arrows)
 
     dp, arrows = levbanded(s1, s2, max_cost)
@@ -204,7 +214,7 @@ if __name__ == "__main__":
     print_matrix(s1, s2,dp, arrows)
 
     dp, arrows = levbandedopt(s1, s2, max_cost)
-    print("\nBanded Algorithm Optimized")
+    print(f"\nBanded Algorithm Optimized (max_cost = {max_cost})")
     print_matrix(s1, s2,dp, arrows)
 
     print()
