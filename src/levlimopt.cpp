@@ -239,8 +239,8 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        if (start_j > 1) buffer[start_j-1] = max + 1;
-        if (end_j   < m) buffer[end_j+1]   = max + 1;
+        // if (start_j > 1) buffer[start_j-1] = max + 1;
+        // if (end_j   < m) buffer[end_j+1]   = max + 1;
 
 #ifdef PRINT_DEBUG
         // Print column header
