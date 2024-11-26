@@ -19,61 +19,23 @@ The pre-algorithm code is the same for all algorithm variants. It handles
         return static_cast<long long>(std::max(args->lengths[0], args->lengths[1]));
     }
 
-    // Let's make some string views so we can use the STL.
-    std::string_view query{args->args[0], args->lengths[0]};
-    std::string_view subject{args->args[1], args->lengths[1]};
-
-    // Skip any common prefix.
-    auto prefix_mismatch = std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
-    auto start_offset = static_cast<size_t>(std::distance(subject.begin(), prefix_mismatch.first));
-
-    // If one of the strings is a prefix of the other, return the length difference.
-    if (subject.length() == start_offset) {
-#ifdef CAPTURE_METRICS
-        metrics.total_time += call_timer.elapsed();
-        metrics.exit_length_difference++;
-#endif
-        return int(query.length()) - int(start_offset);
-    } else if (query.length() == start_offset) {
-#ifdef CAPTURE_METRICS
-        metrics.total_time += call_timer.elapsed();
-        metrics.exit_length_difference++;
-#endif
-        return int(subject.length()) - int(start_offset);
-    }
-
-    // Skip any common suffix.
-    auto suffix_mismatch = std::mismatch(subject.rbegin(), std::next(subject.rend(), -int(start_offset)),
-                                         query.rbegin(), std::next(query.rend(), -int(start_offset)));
-    auto end_offset = std::distance(subject.rbegin(), suffix_mismatch.first);
-
-    // Extract the different part if significant.
-
-    subject = subject.substr(start_offset, subject.length() - start_offset - end_offset);
-    query = query.substr(start_offset, query.length() - start_offset - end_offset);
-
+    const char* subject = args->args[0];
+    const char* query = args->args[1];
+    int n = args->lengths[0];
+    int m = args->lengths[1];
 
     // Ensure 'subject' is the smaller string for efficiency
-    if (query.length() < subject.length()) {
+    if (m < n) {
         std::swap(subject, query);
+        std::swap(m, n);
     }
 
-    const int n = static_cast<int>(subject.length()); // Cast size_type to int
-    const int m = static_cast<int>(query.length()); // Cast size_type to int
-    const int m_n = m-n; // We use this a lot.
+    const int m_n = (m-n); // We use this a lot.
 
-    // It's possible we "trimmed" an entire string.
-    if(n==0) {
-#ifdef CAPTURE_METRICS
-        metrics.exit_length_difference++;
-        metrics.total_time += call_timer.elapsed();
-#endif
-        return m;
-    }
 
 #ifndef SUPPRESS_MAX_CHECK
     // Distance is at least the difference in the lengths of the strings.
-    if (m-n > static_cast<int>(max)) {
+    if (m_n > static_cast<int>(max)) {
 #ifdef CAPTURE_METRICS
         metrics.exit_length_difference++;
         metrics.total_time += call_timer.elapsed();
