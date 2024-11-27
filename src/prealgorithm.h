@@ -1,7 +1,10 @@
 /*
 The pre-algorithm code is the same for all algorithm variants. It handles
     - basic setup & initialization
-    - trimming of common prefix/suffix
+    - ~trimming of common prefix/suffix~
+
+In my benchmarks, trimming any common prefix/suffix makes no statistically significant difference.
+
 */
 
 #ifdef CAPTURE_METRICS
@@ -22,7 +25,7 @@ The pre-algorithm code is the same for all algorithm variants. It handles
     // Let's make some string views so we can use the STL.
     std::string_view query{args->args[0], args->lengths[0]};
     std::string_view subject{args->args[1], args->lengths[1]};
-
+/*
     // Skip any common prefix.
     auto prefix_mismatch = std::mismatch(subject.begin(), subject.end(), query.begin(), query.end());
     auto start_offset = static_cast<size_t>(std::distance(subject.begin(), prefix_mismatch.first));
@@ -51,6 +54,7 @@ The pre-algorithm code is the same for all algorithm variants. It handles
 
     subject = subject.substr(start_offset, subject.length() - start_offset - end_offset);
     query = query.substr(start_offset, query.length() - start_offset - end_offset);
+*/
 
 
     // Ensure 'subject' is the smaller string for efficiency

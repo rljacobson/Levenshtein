@@ -127,17 +127,16 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     int *previous = buffer + m + 1;
     std::iota(previous, previous + m + 1, 0);
 
-    // int minimum_within_row     = 0;
     int previous_cell          = 0;
     int previous_previous_cell = 0;
     int current_cell           = 0;
 
 #ifdef PRINT_DEBUG
     // Print the matrix header
-    std::cout << "    ";
-    for(int k = 0; k < m; k++) std::cout << query[k] << " ";
+    std::cout << "     ";
+    for(int k = 0; k < m; k++) std::cout << " " << query[k] << " ";
     std::cout << "\n  ";
-    for(int k = 0; k < m+1; k++) std::cout << k << " ";
+    for(int k = 0; k <= m; k++) std::cout << (k < 10? " ": "") << k << " ";
     std::cout << "\n";
 #endif
 
@@ -149,13 +148,10 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
 
 #ifdef PRINT_DEBUG
         // Print column header
-        std::cout << subject[i - 1] << " " << i << " ";
-        // for(int k = 1; k <= start_j-2; k++) std::cout << ". ";
-        // if (start_j > 1) std::cout << max + 1 << " ";
+        std::cout << subject[i - 1] << (i<10? "  ": " ") << i << " ";
+        // for(int k = 1; k <= start_j-2; k++) std::cout << " . ";
+        // if (start_j > 1) std::cout << (max < 9? " " : "")  << max + 1 << " ";
 #endif
-        // Keep track of the minimum number of edits we have proven are necessary. If this
-        // number ever exceeds `max`, we can bail.
-        // minimum_within_row = i;
 
         for (int j = 1; j <= m; ++j) {
             /*
@@ -192,7 +188,6 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
                 current[j]             <-- current_cell           := matrix(i, j)
             */
 
-            // minimum_within_row     = std::min(minimum_within_row, current_cell);
             if(j>1){
                 previous[j-2]      = previous_previous_cell;
             }
@@ -201,7 +196,7 @@ long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
             current[j]             = current_cell;
 
 #ifdef PRINT_DEBUG
-            std::cout << current_cell << " ";
+            std::cout << (current_cell < 10 ? " ": "") << current_cell << " ";
 #endif
 #ifdef CAPTURE_METRICS
             metrics.cells_computed++;

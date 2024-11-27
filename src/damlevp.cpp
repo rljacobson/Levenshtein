@@ -177,6 +177,7 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
     std::iota(previous, previous + m + 1, 0);
 
     int previous_previous_cell = 0;
+    int previous_cell          = 0;
     int current_cell           = 0;
 
     // Keeping track of start and end is slightly faster than keeping track of
@@ -198,17 +199,17 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
     // Main loop to calculate the Damerau-Levenshtein distance
     for (int i = 1; i <= n; ++i) {
         // The order of these initializations is crucial. This comes first so the value in the buffer isn't overwritten.
-        int previous_cell = buffer[start_j-1]; // = matrix(i-1, 0)
+        previous_cell = current[start_j-1]; // = matrix(i-1, 0)
 
         // Initialize first column
         // if (start_j == 1) // This line seems to make no difference.
-        buffer[0] = i;
+        current[0] = i;
 
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        if (start_j > 1) buffer[start_j-1] = max + 1;
-        if (end_j   < m) buffer[end_j+1]   = max + 1;
+        // if (start_j > 1) current[start_j-1] = max + 1;
+        // if (end_j   < m) current[end_j+1]   = max + 1;
 
 #ifdef PRINT_DEBUG
         // Print column header
@@ -277,7 +278,8 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
         while(
             // end_j < m && // This should always be true
                 end_j > 0
-                && buffer[end_j] + std::abs(end_j - i - m_n) > max
+                // Have to subtract one in the following as next character might make transposition
+                && current[end_j] + std::abs(end_j - i - m_n) - 1 > max
                 ) {
             end_j--;
         }
@@ -289,7 +291,8 @@ double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null,
         // the most conservative thing.
         while(
                 start_j <= end_j
-                && std::abs(i + m_n - start_j) + buffer[start_j] > max
+                // Have to subtract one in the following as next character might make transposition
+                && std::abs(i + m_n - start_j) + current[start_j] - 1 > max
                 ) {
             start_j++;
         }

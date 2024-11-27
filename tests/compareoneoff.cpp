@@ -25,7 +25,11 @@
 // capture symbols for ALGORITHM_A
 void (* const algorithm_a_setup)() = LEV_SETUP;
 void (* const algorithm_a_teardown)() = LEV_TEARDOWN;
+#if ALGORITHM_A_COUNT == 3
 long long (* const algorithm_a_call)(char*, size_t, char*, size_t, long long) = LEV_CALL;
+#else
+long long (* const algorithm_a_call)(char*, size_t, char*, size_t) = LEV_CALL;
+#endif
 char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
 // Now include for ALGORITHM_B
@@ -71,8 +75,8 @@ char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
 // std::string string_a {"brevifrontalis"};
 // std::string string_b {"brefontals"};
-std::string string_a {"kacrhth"};
-std::string string_b {"dkacnrhthf"};
+std::string string_a {"uooigeitrcwwaeaekizr"};
+std::string string_b {"uioogeticrwweaaekizr"};
 
 void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1, const std::string& S2) {
     int n = S1.size();
