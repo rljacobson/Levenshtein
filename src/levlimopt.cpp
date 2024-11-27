@@ -156,7 +156,7 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
     // Check if buffer size required exceeds available buffer size. This algorithm needs
     // a buffer of size (m+1). Because of trimming, this may be smaller than the length
     // of the longest string.
-    if( m+1 > DAMLEV_BUFFER_SIZE ) {
+    if( m + 1 > DAMLEV_BUFFER_SIZE ) {
 #ifdef CAPTURE_METRICS
         metrics.buffer_exceeded++;
         metrics.total_time += call_timer.elapsed();
@@ -164,7 +164,8 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         return 0;
     }
 
-    int current_cell = 0;
+    // int previous_cell = 0;
+    int current_cell  = 0;
 
     /*
     The quantity `max_d - (m-n)` represents the remaining cost budget after accounting for the `(m-n)` insertions
@@ -239,8 +240,8 @@ long long levlimopt(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        if (start_j > 1) buffer[start_j-1] = max + 1;
-        if (end_j   < m) buffer[end_j+1]   = max + 1;
+        // if (start_j > 1) buffer[start_j-1] = max + 1;
+        // if (end_j   < m) buffer[end_j+1]   = max + 1;
 
 #ifdef PRINT_DEBUG
         // Print column header

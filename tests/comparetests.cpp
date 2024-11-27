@@ -186,7 +186,7 @@ protected:
         */
 
         int word_count = 200000;
-        int word_length = 40;
+        int word_length = 20;
         wordList.reserve(word_count);
 
         auto gen_word = [word_length](){return generateRandomString(word_length);};
@@ -270,9 +270,9 @@ void RunLevenshteinTest(const char* function_name, Func applyEditFunc, const std
 
 
 // Specific test for Transposition
-// TEST_F(LevenshteinTest, Transposition) {
-//     RunLevenshteinTest("Transposition", applyTransposition, wordList, MAX_DISTANCE);
-// }
+TEST_F(LevenshteinTest, Transposition) {
+    RunLevenshteinTest("Transposition", applyTransposition, wordList, MAX_DISTANCE);
+}
 
 // Specific test for Deletion
 TEST_F(LevenshteinTest, Deletion) {
