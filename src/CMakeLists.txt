@@ -1,5 +1,5 @@
 # Copyright (C) 2019 Robert Jacobson
-# Distributed under the MIT License. See LICENSE.txt for details.
+# Distributed under the MIT License. See License.txt for details.
 
 ### Targets ###
 

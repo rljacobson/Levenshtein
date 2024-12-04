@@ -83,7 +83,9 @@ Under some circumstances, trimming any common prefix or suffix prior to running 
 2. the strings are known to be similar, and
 3. you can use SIMD or other specialized instructions to perform the trimming very quickly.
 
-For reasonably short strings (<250 characters), if the other optimizations given here are implemented, trimming won't give any measurable advantage even when the strings are identical--at least it doesn't on my machine. On the other hand, this means that trimming is essentially "free" to do--it's a wash--so if you have some other external reason to trim the strings, you might as well.
+Under these conditions my experiments show a 3x speedup in the typical case. However, for the use case of searching a haystack for a needle, the vast majority of string pairs will not have a common prefix or suffix, so SIMD trimming in particular will be a lot slower than not trimming at all.
+
+For non-SIMD trimming, for reasonably short strings (<250 characters), if the other optimizations given here are implemented, trimming won't give any measurable advantage even when the strings are identical--at least it doesn't on my machine. On the other hand, this means that trimming is essentially "free" to do--it's a wash--so if you have some other external reason to trim the strings, you might as well.
 
 
 ### Limited Distance Variant (The Banded Algorithm)

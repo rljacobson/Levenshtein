@@ -43,7 +43,7 @@
 
 ## Narrowing band in banded variant
 
-The banded algorithm only computes cells within `max+1` of the diagonal. More aggressive narrowing of the band is possible. For example, the condition `start_j = std::max(1, i - (effective_max - minimum_within_row))` is superior to `start_j = std::max(1, i - effective_max)` in terms of computing fewer cells and exiting early more often. However, this condition apparently increases branch misprediction and consequently performs worse that the standard band. 
+The standard banded algorithm only computes cells within `max+1` of the diagonal. More aggressive narrowing of the band is possible. For example, the condition `start_j = std::max(1, i - (effective_max - minimum_within_row))` is superior to `start_j = std::max(1, i - effective_max)` in terms of computing fewer cells and exiting early more often. However, this condition apparently increases branch misprediction and consequently performs worse that the standard band. 
 
 Another band narrowing strategy is the following:
 
@@ -56,36 +56,3 @@ if(j > i && current_cell > effective_max && buffer[j] > effective_max) {
     break;
 }
 ```
-
-This condition gives a modest decrease in number of cells computed and proportional increase in early exits, but again branch misprediction causes this variant to run up to twice as slow as the simple banded variant.  
-
-Counterintuitively, so far the best narrowing strategy is this rather involved algorithm to narrow the band to the theoretical minimum:
-
-```c++
-while(
-        end_j > 0
-        && buffer[end_j] + std::abs(end_j - i - m_n) > max
-        ) {
-    end_j--;
-}
-// Increment for next row
-end_j = std::min(m, end_j + 1);
-
-// The starting point is a little different. It is "sticky" unless we
-// can prove it can shrink. Think of it as, both start and end do
-// the most conservative thing.
-while(
-        start_j <= end_j
-        && std::abs(i + m_n - start_j) + buffer[start_j] > max
-        ) {
-    start_j++;
-}
-
-if (end_j < start_j) {
-    return max + 1;
-}
-```
-
-A little thought shows the main idea: There is a budget of edits that cannot be exceeded at every row, and our expenses consist of how many edits it will eventually take to make the strings the same size plus how many edits have already been spent. If the expenses are greater than the budget allows, stop computing. 
-
-Despite the branch, testing, and memory access required for this algorithm, it is aggressive enough to outperform simpler heuristics. 

@@ -19,8 +19,8 @@ add_definitions("-DHAVE_DLOPEN")
 # default. Smaller is generally not faster. Make this twice your largest string.
 # There is a hard max set at ~16KB. This is the wrong tool for the job if you
 # are using it for strings that large.
-#set(BUFFER_SIZE 4096ull)
-set(BUFFER_SIZE 256ull)
+set(BUFFER_SIZE 4096ull)
+#set(BUFFER_SIZE 256ull)
 
 # Select exactly one policy for handling negative max edit distance
 add_compile_definitions(RETURN_ZERO_ON_BAD_MAX)
