@@ -110,7 +110,7 @@ $ make
 $ make install
 ```
 
-This will build the shared library `libdamlev.so` (`.dll` on Windows).
+This will build the shared library `libdamlev.so` (`.dll` on Windows, `.dylib` on macOS).
 
 #### Troubleshooting the build
 
@@ -137,7 +137,7 @@ $ mysql -u root
 ```
 
 Enter your MySQL root user password to log in as root. Then follow the "usual" instructions for
-installing a compiled UDF. Note that the names are case sensitive. Change out `.so` for `.dll` if you are on Windows.
+installing a compiled UDF. Note that the names are case sensitive. Change out `.so` for `.dll` if you are on Windows and `.dylib` if you are on macOS.
 
 ```sql
 CREATE FUNCTION damlev RETURNS INTEGER

@@ -1,7 +1,6 @@
 # Project Specific
 
 tests/taxanames
-*.ipynb
 .ipynb_checkpoints
 
 
