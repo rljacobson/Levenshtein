@@ -1,10 +1,16 @@
+# Project Specific
+
+tests/taxanames
+.ipynb_checkpoints
+
+
 # Add any directories, files, or patterns you don't want to be tracked by version control
 *.o
 .buildconfig
 test
 builddir
+build
 *benchmark
-*.ipynb
 
 ## C/C++ Artifacts ##
 

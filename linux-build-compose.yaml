@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  udf:
+    container_name: damlev_udf
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/code
+      - ./build:/code/build
+    working_dir: /code
+    command: bash
+    stdin_open: true
+    tty: true
+
+  windows-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.windows
+    container_name: windows_build
+    volumes:
+      - .:/code
+      - ./build_windows:/code/build_windows  # Removed the extra hyphen
+    command: bash
+    stdin_open: true
+    tty: true

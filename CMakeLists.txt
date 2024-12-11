@@ -1,99 +1,117 @@
+# root directory CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
-set(CMAKE_CXX_STANDARD 17)
-
-message(STATUS "Using C++ standard: ${CMAKE_CXX_STANDARD}")
 
 project(Levenshtein)
+
+# We use C++17 features.
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -Wall -pedantic -Wextra")
 
-# Library specific.
+# Dynamic linking of shared libraries at runtime.
 add_definitions("-DHAVE_DLOPEN")
 
-set(DAMLEV_SOURCES
-        damlev.cpp
-        damlevp.cpp
-        damlevlim.cpp
-#       damlevlimp.cpp   ## removed no reason to have a percent as a limit.
-		damlevconst.cpp
-		damlev2D.cpp
-		noop.cpp
-   )
+# START CONFIGURATION
 
+# Modify the following to set the buffer size to something other than the given
+# default. Smaller is generally not faster. Make this twice your largest string.
+# There is a hard max set at ~16KB. This is the wrong tool for the job if you
+# are using it for strings that large.
+set(BUFFER_SIZE 4096ull)
+#set(BUFFER_SIZE 256ull)
 
-add_library(damlev MODULE ${DAMLEV_SOURCES} tests/unittests.cpp)
-target_compile_definitions(damlev PRIVATE WORDS_PATH="/usr/share/dict/words")
-target_compile_definitions(damlev PRIVATE MYSQL_DYNAMIC_PLUGIN)
-# Uncomment the following to set the buffer size to something other than 512
-# characters. There is a hard max set at ~16KB. This is the wrong tool for
-# the job if you are using it for strings that large.
-#   target_compile_definitions(damlev PRIVATE DAMLEV_BUFFER_SIZE=4096ull)
+# Select exactly one policy for handling negative max edit distance
+add_compile_definitions(RETURN_ZERO_ON_BAD_MAX)
+#add_compile_definitions(RETURN_NULL_ON_BAD_MAX)
 
-### Library Installation ###
+# Select exactly one policy for handling strings that require a buffer size greater than the allocated buffer.
+add_compile_definitions(TRUNCATE_ON_BUFFER_EXCEEDED) # Truncates the strings to fit within the buffer.
+#add_compile_definitions(RETURN_ZERO_ON_BUFFER_EXCEEDED)
+#add_compile_definitions(RETURN_NULL_ON_BUFFER_EXCEEDED)
 
 # If you know the plugin directory of your MySQL installation, you can uncomment
-# the following line and set it here.
+# the following line and set it here. Otherwise, we attempt to get the path by
+# executing `mysql_config --include`.
+#set(MYSQL_PLUGIN_DIR "/opt/homebrew/opt/mysql/lib/plugin/")
 
-set(MYSQL_PLUGIN_DIR "set(MYSQL_PLUGIN_DIR /usr/local/mysql/lib/plugin)")
+# Likewise for the location of `mysql.h`, the MySQL include directory.
+#set(MYSQL_INCLUDE "/opt/homebrew/include/mysql/")
 
+# Use this file for a list of words for testing/benchmarking.
+set(WORDS_FILE ${CMAKE_CURRENT_SOURCE_DIR}/tests/taxanames)
+#set(WORDS_FILE "/usr/share/dict/words")
+
+# END CONFIGURATION
+
+
+# MySQL Include Directory
+if(NOT DEFINED MYSQL_INCLUDE)
+    execute_process(COMMAND mysql_config --include
+            OUTPUT_VARIABLE MYSQL_INCLUDE
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # Fallback hail-Mary for Win64
+    if(WIN64 AND NOT DEFINED MYSQL_INCLUDE)
+        set(MYSQL_INCLUDE "-I C:/Program Files/MySQL/MySQL Server 8.0/include")
+    endif()
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MYSQL_INCLUDE}")
+message(STATUS "CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+
+# Determine MYSQL_PLUGIN_DIR using mysql_config
 if(NOT DEFINED MYSQL_PLUGIN_DIR)
     if(INSTALL_PLUGINDIR)
         set(MYSQL_PLUGIN_DIR ${INSTALL_PLUGINDIR})
     else()
-		# Note: `mysql_config` must be in the PATH for this to work.
+        # Note: `mysql_config` must be in the PATH for this to work.
         execute_process(COMMAND mysql_config --plugindir
                 OUTPUT_VARIABLE MYSQL_PLUGIN_DIR
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
-endif()
-message(STATUS "Plugin dir: ${MYSQL_PLUGIN_DIR}")
 
-execute_process(COMMAND mysql_config --include
-        OUTPUT_VARIABLE MYSQL_INCLUDE
-        OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(WIN64)
-	# This is not at all robust. We need a better solution.
-	if(NOT DEFINED MYSQL_INCLUDE)	
-		set(MYSQL_INCLUDE "C:\\Program Files\\MySQL\\MySQL Server 8.0\\include")
-	endif()
-	if(NOT DEFINED MYSQL_PLUGIN_DIR)
-		set(MYSQL_PLUGIN_DIR "C:\\Program Files\\MySQL\\MySQL Server 8.0\\lib\\plugin")
-	endif()
-endif()
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${MYSQL_INCLUDE}")
-message(STATUS "Include dir: ${MYSQL_INCLUDE}")
-message(STATUS "C_FLAGS: ${CMAKE_CXX_FLAGS}")
-
-install(TARGETS damlev LIBRARY DESTINATION ${MYSQL_PLUGIN_DIR})
-
-## Out of the Box LD function
-add_executable(damlev2D common.h tests/testoneoff.cpp tests/testharness.hpp damlev2D.cpp)
-target_compile_definitions(damlev2D PRIVATE LEV_FUNCTION=damlev2D)
-
-
-### Testing and Benchmarking ###
-## Tests
-add_executable(tests tests/doctest.h common.h tests/testharness.hpp tests/testcases.cpp damlevconst.cpp)
-target_compile_definitions(tests PRIVATE LEV_FUNCTION=damlevconst)
-
-## This is for one-off testing for debugging purposes.
-add_executable(oneoff common.h tests/testoneoff.cpp tests/testharness.hpp damlevp.cpp)
-target_compile_definitions(oneoff PRIVATE LEV_FUNCTION=damlevp)
-
-## This is for unit testing for debugging purposes, makes errors of known and checks.
-
-add_executable(unittest common.h tests/unittests.cpp tests/testharness.hpp damlev.cpp)
-target_compile_definitions(unittest PRIVATE LEV_FUNCTION=damlev)
-
-
-# Benchmark
-find_package(Boost REQUIRED)
-if(Boost_FOUND)
-	include_directories(${Boost_INCLUDE_DIRS})
+    # Fallback hail-Mary for Win64
+    if(WIN64 AND NOT DEFINED MYSQL_PLUGIN_DIR)
+        set(MYSQL_PLUGIN_DIR "C:\\Program Files\\MySQL\\MySQL Server 8.0\\lib\\plugin")
+    endif()
 endif()
 
-add_executable(benchmark common.h tests/testharness.hpp damlev.cpp damlev2D.cpp noop.cpp tests/benchmark.cpp)
-target_compile_definitions(benchmark PRIVATE WORD_COUNT=235000ul)
-target_compile_definitions(benchmark PRIVATE BENCH_FUNCTION=damlevconst)
-target_compile_definitions(benchmark PRIVATE WORDS_PATH="/usr/share/dict/words")
+
+# Report configured values.
+message(STATUS "Configured BUFFER_SIZE: ${BUFFER_SIZE}")
+
+if(DEFINED MYSQL_PLUGIN_DIR)
+    message(STATUS "Configured MYSQL_PLUGIN_DIR: ${MYSQL_PLUGIN_DIR}")
+else()
+    message(STATUS "MYSQL_PLUGIN_DIR is not set; installation will likely fail.")
+endif()
+
+if(DEFINED MYSQL_INCLUDE)
+    message(STATUS "Configured MYSQL_INCLUDE: ${MYSQL_INCLUDE}")
+else()
+    message(STATUS "MYSQL_INCLUDE is not set; building will likely fail.")
+endif()
+
+message(STATUS "Configured WORDS_FILE for testing/benchmark: ${WORDS_FILE}")
+
+# Report selected policies
+if(RETURN_ZERO_ON_BAD_MAX)
+    message(STATUS "Policy for handling negative max edit distance: RETURN_ZERO_ON_BAD_MAX")
+elseif(RETURN_NULL_ON_BAD_MAX)
+    message(STATUS "Policy for handling negative max edit distance: RETURN_NULL_ON_BAD_MAX")
+endif()
+
+if(TRUNCATE_ON_BUFFER_EXCEEDED)
+    message(STATUS "Policy for handling buffer size exceeded: TRUNCATE_ON_BUFFER_EXCEEDED")
+elseif(RETURN_ZERO_ON_BUFFER_EXCEEDED)
+    message(STATUS "Policy for handling buffer size exceeded: RETURN_ZERO_ON_BUFFER_EXCEEDED")
+elseif(RETURN_NULL_ON_BUFFER_EXCEEDED)
+    message(STATUS "Policy for handling buffer size exceeded: RETURN_NULL_ON_BUFFER_EXCEEDED")
+endif()
+
+
+# Add subdirectories
+add_subdirectory(src)
+add_subdirectory(tests)
