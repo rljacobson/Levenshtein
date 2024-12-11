@@ -1,7 +1,3 @@
-// HELLO LEV_ARGS needs to be adjusted if you're going to change from damlevconst
-//damlevconst INT required testharness.hpp --> LEV_ARGS->arg_count = 3;
-// damlev testharness.hpp --> LEV_ARGS->arg_count = 2;
-//damlevlimp FLOAT required testharness.hpp LEV_ARGS->arg_count = 3 A maximum percent difference (0.0 <= float < 1.0);
 #define PRINT_DEBUG
 #include <iostream>
 #include <string>
@@ -19,12 +15,12 @@ void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1,
     int m = S2.size();
 
     // Print the column headers
-    std::cout << "    ";
+    std::cout << "  ";
     for (int j = 0; j <= m; ++j) {
         if (j == 0) {
-            std::cout << "  ";
+            std::cout << "    ";
         } else {
-            std::cout << S2[j - 1] << " ";
+            std::cout << S2[j - 1] << "  ";
         }
     }
     std::cout << std::endl;
@@ -34,11 +30,11 @@ void printMatrix(const std::vector<std::vector<int>>& dp, const std::string& S1,
         if (i == 0) {
             std::cout << "  ";
         } else {
-            std::cout << S1[i - 1] << " ";
+            std::cout << (S1[i - 1] >= 10 ? "": " ") << S1[i - 1] << " ";
         }
 
         for (int j = 0; j <= m; ++j) {
-            std::cout << dp[i][j] << " ";
+            std::cout << (dp[i][j] >= 10 ? "": " ") << dp[i][j] << " ";
         }
         std::cout << std::endl;
     }

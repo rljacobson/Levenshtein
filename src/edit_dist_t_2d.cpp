@@ -2,9 +2,7 @@
 Copyright (C) 2019 Robert Jacobson
 Distributed under the MIT License. See License.txt for details.
 
-<hr>
-
-`DAMLEV2D(String1, String2)`
+`edit_dist_t_2d(String1, String2)`
 
 Computes the Damarau-Levenshtein edit distance between two strings. This
 function should not be used. It exists for testing and benchmarking purposes
@@ -12,7 +10,7 @@ only.
 
 Syntax:
 
-    DAMLEV2D(String1, String2);
+    edit_dist_t_2d(String1, String2);
 
 `String1`:  A string constant or column.
 `String2`:  A string constant or column to be compared to `String1`.
@@ -22,11 +20,11 @@ Returns: An integer equal to the Damarau-Levenshtein edit distance between
 
 Example Usage:
 
-    SELECT Name, DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") AS EditDist
-        FROM CUSTOMERS
-        WHERE DAMLEV2D(Name, "Vladimir Iosifovich Levenshtein") < 6;
+    select Name, edit_dist_t_2d(Name, "Vladimir Iosifovich Levenshtein") as EditDist
+        from Customers
+        where edit_dist_t_2d(Name, "Vladimir Iosifovich Levenshtein") < 6;
 
-The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
+The above will return all rows `(Name, EditDist)` from the `Customers` table
 where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
 */
@@ -38,40 +36,31 @@ where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 #include <iostream>
 #endif
 
-
-//#define PRINT_DEBUG
-// Limits
-#ifndef DAMLEV_BUFFER_SIZE
-// 640k should be good enough for anybody.
-#define DAMLEV_BUFFER_SIZE 512ull
-#endif
-constexpr long long EDIT_DISTANCE_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull, DAMLEV_BUFFER_SIZE));
-
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
 // version 8.0, MYSQL_ERRMSG_SIZE == 512. However, the example says to "try to
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        EDIT_DISTANCE_ARG_NUM_ERROR[] = "Wrong number of arguments. EDIT_DISTANCE() requires two arguments:\n"
+        EDIT_DISTANCE_ARG_NUM_ERROR[] = "Wrong number of arguments. edit_distance() requires two arguments:\n"
                                  "\t1. A string.\n"
                                  "\t2. Another string.";
 constexpr const auto EDIT_DISTANCE_ARG_NUM_ERROR_LEN = std::size(EDIT_DISTANCE_ARG_NUM_ERROR) + 1;
-constexpr const char EDIT_DISTANCE_MEM_ERROR[] = "Failed to allocate memory for EDIT_DISTANCE"
+constexpr const char EDIT_DISTANCE_MEM_ERROR[] = "Failed to allocate memory for edit_distance"
                                           " function.";
 constexpr const auto EDIT_DISTANCE_MEM_ERROR_LEN = std::size(EDIT_DISTANCE_MEM_ERROR) + 1;
 constexpr const char
-        EDIT_DISTANCE_ARG_TYPE_ERROR[] = "Arguments have wrong type. EDIT_DISTANCE() requires two arguments:\n"
+        EDIT_DISTANCE_ARG_TYPE_ERROR[] = "Arguments have wrong type. edit_distance() requires two arguments:\n"
                                   "\t1. A string.\n"
                                   "\t2. Another string.";
 constexpr const auto EDIT_DISTANCE_ARG_TYPE_ERROR_LEN = std::size(EDIT_DISTANCE_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES(damlev2D)
+UDF_SIGNATURES(edit_dist_t_2d)
 
 
 [[maybe_unused]]
-int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int edit_dist_t_2d_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
         strncpy(message, EDIT_DISTANCE_ARG_NUM_ERROR, EDIT_DISTANCE_ARG_NUM_ERROR_LEN);
@@ -84,24 +73,24 @@ int damlev2D_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     }
 
     // Attempt to allocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) std::vector<size_t>((EDIT_DISTANCE_MAX_EDIT_DIST));
+    initid->ptr = (char *)new(std::nothrow) std::vector<size_t>((DAMLEV_MAX_EDIT_DIST));
     if (initid->ptr == nullptr) {
         strncpy(message, EDIT_DISTANCE_MEM_ERROR, EDIT_DISTANCE_MEM_ERROR_LEN);
         return int(1);
     }
 
-    // damlev2D does not return null.
+    // edit_dist_t_2d does not return null.
     initid->maybe_null = 0;
     return int(0);
 }
 
 [[maybe_unused]]
-void damlev2D_deinit(UDF_INIT *initid) {
+void edit_dist_t_2d_deinit(UDF_INIT *initid) {
     delete[] initid->ptr;
 }
 
 [[maybe_unused]]
-long long damlev2D(UDF_INIT *, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
+long long edit_dist_t_2d(UDF_INIT *, UDF_ARGS *args, [[maybe_unused]]  char *is_null, [[maybe_unused]]  char *error) {
 
     std::string_view S1{args->args[0], args->lengths[0]};
     std::string_view S2{args->args[1], args->lengths[1]};

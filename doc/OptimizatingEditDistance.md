@@ -46,7 +46,7 @@ In the special _but very common_ case that you are trying to find the closest st
 Many real-world implementations, including those implementations intended for use in industrial strength databases, allocate memory on ever single call. Allocation is a slow operation, so this is quite wasteful. In MySQL/MariaDB, for example, UDFs provide an initialization function and a mechanism to remember data between function calls:
 
 ```c++
-int lev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int edit_dist_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // ...other code to check the number and type of arguments or anything else...
 
     // Preallocate a buffer. A pointer to it can be saved in `UDF_INIT::ptr`.
@@ -58,7 +58,7 @@ int lev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // ... any other necessary code...
 }
 
-void lev_deinit(UDF_INIT *initid) {
+void edit_dist_deinit(UDF_INIT *initid) {
     // Don't forget to properly release the memory!
     delete[] reinterpret_cast<int*>(initid->ptr);
 }

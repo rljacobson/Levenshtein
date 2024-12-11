@@ -1,73 +1,39 @@
 /*
-    Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2024 Robert Jacobson
+Distributed under the MIT License. See License.txt for details.
 
-    17 January 2019
+`bounded_edit_dist()` computes the Levenshtein edit distance between two strings when the
+edit distance is less than a given number.
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+Syntax:
 
-    <hr>
-    `LEVMIN()` computes the Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+    bounded_edit_dist(String1, String2, PosInt);
 
-    Syntax:
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
+`PosInt`:   A positive integer. If the distance between `String1` and
+            `String2` is greater than `PosInt`, `bounded_edit_dist()` will stop its
+            computation at `PosInt` and return `PosInt`. Make `PosInt` as
+            small as you can to improve speed and efficiency. For example,
+            if you put `where bounded_edit_dist(...) < k` in a `where`-clause, make
+            `PosInt` be `k`.
 
-        LEVMIN(String1, String2, PosInt);
+Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
+whichever is smaller.
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `LEVMIN()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE LEVMIN(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
+Example Usage:
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+    select Name, bounded_edit_dist(Name, "Vladimir Iosifovich Levenshtein", 6) AS
+        EditDist from Customers where  bounded_edit_dist(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
-    Example Usage:
+The above will return all rows `(Name, EditDist)` from the `Customers` table
+where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
-        SELECT Name, LEVMIN(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  LEVMIN(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
-
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
-
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
+#include <iostream>
 
-#ifdef PRINT_DEBUG
 void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2);
-#endif
-
 
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
@@ -75,56 +41,44 @@ void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const 
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        LEVMIN_ARG_NUM_ERROR[] = "Wrong number of arguments. LEVMIN() requires three arguments:\n"
+        BOUNDED_EDIT_DIST_ARG_NUM_ERROR[] = "Wrong number of arguments. bounded_edit_dist() requires three arguments:\n"
                                     "\t1. A string\n"
                                     "\t2. A string\n"
-                                    "\t3. A maximum distance (0 <= int < ${LEVMIN_MAX_EDIT_DIST}).";
-constexpr const auto LEVMIN_ARG_NUM_ERROR_LEN = std::size(LEVMIN_ARG_NUM_ERROR) + 1;
-constexpr const char LEVMIN_MEM_ERROR[] = "Failed to allocate memory for LEVMIN"
+                                    "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto BOUNDED_EDIT_DIST_ARG_NUM_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_ARG_NUM_ERROR) + 1;
+constexpr const char BOUNDED_EDIT_DIST_MEM_ERROR[] = "Failed to allocate memory for bounded_edit_dist"
                                              " function.";
-constexpr const auto LEVMIN_MEM_ERROR_LEN = std::size(LEVMIN_MEM_ERROR) + 1;
+constexpr const auto BOUNDED_EDIT_DIST_MEM_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_MEM_ERROR) + 1;
 constexpr const char
-        LEVMIN_ARG_TYPE_ERROR[] = "Arguments have wrong type. LEVMIN() requires three arguments:\n"
+        BOUNDED_EDIT_DIST_ARG_TYPE_ERROR[] = "Arguments have wrong type. bounded_edit_dist() requires three arguments:\n"
                                      "\t1. A string\n"
                                      "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${LEVMIN_MAX_EDIT_DIST}).";
-constexpr const auto LEVMIN_ARG_TYPE_ERROR_LEN = std::size(LEVMIN_ARG_TYPE_ERROR) + 1;
+                                     "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto BOUNDED_EDIT_DIST_ARG_TYPE_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES(levmin)
+UDF_SIGNATURES(bounded_edit_dist)
 
-
-struct LevMinPersistant {
-    int max;
-    int *buffer; // Takes ownership of this buffer
-
-    LevMinPersistant(int max, int *buffer): max(max), buffer(buffer){}
-
-    ~LevMinPersistant(){ delete this->buffer; }
-};
 
 [[maybe_unused]]
-int levmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int bounded_edit_dist_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, LEVMIN_ARG_NUM_ERROR, LEVMIN_ARG_NUM_ERROR_LEN);
+        strncpy(message, BOUNDED_EDIT_DIST_ARG_NUM_ERROR, BOUNDED_EDIT_DIST_ARG_NUM_ERROR_LEN);
         return 1;
     }
     // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        strncpy(message, LEVMIN_ARG_TYPE_ERROR, LEVMIN_ARG_TYPE_ERROR_LEN);
+        strncpy(message, BOUNDED_EDIT_DIST_ARG_TYPE_ERROR, BOUNDED_EDIT_DIST_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
-// Initialize persistent data
-    int* buffer = new (std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
-    LevMinPersistant *data = new (std::nothrow) LevMinPersistant(DAMLEV_MAX_EDIT_DIST, buffer);
-    // If memory allocation failed
-    if (!buffer || !data) {
-        strncpy(message, LEVMIN_MEM_ERROR, LEVMIN_MEM_ERROR_LEN);
+    // Attempt to preallocate a buffer.
+    initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
+    if (initid->ptr == nullptr) {
+        strncpy(message, BOUNDED_EDIT_DIST_MEM_ERROR, BOUNDED_EDIT_DIST_MEM_ERROR_LEN);
         return 1;
     }
-    initid->ptr = reinterpret_cast<char*>(data);
 
     // There are two error states possible within the function itself:
     //    1. Negative max distance provided
@@ -140,29 +94,23 @@ int levmin_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void levmin_deinit(UDF_INIT *initid) {
-    // As `LevMinPersistant` owns its buffer, `~LevMinPersistant` handles buffer deallocation.
-    delete reinterpret_cast<LevMinPersistant*>(initid->ptr);
+void bounded_edit_dist_deinit(UDF_INIT *initid) {
+    delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long bounded_edit_dist(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 #ifdef PRINT_DEBUG
-    std::cout << "levmin" << "\n";
+    std::cout << "bounded_edit_dist" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[2];
+    PerformanceMetrics &metrics = performance_metrics[0];
 #endif
 
-    // Fetch persistent data
-    LevMinPersistant *data = reinterpret_cast<LevMinPersistant *>(initid->ptr);
-    // This line and the line updating `data->max` right before the final `return` statement are the only differences
-    // between levmin and levlim.
-    int max = std::min(
-            *(reinterpret_cast<long long *>(args->args[2])),
-            static_cast<long long>(data->max)
-    );
-    int *buffer = data->buffer;
+    // Fetch preallocated buffer. The only difference between min_edit_dist and bounded_edit_dist is that min_edit_dist also persists
+    // the max and updates it right before the final return statement.
+    int *buffer = reinterpret_cast<int *>(initid->ptr);
+    int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -176,7 +124,7 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
     // Check if buffer size required exceeds available buffer size. This algorithm needs
     // a buffer of size (m+1). Because of trimming, this may be smaller than the length
     // of the longest string.
-    if( m+1 > DAMLEV_BUFFER_SIZE ) {
+    if( m + 1 > DAMLEV_BUFFER_SIZE ) {
 #ifdef CAPTURE_METRICS
         metrics.buffer_exceeded++;
         metrics.total_time += call_timer.elapsed();
@@ -184,7 +132,40 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         return 0;
     }
 
-    int current_cell = 0;
+    // int previous_cell = 0;
+    int current_cell  = 0;
+
+    /*
+    The quantity `max_d - (m-n)` represents the remaining cost budget after accounting for the `(m-n)` insertions
+    we know are required. It is possible for there to be additional insertions beyond the required `(m-n)`
+    insertions, but for every additional insertion beyond the `(m-n)`, there will have to be a corresponding
+    deletion for the strings to end up the same length. Therefore, for every additional insertion, the total cost
+    will be 2, one for the insertion and one for the corresponding deletion. There can be at most `(max_d -
+    (m-n))/2`, because $2\times$ `(max_d - (m-n))/2` $=$ `max_d - (m-n)`, our remaining cost budget.
+
+    As we move along in our computation, we will "spend" more and more of our remaining cost budget, allowing us to
+    narrow our band even farther.
+
+    The diagonal cells of the matrix *starting from the upper left corner* represent when the strings are the same
+    length. The diagonal cells of the matrix *starting from the lower right corner* represent when the strings have the
+    same number of characters remaining (to be inserted or substituted). You can think of this second diagonal as where
+    you are after spending the `(m-n)` inserts into the shorter string to obtain the longer string (or equivalently, the
+    deletions from the longer string to obtain the shorter string). We shall call it the *right diagonal*.
+
+    After computing a row, we have additional information about our remaining cost budget. The cell `curr[stop_column -
+    1]` represents both the insertions needed to reach the right diagonal, the additional insertions to reach
+    `stop_column-1`, and any additional edits that may have occurred. But recall that for every insertion beyond the
+    right diagonal (beyond `(m-n)` insertions) must necessarily be paired with a deletion. The number of additional
+    insertions at `stop_column - 1` is `(stop_column-1) - (m-n)`. Therefore,  `curr[stop_column - 1] + (stop_column-1) -
+    (m-n)` is a lower bound on the final number of edits required to transform one string into the other.  We require
+    this lower bound to be no greater than `max_d`: `curr[stop_column - 1] + (stop_column-1) - (m-n) <= max_d`. What
+    should `stop_column` be? Solving the inequality for `stop_column`, we have `stop_column <= max_d -
+    curr[stop_column-1] + (m-n) + 1`. We can compute the RHS value explicitly, and if `stop_column` is too large, we
+    decrement it and recheck the inequality (since the RHS depends on `stop_column`), and continue decrementing
+    `stop_column` until the inequality holds. If ever `start_column == stop_column-1` (the case of an "empty band"), we
+    know we will exceed `max_d`.
+    */
+
 
     // Keeping track of start and end is slightly faster than keeping track of
     // right/left band for reasons I don't understand.
@@ -266,10 +247,10 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
 
         // See if we can make the band narrower based on the row just computed.
         while(
-            // end_j < m && // This should always be true
+                // end_j < m && // This should always be true
                 end_j > 0
                 && buffer[end_j] + std::abs(end_j - i - m_n) > max
-                ) {
+              ) {
             end_j--;
         }
         // Increment for next row
@@ -281,7 +262,7 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         while(
                 start_j <= end_j
                 && std::abs(i + m_n - start_j) + buffer[start_j] > max
-                ) {
+              ) {
             start_j++;
         }
 
@@ -298,14 +279,10 @@ long long levmin(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nul
         }
     }
 
-    // This line and the line fetching `data->max` at the top of the function are the only differences
-    // between levmin and levlim.
-    data->max = std::min(current_cell, static_cast<int>(max));
-
     // Return the final Levenshtein distance
 #ifdef CAPTURE_METRICS
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max+1, current_cell);
+    return std::min(max + 1, current_cell); //buffer[m];
 }

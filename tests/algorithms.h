@@ -8,28 +8,27 @@
 //     void MACRO_CONCAT(algorithm, _deinit)(UDF_INIT *initid);
 
 // Levenshtein
-UDF_SIGNATURES(lev)
-UDF_SIGNATURES(levlim)
-UDF_SIGNATURES(levlimopt)
-UDF_SIGNATURES(levmin)
+UDF_SIGNATURES(edit_dist)
+UDF_SIGNATURES(bounded_edit_dist)
+UDF_SIGNATURES(min_edit_dist)
 
 // Damerau–Levenshtein
-UDF_SIGNATURES(damlev2D)
-UDF_SIGNATURES(damlev)
-UDF_SIGNATURES(damlevlim)
-UDF_SIGNATURES(damlevmin)
+UDF_SIGNATURES(edit_dist_t_2d)
+UDF_SIGNATURES(edit_dist_t)
+UDF_SIGNATURES(bounded_edit_dist_t)
+UDF_SIGNATURES(min_edit_dist_t)
 
 // The next two are special, as they return a `double` instead of a `long long`.
-UDF_SIGNATURES_TYPE(damlevp, double)
-UDF_SIGNATURES_TYPE(damlevminp, double)
+UDF_SIGNATURES_TYPE(similarity_t, double)
+UDF_SIGNATURES_TYPE(min_similarity_t, double)
 
-// int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-// double damlevminp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-// void damlevminp_deinit(UDF_INIT *initid);
+// int min_similarity_t_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+// double min_similarity_t(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+// void min_similarity_t_deinit(UDF_INIT *initid);
 
-// int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
-// double damlevp(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
-// void damlevp_deinit(UDF_INIT *initid);
+// int similarity_t_init(UDF_INIT *initid, UDF_ARGS *args, char *message);
+// double similarity_t(UDF_INIT *initid, UDF_ARGS *args, char *is_null, char *error);
+// void similarity_t_deinit(UDF_INIT *initid);
 
 // Benchmarking only
 UDF_SIGNATURES(noop)

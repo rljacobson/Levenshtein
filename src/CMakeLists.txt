@@ -5,18 +5,17 @@
 
 # Define library sources
 set(DAMLEV_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/damlev.cpp
-#        ${CMAKE_CURRENT_SOURCE_DIR}/damlev2D.cpp // Only used for testing/debugging
-        ${CMAKE_CURRENT_SOURCE_DIR}/damlevlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/damlevmin.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/damlevminp.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/damlevp.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/lev.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/levlim.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/levlimopt.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/levmin.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/bounded_edit_dist.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/bounded_edit_dist_t.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/edit_dist.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/edit_dist_t.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/min_edit_dist.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/min_edit_dist_t.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/min_similarity_t.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/postgres.cpp
-#        ${CMAKE_CURRENT_SOURCE_DIR}/noop.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/similarity_t.cpp
+#        ${CMAKE_CURRENT_SOURCE_DIR}/edit_dist_t_2d.cpp # Only used for testing/debugging
+#        ${CMAKE_CURRENT_SOURCE_DIR}/noop.cpp           # Only used for testing/debugging
 )
 # CMake is an abomination
 set(DAMLEV_SOURCES ${DAMLEV_SOURCES} PARENT_SCOPE)

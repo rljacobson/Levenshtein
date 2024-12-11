@@ -20,7 +20,7 @@ if(Boost_FOUND)
 endif()
 
 # Define algorithm variables with default values
-set(ALGORITHM "damlev2D")
+set(ALGORITHM "edit_dist_t_2d")
 
 set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.")
 set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
@@ -32,15 +32,15 @@ set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
 add_executable(unittest
         ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
-        ../src/lev.cpp
-        ../src/levlimopt.cpp
+        ../src/edit_dist.cpp
+        ../src/bounded_edit_dist.cpp
         print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(unittest PRIVATE
-        ALGORITHM_A=lev
+        ALGORITHM_A=edit_dist
         ALGORITHM_A_COUNT=2
-        ALGORITHM_B=levlimopt
+        ALGORITHM_B=bounded_edit_dist
         ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"
@@ -57,13 +57,13 @@ target_link_libraries(unittest PRIVATE
 
 add_executable(compareoneoff
         ${CMAKE_CURRENT_SOURCE_DIR}/compareoneoff.cpp
-        ../src/levlimopt.cpp
+        ../src/bounded_edit_dist.cpp
         ../src/postgres.cpp
         print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(compareoneoff PRIVATE
-        ALGORITHM_A=levlimopt
+        ALGORITHM_A=bounded_edit_dist
         ALGORITHM_A_COUNT=3
         ALGORITHM_B=postgres
         ALGORITHM_B_COUNT=3
@@ -103,7 +103,7 @@ add_executable(oneoff
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(oneoff PRIVATE
-        LEV_FUNCTION=levmin
+        LEV_FUNCTION=min_edit_dist
         LEV_ALGORITHM_COUNT=3
         DAMLEV_BUFFER_SIZE=${DAMLEV_BUFFER_SIZE}
         WORDS_PATH="${WORDS_PATH}"

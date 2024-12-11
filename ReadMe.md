@@ -26,16 +26,16 @@ The most interesting feature of this library is a variant optimized for finding 
 
 This UDF provides several different functions for different use cases.
 
-| Function                                        | Description                                                                                                                                                             |
-|:------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `edit_dist(string1, string2)`                   | Computes the edit distance between two strings.<br> (Levenshtein edit distance, no transpositions)                                                                      |
-| `edit_dist_t(string1, string2)`                 | Computes the edit distance between two strings, allowing transpositions.<br/> (Damerau-Levenshtein edit distance)                                                       |
+| Function                                        | Description                                                  |
+| :---------------------------------------------- | :----------------------------------------------------------- |
+| `edit_dist(string1, string2)`                   | Computes the edit distance between two strings.<br> (Levenshtein edit distance, no transpositions) |
+| `edit_dist_t(string1, string2)`                 | Computes the edit distance between two strings, allowing transpositions.<br/> (Damerau-Levenshtein edit distance) |
 | `bounded_edit_dist(string1, string2, cutoff)`   | Computes the edit distance between two strings if the distance is at most `cutoff`; otherwise returns `cutoff + 1`.<br/> (Levenshtein edit distance, no transpositions) |
-| `bounded_edit_dist_t(string1, string2, cutoff)` | Computes the edit distance between two strings if the distance is at most `cutoff`; otherwise returns `cutoff + 1`.<br/> (Damerau-Levenshtein edit distance)            |
-| `min_edit_dist(string1, string2, cutoff)`       | Remembers the smallest edit distance seen so far during the query and uses it as a cutoff during the computation.                                                       |
-| `min_edit_dist_t(string1, string2, cutoff)`     | Same as `min_edit_dist` but allows transpositions.                                                                                                                      |
-| `similarity_t(string1, string2, cutoff)`        | Computes a _normalized_ Damerau-Levenshtein percent **_similarity_** between two strings.                                                                               |
-| `min_similarity_t(string1, string2, cutoff)`    | Same as `similarity_t`, but                                                                                                                                             |
+| `bounded_edit_dist_t(string1, string2, cutoff)` | Computes the edit distance between two strings if the distance is at most `cutoff`; otherwise returns `cutoff + 1`.<br/> (Damerau-Levenshtein edit distance) |
+| `min_edit_dist(string1, string2, cutoff)`       | Remembers the smallest edit distance seen so far during the query and uses it as a cutoff during the computation. |
+| `min_edit_dist_t(string1, string2, cutoff)`     | Same as `min_edit_dist` but allows transpositions.           |
+| `similarity_t(string1, string2, cutoff)`        | Computes a _normalized_ Damerau-Levenshtein percent **_similarity_** between two strings. |
+| `min_similarity_t(string1, string2, cutoff)`    | Same as `similarity_t`, but remembers the smallest edit distance seen so far during the query and uses it as a cutoff during the computation. |
 
 - The suffix `_t` stands for *transpositions* and indicates the function counts swapping two adjacent characters as an edit (Damerau-Levenshtein edit distance).
 - The prefix `bounded_` allows the algorithm to stop computing if it can prove the cutoff will be exceeded. This provides a *significant* performance improvement over the unbounded version, especially if you can give it a very small `cutoff`.

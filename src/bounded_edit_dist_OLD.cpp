@@ -1,66 +1,34 @@
 /*
-    Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2024 Robert Jacobson
+Distributed under the MIT License. See License.txt for details.
 
-    17 January 2019
+`bounded_edit_dist()` computes the Levenshtein edit distance between two strings when the
+edit distance is less than a given number.
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+Syntax:
 
-    <hr>
-    `LEVLIM()` computes the Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+    bounded_edit_dist(String1, String2, PosInt);
 
-    Syntax:
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
+`PosInt`:   A positive integer. If the distance between `String1` and
+            `String2` is greater than `PosInt`, `bounded_edit_dist()` will stop its
+            computation at `PosInt` and return `PosInt`. Make `PosInt` as
+            small as you can to improve speed and efficiency. For example,
+            if you put `where bounded_edit_dist(...) < k` in a `where`-clause, make
+            `PosInt` be `k`.
 
-        LEVLIM(String1, String2, PosInt);
+Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
+whichever is smaller.
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `LEVLIM()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE LEVLIM(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
+Example Usage:
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+    select Name, bounded_edit_dist(Name, "Vladimir Iosifovich Levenshtein", 6) AS
+        EditDist from Customers where  bounded_edit_dist(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
-    Example Usage:
+The above will return all rows `(Name, EditDist)` from the `Customers` table
+where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
-        SELECT Name, LEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  LEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
-
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
-
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
 
@@ -75,42 +43,42 @@ void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const 
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        LEVLIM_ARG_NUM_ERROR[] = "Wrong number of arguments. LEVLIM() requires three arguments:\n"
+        BOUNDED_EDIT_DIST_ARG_NUM_ERROR[] = "Wrong number of arguments. bounded_edit_dist() requires three arguments:\n"
                                     "\t1. A string\n"
                                     "\t2. A string\n"
-                                    "\t3. A maximum distance (0 <= int < ${LEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto LEVLIM_ARG_NUM_ERROR_LEN = std::size(LEVLIM_ARG_NUM_ERROR) + 1;
-constexpr const char LEVLIM_MEM_ERROR[] = "Failed to allocate memory for LEVLIM"
+                                    "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto BOUNDED_EDIT_DIST_ARG_NUM_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_ARG_NUM_ERROR) + 1;
+constexpr const char BOUNDED_EDIT_DIST_MEM_ERROR[] = "Failed to allocate memory for bounded_edit_dist"
                                              " function.";
-constexpr const auto LEVLIM_MEM_ERROR_LEN = std::size(LEVLIM_MEM_ERROR) + 1;
+constexpr const auto BOUNDED_EDIT_DIST_MEM_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_MEM_ERROR) + 1;
 constexpr const char
-        LEVLIM_ARG_TYPE_ERROR[] = "Arguments have wrong type. LEVLIM() requires three arguments:\n"
+        BOUNDED_EDIT_DIST_ARG_TYPE_ERROR[] = "Arguments have wrong type. bounded_edit_dist() requires three arguments:\n"
                                      "\t1. A string\n"
                                      "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${LEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto LEVLIM_ARG_TYPE_ERROR_LEN = std::size(LEVLIM_ARG_TYPE_ERROR) + 1;
+                                     "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto BOUNDED_EDIT_DIST_ARG_TYPE_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES(levlim)
+UDF_SIGNATURES(bounded_edit_dist_old)
 
 
 [[maybe_unused]]
-int levlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int bounded_edit_dist_old_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, LEVLIM_ARG_NUM_ERROR, LEVLIM_ARG_NUM_ERROR_LEN);
+        strncpy(message, BOUNDED_EDIT_DIST_ARG_NUM_ERROR, BOUNDED_EDIT_DIST_ARG_NUM_ERROR_LEN);
         return 1;
     }
     // The arguments needs to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        strncpy(message, LEVLIM_ARG_TYPE_ERROR, LEVLIM_ARG_TYPE_ERROR_LEN);
+        strncpy(message, BOUNDED_EDIT_DIST_ARG_TYPE_ERROR, BOUNDED_EDIT_DIST_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to preallocate a buffer.
     initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
-        strncpy(message, LEVLIM_MEM_ERROR, LEVLIM_MEM_ERROR_LEN);
+        strncpy(message, BOUNDED_EDIT_DIST_MEM_ERROR, BOUNDED_EDIT_DIST_MEM_ERROR_LEN);
         return 1;
     }
 
@@ -128,20 +96,20 @@ int levlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void levlim_deinit(UDF_INIT *initid) {
+void bounded_edit_dist_old_deinit(UDF_INIT *initid) {
     delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long levlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long bounded_edit_dist_old(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 #ifdef PRINT_DEBUG
-    std::cout << "levlim" << "\n";
+    std::cout << "bounded_edit_dist_old" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
     PerformanceMetrics &metrics = performance_metrics[1];
 #endif
 
-    // Fetch preallocated buffer. The only difference between levmin and levlim is that levmin also persists
+    // Fetch preallocated buffer. The only difference between min_edit_dist and bounded_edit_dist_old is that min_edit_dist also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
     int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));

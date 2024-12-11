@@ -1,16 +1,30 @@
 # Table of Algorithms
 
-| Name       | Description                               | Use case                        | delete? |
-|:-----------|:------------------------------------------|:--------------------------------|:-------:|
-| damlev     | 2 row                                     | Accurate distances in all cases |   no    |
-| damlev2D   | 2D, no trimming, no max                   | Benchmark and unit tests only   |   no    |
-| damlevlim  | 2 row, banded, max early exit             | Compute distances less than k   |   no    |
-| damlevmin  | 2 row, banded, max early exit, tracks min | Find closest to const string    |   no    |
-| damlevp    | 2 row, banded, max early exit             | Similarity Score at least p     |   no    |
-| damlevpmin | replace with variant of damlevmin         | Find closest similarity         | replace |
-| levlim     | 1 row, banded, max early exit             | Compute Edit Distance           |   no    |
-| levlimopt  | 1 row, aggressive banding                 | Benchmarks only                 |   no    |
-| noop       | does nothing                              | Benchmarks only                 |   no    |
+| Name                | Description                               | Use case                        | delete? |
+|:--------------------|:------------------------------------------|:--------------------------------|:-------:|
+| edit_dist_t         | 2 row                                     | Accurate distances in all cases |   no    |
+| edit_dist_t_2d      | 2D, no trimming, no max                   | Benchmark and unit tests only   |   no    |
+| bounded_edit_dist_t | 2 row, banded, max early exit             | Compute distances less than k   |   no    |
+| min_edit_dist_t     | 2 row, banded, max early exit, tracks min | Find closest to const string    |   no    |
+| similarity_t        | 2 row, banded, max early exit             | Similarity Score at least p     |   no    |
+| min_similarity_t    | replace with variant of min_edit_dist_t   | Find closest similarity         | replace |
+| bounded_edit_dist   | 1 row, banded, max early exit             | Compute Edit Distance           |   no    |
+| bounded_edit_dist   | 1 row, aggressive banding                 | Benchmarks only                 |   no    |
+| noop                | does nothing                              | Benchmarks only                 |   no    |
+
+Algorithm renames
+
+| new                 | old        |
+|:--------------------|:-----------|
+| edit_dist           | lev        |
+| edit_dist_t         | damlev     |
+| bounded_edit_dist   | levlim     |
+| bounded_edit_dist_t | damlevlim  |
+| min_edit_dist       | levmin     |
+| min_edit_dist_t     | damlevmin  |
+| similarity_t        | damlevp    |
+| min_similarity_t    | damlevminp | 
+
 
 # To Do
 

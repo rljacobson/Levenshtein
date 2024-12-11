@@ -2,37 +2,48 @@
 Copyright (C) 2019 Robert Jacobson
 Distributed under the MIT License. See License.txt for details.
 
-<hr>
+`min_edit_dist_t(String1, String2, PosInt)`
 
-`DAMLEVLIM(String1, String2, PosInt)`
+Computes the Damarau-Levenshtein edit distance between two strings unless
+that distance will exceed `current_min_distance`, the minimum edit distance
+it has computed in the query so far, in which case it will return
+`current_min_distance + 1`. The `current_min_distance` is initialized to
+`PosInt`.
 
-Computes the Damarau-Levenshtein edit distance between two strings when the
-edit distance is less than a given number.
+In the common case that we wish to find the rows that have the *smallest*
+distance between strings, we can achieve significant performance
+improvements if we stop the computation when we know the distance will be
+*greater* than some other distance we have already computed.
 
 Syntax:
 
-    DAMLEVLIM(String1, String2, PosInt);
+    min_edit_dist_t(String1, String2, PosInt);
 
 `String1`:  A string constant or column.
 `String2`:  A string constant or column to be compared to `String1`.
 `PosInt`:   A positive integer. If the distance between `String1` and
-            `String2` is greater than `PosInt`, `DAMLEVLIM()` will stop its
-            computation at `PosInt` and return `PosInt + 1`. Make `PosInt`
-            as small as you can to improve speed and efficiency. For example,
-            if you put `WHERE DAMLEVLIM(...) <= k` in a `WHERE`-clause, make
+            `String2` is greater than `PosInt`, `min_edit_dist_t()` will stop its
+            computation at `PosInt` and return `PosInt`. Make `PosInt` as
+            small as you can to improve speed and efficiency. For example,
+            if you put `where min_edit_dist_t(...) <= k` in a `where`-clause, make
             `PosInt` be `k`.
 
 Returns: Either an integer equal to the Damarau-Levenshtein edit distance between
-`String1` and `String2` or `k+1`, whichever is smaller.
+`String1` and `String2`, if that distance is minimal among all distances computed
+in the query, or some unspecified number greater than the minimum distance computed
+in the query.
 
 Example Usage:
 
-    SELECT Name, DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) AS EditDist
-        FROM CUSTOMERS
-        WHERE  DAMLEVLIM(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
+    select Name, min_edit_dist_t(Name, "Vladimir Iosifovich Levenshtein", 6) as EditDist
+         from Customers
+         order by EditDist, Name asc;
 
-The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
+The above will return all rows `(Name, EditDist)` from the `Customers` table.
+The rows will be sorted in ascending order by `EditDist` and then by `Name`,
+and the first row(s) will have `EditDist` equal to the edit distance between
+`Name` and "Vladimir Iosifovich Levenshtein" or 6, whichever is smaller. All
+other rows will have `EditDist` equal to some other unspecified larger number.
 
 */
 #include "common.h"
@@ -43,44 +54,56 @@ where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVLIM_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVLIM() requires three arguments:\n"
+        MIN_EDIT_DIST_T_ARG_NUM_ERROR[] = "Wrong number of arguments. min_edit_dist_t() requires three arguments:\n"
                                     "\t1. A string\n"
                                     "\t2. A string\n"
-                                    "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_NUM_ERROR_LEN = std::size(DAMLEVLIM_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVLIM_MEM_ERROR[] = "Failed to allocate memory for DAMLEVLIM"
+                                    "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto MIN_EDIT_DIST_T_ARG_NUM_ERROR_LEN = std::size(MIN_EDIT_DIST_T_ARG_NUM_ERROR) + 1;
+constexpr const char MIN_EDIT_DIST_T_MEM_ERROR[] = "Failed to allocate memory for min_edit_dist_t"
                                              " function.";
-constexpr const auto DAMLEVLIM_MEM_ERROR_LEN = std::size(DAMLEVLIM_MEM_ERROR) + 1;
+constexpr const auto MIN_EDIT_DIST_T_MEM_ERROR_LEN = std::size(MIN_EDIT_DIST_T_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVLIM_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVLIM() requires three arguments:\n"
+        MIN_EDIT_DIST_T_ARG_TYPE_ERROR[] = "Arguments have wrong type. min_edit_dist_t() requires three arguments:\n"
                                      "\t1. A string\n"
                                      "\t2. A string\n"
-                                     "\t3. A maximum distance (0 <= int < ${DAMLEVLIM_MAX_EDIT_DIST}).";
-constexpr const auto DAMLEVLIM_ARG_TYPE_ERROR_LEN = std::size(DAMLEVLIM_ARG_TYPE_ERROR) + 1;
+                                     "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto MIN_EDIT_DIST_T_ARG_TYPE_ERROR_LEN = std::size(MIN_EDIT_DIST_T_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES(damlevlim)
+UDF_SIGNATURES(min_edit_dist_t)
 
+
+struct MinEditDistTPersistant {
+    int max;
+    int *buffer; // Takes ownership of this buffer
+
+    MinEditDistTPersistant(int max, int *buffer): max(max), buffer(buffer){}
+
+    ~MinEditDistTPersistant(){ delete this->buffer; }
+};
 
 [[maybe_unused]]
-int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int min_edit_dist_t_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, DAMLEVLIM_ARG_NUM_ERROR, DAMLEVLIM_ARG_NUM_ERROR_LEN);
+        strncpy(message, MIN_EDIT_DIST_T_ARG_NUM_ERROR, MIN_EDIT_DIST_T_ARG_NUM_ERROR_LEN);
         return 1;
     }
     // The arguments need to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
-        strncpy(message, DAMLEVLIM_ARG_TYPE_ERROR, DAMLEVLIM_ARG_TYPE_ERROR_LEN);
+        strncpy(message, MIN_EDIT_DIST_T_ARG_TYPE_ERROR, MIN_EDIT_DIST_T_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
-    // Attempt to preallocate a buffer.
-    initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
-    if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEVLIM_MEM_ERROR, DAMLEVLIM_MEM_ERROR_LEN);
+    // Initialize persistent data
+    int* buffer = new (std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
+    MinEditDistTPersistant *data = new (std::nothrow) MinEditDistTPersistant(DAMLEV_MAX_EDIT_DIST, buffer);
+    // If memory allocation failed
+    if (!buffer || !data) {
+        strncpy(message, MIN_EDIT_DIST_T_MEM_ERROR, MIN_EDIT_DIST_T_MEM_ERROR_LEN);
         return 1;
     }
+    initid->ptr = reinterpret_cast<char*>(data);
 
     // There are two error states possible within the function itself:
     //    1. Negative max distance provided
@@ -96,24 +119,30 @@ int damlevlim_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlevlim_deinit(UDF_INIT *initid) {
-    delete[] reinterpret_cast<int*>(initid->ptr);
+void min_edit_dist_t_deinit(UDF_INIT *initid) {
+    // As `MinEditDistTPersistant` owns its buffer, `~MinEditDistTPersistant` handles buffer deallocation.
+    delete reinterpret_cast<MinEditDistTPersistant*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long min_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
 #ifdef PRINT_DEBUG
-    std::cout << "damlevlim" << "\n";
+    std::cout << "min_edit_dist_t" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[4];
+    PerformanceMetrics &metrics = performance_metrics[5];
 #endif
 
-    // Fetch preallocated buffer. The only difference between damlevmin and damlevlim is that damlevmin also persists
-    // the max and updates it right before the final return statement.
-    int *buffer = reinterpret_cast<int *>(initid->ptr);
-    int max     = static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
+    // Fetch persistent data
+    MinEditDistTPersistant *data = reinterpret_cast<MinEditDistTPersistant *>(initid->ptr);
+    // This line and the line updating `data->max` right before the final `return` statement are the only differences
+    // between min_edit_dist_t and bounded_edit_dist_t.
+    int max = std::min(
+            *(reinterpret_cast<long long *>(args->args[2])),
+            static_cast<long long>(data->max)
+        );
+    int *buffer = data->buffer;
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -168,13 +197,12 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         // Initialize first column
         // if (start_j == 1) // This line seems to make no difference.
         current[0] = i;
-        // previous[0] = i;
 
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        // if (start_j > 1) current[start_j-1] = max + 1;
-        // if (end_j   < m) current[end_j]     = max + 1;
+        // if (start_j > 1) buffer[start_j-1] = max + 1;
+        // if (end_j   < m) buffer[end_j+1]   = max + 1;
 
 #ifdef PRINT_DEBUG
         // Print column header
@@ -244,7 +272,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
             // end_j < m && // This should always be true
                 end_j > 0
                 // Have to subtract one in the following as next character might make transposition
-                && current[end_j] + std::abs(end_j - i - m_n) - 1 > max
+                && buffer[end_j] + std::abs(end_j - i - m_n) - 1 > max
                 ) {
             end_j--;
         }
@@ -257,7 +285,7 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         while(
                 start_j <= end_j
                 // Have to subtract one in the following as next character might make transposition
-                && std::abs(i + m_n - start_j) + current[start_j] - 1 > max
+                && std::abs(i + m_n - start_j) + buffer[start_j] - 1 > max
                 ) {
             start_j++;
         }
@@ -274,6 +302,10 @@ long long damlevlim(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
             return max + 1;
         }
     }
+
+    // This line and the line fetching `data->max` at the top of the function are the only differences
+    // between min_edit_dist_t and bounded_edit_dist_t.
+    data->max = std::min(current_cell, static_cast<int>(max));
 
     // Return the final Damerau-Levenshtein distance
 #ifdef CAPTURE_METRICS

@@ -1,57 +1,36 @@
 /*
-Copyright (C) 2019 Robert Jacobson
+Copyright (C) 2024 Robert Jacobson
 Distributed under the MIT License. See License.txt for details.
 
-<hr>
+`bounded_edit_dist_t(String1, String2, PosInt)`
 
-`DAMLEVMINP(String1, String2, RealNumber)`
-
-Computes a similarity score in the range [0.0, 1.0] of two strings
-unless that similarity score will be less than `current_max_similarity`,
-the largest similarity score it has computed in the query so far, in
-which case it will return some smaller value. The `current_max_similarity`
-is initialized to `RealNumber`.
-
-In the common case that we wish to find the rows that have the *greatest*
-similarity between strings, we can achieve *significant* performance
-improvements if we stop the computation when we know the similarity will be
-*smaller* than some other similarity we have already computed. Under reasonable
-conditions, the speed of this function (excluding overhead) can be only twice
-as slow as doing nothing at all!
-
-Similarity is computed from Damarau-Levenshtein edit distance by "normalizing"
-using the length of the longest string:
-    similarity = 1.0 - EditDistance(String1, String2)/max(len(String1), len(String2))
+Computes the Damarau-Levenshtein edit distance between two strings when the
+edit distance is less than a given number.
 
 Syntax:
 
-    DAMLEVMINP(String1, String2, RealNumber);
+    bounded_edit_dist_t(String1, String2, PosInt);
 
 `String1`:  A string constant or column.
 `String2`:  A string constant or column to be compared to `String1`.
-`PosInt`:   A positive integer. If the similarity between `String1` and
-            `String2` is less than `RealNumber`, `DAMLEVMINP()` will stop its
-            computation at `RealNumber` and return a number smaller than
-            `RealNumber`. Make `RealNumber` as large as you can to improve
-            speed and efficiency. For example, if you put
-            `WHERE DAMLEVMINP(...) >= p` in a `WHERE`-clause, make
-            `RealNumber` be `p`.
+`PosInt`:   A positive integer. If the distance between `String1` and
+            `String2` is greater than `PosInt`, `bounded_edit_dist_t()` will stop its
+            computation at `PosInt` and return `PosInt + 1`. Make `PosInt`
+            as small as you can to improve speed and efficiency. For example,
+            if you put `where bounded_edit_dist_t(...) <= k` in a `where`-clause, make
+            `PosInt` be `k`.
 
-Returns: Either a real number equal to the similarity between `String1` and `String2`,
-if that distance is minimal among all distances computed in the query, or some
-unspecified number smaller than the minimum distance computed in the query.
+Returns: Either an integer equal to the Damarau-Levenshtein edit distance between
+`String1` and `String2` or `k+1`, whichever is smaller.
 
 Example Usage:
 
-    SELECT Name, DAMLEVMINP(Name, "Vladimir Iosifovich Levenshtein", 0.95) AS Similarity
-         FROM CUSTOMERS
-         ORDER BY Similarity, Name DESC;
+    select Name, bounded_edit_dist_t(Name, "Vladimir Iosifovich Levenshtein", 6) AS EditDist
+        from Customers
+        where  bounded_edit_dist_t(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
-The above will return all rows `(Name, Similarity)` from the `CUSTOMERS` table.
-The rows will be sorted in descending order by `Similarity` and then by `Name`,
-and the first row(s) will have `Similarity` equal to the similarity between
-`Name` and "Vladimir Iosifovich Levenshtein" or 0.95, whichever is larger. All
-other rows will have `EditDist` equal to some other unspecified smaller number.
+The above will return all rows `(Name, EditDist)` from the `Customers` table
+where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
 */
 #include "common.h"
@@ -62,67 +41,44 @@ other rows will have `EditDist` equal to some other unspecified smaller number.
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVPMINP_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVPMINP() requires three arguments:\n"
-                                  "\t1. A string.\n"
-                                  "\t2. Another string.\n"
-                                  "\t3. A real number.";
-constexpr const auto DAMLEVPMINP_ARG_NUM_ERROR_LEN = std::size(DAMLEVPMINP_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVPMINP_MEM_ERROR[] = "Failed to allocate memory for DAMLEVPMINP"
-                                           " function.";
-constexpr const auto DAMLEVPMINP_MEM_ERROR_LEN = std::size(DAMLEVPMINP_MEM_ERROR) + 1;
+        BOUNDED_EDIT_DIST_T_ARG_NUM_ERROR[] = "Wrong number of arguments. bounded_edit_dist_t() requires three arguments:\n"
+                                    "\t1. A string\n"
+                                    "\t2. A string\n"
+                                    "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto BOUNDED_EDIT_DIST_T_ARG_NUM_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_T_ARG_NUM_ERROR) + 1;
+constexpr const char BOUNDED_EDIT_DIST_T_MEM_ERROR[] = "Failed to allocate memory for bounded_edit_dist_t"
+                                             " function.";
+constexpr const auto BOUNDED_EDIT_DIST_T_MEM_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_T_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVPMINP_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVPMINP() requires three arguments:\n"
-                                   "\t1. A string.\n"
-                                   "\t2. Another string.\n"
-                                   "\t3. A real number.";
-constexpr const auto DAMLEVPMINP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVPMINP_ARG_TYPE_ERROR) + 1;
+        BOUNDED_EDIT_DIST_T_ARG_TYPE_ERROR[] = "Arguments have wrong type. bounded_edit_dist_t() requires three arguments:\n"
+                                     "\t1. A string\n"
+                                     "\t2. A string\n"
+                                     "\t3. A maximum distance (0 <= int < ${DAMLEV_MAX_EDIT_DIST}).";
+constexpr const auto BOUNDED_EDIT_DIST_T_ARG_TYPE_ERROR_LEN = std::size(BOUNDED_EDIT_DIST_T_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES_TYPE(damlevminp, double)
+UDF_SIGNATURES(bounded_edit_dist_t)
 
-
-struct DamLevPMinPersistant {
-    double p;    // Only compute similarities that are at least p
-    int *buffer; // Takes ownership of this buffer
-
-    DamLevPMinPersistant(double similarity, int *buffer): p(similarity), buffer(buffer){}
-
-    ~DamLevPMinPersistant(){ delete this->buffer; }
-};
-
-/// Converts minimum allowed similarity to maximum allowed number of edits for a given string length.
-/// Assumes similarity is in the interval [0.0, 1.0].
-inline constexpr long long similarity_to_max_edits(double similarity, int length) {
-    return static_cast<int>((1.0 - similarity) * static_cast<double>(length));
-}
-/// The inverse of the above. Converts number of edits for a given string length to a similarity score.
-/// Guaranteed to return number in the interval [0.0, 1.0] for edits <= length.
-inline constexpr double edits_to_similarity(int edits, int length) {
-    return (1.0 - static_cast<double>(edits)/static_cast<double>(length));
-}
 
 [[maybe_unused]]
-int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int bounded_edit_dist_t_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, DAMLEVPMINP_ARG_NUM_ERROR, DAMLEVPMINP_ARG_NUM_ERROR_LEN);
+        strncpy(message, BOUNDED_EDIT_DIST_T_ARG_NUM_ERROR, BOUNDED_EDIT_DIST_T_ARG_NUM_ERROR_LEN);
         return 1;
     }
-        // The arguments need to be of the right type.
-    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != REAL_RESULT) {
-        strncpy(message, DAMLEVPMINP_ARG_TYPE_ERROR, DAMLEVPMINP_ARG_TYPE_ERROR_LEN);
+    // The arguments need to be of the right type.
+    else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT) {
+        strncpy(message, BOUNDED_EDIT_DIST_T_ARG_TYPE_ERROR, BOUNDED_EDIT_DIST_T_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
-    // Initialize persistent data
-    int* buffer = new (std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
-    DamLevPMinPersistant *data = new (std::nothrow) DamLevPMinPersistant(0.0, buffer);
-    // If memory allocation failed
-    if (!buffer || !data) {
-        strncpy(message, DAMLEVPMINP_MEM_ERROR, DAMLEVPMINP_MEM_ERROR_LEN);
+    // Attempt to preallocate a buffer.
+    initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
+    if (initid->ptr == nullptr) {
+        strncpy(message, BOUNDED_EDIT_DIST_T_MEM_ERROR, BOUNDED_EDIT_DIST_T_MEM_ERROR_LEN);
         return 1;
     }
-    initid->ptr = reinterpret_cast<char*>(data);
 
     // There are two error states possible within the function itself:
     //    1. Negative max distance provided
@@ -138,38 +94,28 @@ int damlevminp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlevminp_deinit(UDF_INIT *initid) {
-    // As `DamLevPMinPersistant` owns its buffer, `~DamLevPMinPersistant` handles buffer deallocation.
-    delete reinterpret_cast<DamLevPMinPersistant*>(initid->ptr);
+void bounded_edit_dist_t_deinit(UDF_INIT *initid) {
+    delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long bounded_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
 #ifdef PRINT_DEBUG
-    std::cout << "damlevminp" << "\n";
+    std::cout << "bounded_edit_dist_t" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[6];
+    PerformanceMetrics &metrics = performance_metrics[1];
 #endif
 
-    // Fetch persistent data
-    DamLevPMinPersistant *data = reinterpret_cast<DamLevPMinPersistant *>(initid->ptr);
+    // Fetch preallocated buffer. The only difference between min_edit_dist_t and bounded_edit_dist_t is that min_edit_dist_t also persists
+    // the max and updates it right before the final return statement.
+    int *buffer = reinterpret_cast<int *>(initid->ptr);
+    int max     = static_cast<int>(std::max(args->lengths[0], args->lengths[1]));
 
-    // Retrieve the similarity and compute max.
-    double similarity = data->p;
-
-#include "validate_similarity.h"
-
-    // The algorithm works with number of edits, a positive integer. For similarity, the
-    // number of edits permitted depends on the length of the longest string.
-    int max = static_cast<int>(
-                similarity_to_max_edits(
-                        similarity,
-                        std::max(args->lengths[0], args->lengths[1])
-                )
-            );
-    int *buffer = data->buffer;
+    // Validate max distance and update.
+    // This code is common to algorithms with limits.
+#include "validate_max.h"
 
     // The pre-algorithm code is the same for all algorithm variants. It handles
     //     - basic setup & initialization
@@ -186,12 +132,6 @@ double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nu
 #endif
         return 0;
     }
-
-    // We also use the following as the similarity analog of `max+1`. This is somewhat
-    // arbitrary, but we need to be able to return a similarity smaller than the
-    // minimum required similarity.
-    double max_result = (1.0-static_cast<double>(max+1)/static_cast<double>(m));
-    max_result = std::max(0.0, max_result); // Must be positive.
 
     // We keep track of only two rows for this algorithm. See below for details.
     int *current  = buffer;
@@ -226,12 +166,13 @@ double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nu
         // Initialize first column
         // if (start_j == 1) // This line seems to make no difference.
         current[0] = i;
+        // previous[0] = i;
 
         // Assume anything outside the band contains more than max. The only cells outside the
         // band we actually look at are positions (i,start_j-1) and  (i,end_j+1), so we
         // pre-fill it with max + 1.
-        // if (start_j > 1) buffer[start_j-1] = max + 1;
-        // if (end_j   < m) buffer[end_j+1]   = max + 1;
+        // if (start_j > 1) current[start_j-1] = max + 1;
+        // if (end_j   < m) current[end_j]     = max + 1;
 
 #ifdef PRINT_DEBUG
         // Print column header
@@ -328,17 +269,14 @@ double damlevminp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_nu
 #ifdef PRINT_DEBUG
             std::cout << "EMPTY BAND: " << start_j << " <= j <= " << end_j << '\n';
 #endif
-            return max_result;
+            return max + 1;
         }
     }
 
-    // Compute and return the final similarity score
-    double result = (1.0-static_cast<double>(current_cell)/static_cast<double>(m));
-    result = std::max(0.0, result);
-    data->p = std::max(similarity, result);
+    // Return the final Damerau-Levenshtein distance
 #ifdef CAPTURE_METRICS
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::max(result, max_result);
+    return std::min(max + 1, current_cell);
 }

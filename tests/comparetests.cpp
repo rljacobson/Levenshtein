@@ -3,8 +3,8 @@ There are two ways to use this file.
 
 1. Define `LEV_FUNCTION`, which is the unquoted algorithm name, and `LEV_ALGORITHM_COUNT`,
     the number of arguments the function takes. This code will then compare the output of the
-    algorithm to the plain damlev2D algorithm. (The defined `LEV_FUNCTION` will be `ALGORITHM_A`,
-    and damlev2D will be `ALGORITHM_B`.)
+    algorithm to the plain edit_dist_t_2d algorithm. (The defined `LEV_FUNCTION` will be `ALGORITHM_A`,
+    and edit_dist_t_2d will be `ALGORITHM_B`.)
 
 2. Define `ALGORITHM_A` and `ALGORITHM_A_COUNT`, the unquoted algorithm name and argument
     count respectively of the first algorithm to compare, and likewise `ALGORITHM_B` and
@@ -65,7 +65,7 @@ char * algorithm_a_name = LEV_ALGORITHM_NAME;
 #define LEV_ALGORITHM_COUNT ALGORITHM_B_COUNT
 #else
 // The "default" comparison is to plain vanilla damlev.
-#define LEV_FUNCTION damlev2D
+#define LEV_FUNCTION edit_dist_t_2d
 // Keep in synch with LEV_FUNCTION default above.
 #define LEV_ALGORITHM_COUNT 2
 #endif
@@ -89,8 +89,8 @@ long long (* const algorithm_a_call)(char*, size_t, char*, size_t) = LEV_CALL;
 #endif
 char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
-// The "default" comparison is to plain vanilla damlev2D.
-#define LEV_FUNCTION damlev2D
+// The "default" comparison is to plain vanilla edit_dist_t_2d.
+#define LEV_FUNCTION edit_dist_t_2d
 // Keep in synch with LEV_FUNCTION default above.
 #define LEV_ALGORITHM_COUNT 2
 #include "testharness.hpp"

@@ -64,7 +64,7 @@ The one-off test script is a specialized utility designed to manually test the c
 #### Usage
 
 1. **Setup Strings:** Modify the `string_a` and `string_b` variables in the script to the strings you want to compare.
-2. **Select Algorithm:** Ensure the `LEV_ARGS->arg_count` is set appropriately in `testharness.hpp` for the specific Damerau-Levenshtein implementation you wish to test (e.g., `damlevconst`, `damlev`, `damlevlimp`).
+2. **Select Algorithm:** Ensure the `LEV_ARGS->arg_count` is set appropriately in `testharness.hpp` for the specific Damerau-Levenshtein implementation you wish to test (e.g., `damlevconst`, `damlev`, `bounded_edit_dist_tp`).
 3. **Compile and Run:** Compile the script and execute it. The Damerau-Levenshtein distance between the specified strings will be displayed in the console.
 
 #### Example Output
@@ -77,6 +77,6 @@ LEV_FUNCTION("string", "strlng") =  1
 
 __Warning:__ Do NOT use random code you found on the internet in a production
 environment without auditing it carefully. Especially don't use anything called
-`damlevlim256`. Yeah, I googled for Levenshtein UDFs just like you did. I found
+`bounded_edit_dist_t256`. Yeah, I googled for Levenshtein UDFs just like you did. I found
 some really heinous code. Horrible, very bad code that will give your children
 lupus.

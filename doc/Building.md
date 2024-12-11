@@ -142,13 +142,13 @@ installing a compiled UDF. Note that the names are case sensitive. Change out `.
 ```sql
 CREATE FUNCTION damlev RETURNS INTEGER
   SONAME 'libdamlev.so';
-CREATE FUNCTION damlevlim RETURNS INTEGER
+CREATE FUNCTION bounded_edit_dist_t RETURNS INTEGER
   SONAME 'libdamlev.so';
 CREATE FUNCTION damlevconst RETURNS INTEGER
   SONAME 'libdamlev.so';
-CREATE FUNCTION damlevp RETURNS REAL
+CREATE FUNCTION similarity_t RETURNS REAL
   SONAME 'libdamlev.so';
-CREATE FUNCTION damlev2D RETURNS REAL
+CREATE FUNCTION edit_dist_t_2d RETURNS REAL
   SONAME 'libdamlev.so';
 ```
 
@@ -156,9 +156,9 @@ To uninstall:
 
 ```sql
 DROP FUNCTION damlev;
-DROP FUNCTION damlevlim;
-DROP FUNCTION damlevp;
-DROP FUNCTION damlev2D;
+DROP FUNCTION bounded_edit_dist_t;
+DROP FUNCTION similarity_t;
+DROP FUNCTION edit_dist_t_2d;
 DROP FUNCTION damlevconst;
 ```
 

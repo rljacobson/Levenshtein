@@ -2,15 +2,13 @@
 Copyright (C) 2019 Robert Jacobson
 Distributed under the MIT License. See License.txt for details.
 
-<hr>
-
-`DAMLEV(String1, String2)`
+`edit_dist_t(String1, String2)`
 
 Computes the Damarau-Levenshtein edit distance between two strings.
 
 Syntax:
 
-    DAMLEV(String1, String2);
+    edit_dist_t(String1, String2);
 
 `String1`:  A string constant or column.
 `String2`:  A string constant or column to be compared to `String1`.
@@ -20,11 +18,11 @@ Returns: An integer equal to the Damarau-Levenshtein edit distance between
 
 Example Usage:
 
-    SELECT Name, DAMLEV(Name, "Vladimir Iosifovich Levenshtein") AS EditDist
-        FROM CUSTOMERS
-        WHERE  DAMLEV(Name, "Vladimir Iosifovich Levenshtein") <= 6;
+    select Name, edit_dist_t(Name, "Vladimir Iosifovich Levenshtein") as EditDist
+        from Customers
+        where  edit_dist_t(Name, "Vladimir Iosifovich Levenshtein") <= 6;
 
-The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
+The above will return all rows `(Name, EditDist)` from the `Customers` table
 where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
 */
@@ -36,40 +34,40 @@ where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEV_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEV() requires two arguments:\n"
+        EDIT_DIST_T_ARG_NUM_ERROR[] = "Wrong number of arguments. edit_dist_t() requires two arguments:\n"
                                     "\t1. A string\n"
                                     "\t2. A string";
-constexpr const auto DAMLEV_ARG_NUM_ERROR_LEN = std::size(DAMLEV_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEV_MEM_ERROR[] = "Failed to allocate memory for DAMLEV"
+constexpr const auto EDIT_DIST_T_ARG_NUM_ERROR_LEN = std::size(EDIT_DIST_T_ARG_NUM_ERROR) + 1;
+constexpr const char EDIT_DIST_T_MEM_ERROR[] = "Failed to allocate memory for edit_dist_t"
                                              " function.";
-constexpr const auto DAMLEV_MEM_ERROR_LEN = std::size(DAMLEV_MEM_ERROR) + 1;
+constexpr const auto EDIT_DIST_T_MEM_ERROR_LEN = std::size(EDIT_DIST_T_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEV_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEV() requires two arguments:\n"
+        EDIT_DIST_T_ARG_TYPE_ERROR[] = "Arguments have wrong type. edit_dist_t() requires two arguments:\n"
                                      "\t1. A string\n"
                                      "\t2. A string";
-constexpr const auto DAMLEV_ARG_TYPE_ERROR_LEN = std::size(DAMLEV_ARG_TYPE_ERROR) + 1;
+constexpr const auto EDIT_DIST_T_ARG_TYPE_ERROR_LEN = std::size(EDIT_DIST_T_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES(damlev)
+UDF_SIGNATURES(edit_dist_t)
 
 
 [[maybe_unused]]
-int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int edit_dist_t_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
-        strncpy(message, DAMLEV_ARG_NUM_ERROR, DAMLEV_ARG_NUM_ERROR_LEN);
+        strncpy(message, EDIT_DIST_T_ARG_NUM_ERROR, EDIT_DIST_T_ARG_NUM_ERROR_LEN);
         return 1;
     }
     // The arguments need to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
-        strncpy(message, DAMLEV_ARG_TYPE_ERROR, DAMLEV_ARG_TYPE_ERROR_LEN);
+        strncpy(message, EDIT_DIST_T_ARG_TYPE_ERROR, EDIT_DIST_T_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to preallocate a buffer.
     initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEV_MEM_ERROR, DAMLEV_MEM_ERROR_LEN);
+        strncpy(message, EDIT_DIST_T_MEM_ERROR, EDIT_DIST_T_MEM_ERROR_LEN);
         return 1;
     }
 
@@ -87,15 +85,15 @@ int damlev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlev_deinit(UDF_INIT *initid) {
+void edit_dist_t_deinit(UDF_INIT *initid) {
     delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long damlev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
 #ifdef PRINT_DEBUG
-    std::cout << "damlev" << "\n";
+    std::cout << "edit_dist_t" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
     PerformanceMetrics &metrics = performance_metrics[3];

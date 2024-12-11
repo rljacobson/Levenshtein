@@ -1,61 +1,29 @@
 /*
-    Damerau–Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2024 Robert Jacobson
+Distributed under the MIT License. See License.txt for details.
 
-    17 January 2019
+`similarity_t()` computes the normalized Damarau-Levenshtein edit distance between two strings.
+The normalization is the edit distance divided by the length of the longest string:
+    ("edit distance")/("length of longest string").
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+Syntax:
 
-    <hr>
-    `DAMLEVP()` computes the normalized Damarau Levenshtein edit distance between two strings.
-    The normalization is the edit distance divided by the length of the longest string:
-        ("edit distance")/("length of longest string").
+    similarity_t(String1, String2);
 
-    Syntax:
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
 
-        DAMLEVP(String1, String2);
+Returns: A floating point number equal to the normalized edit distance between `String1` and
+`String2`.
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
+Example Usage:
 
-    Returns: A floating point number equal to the normalized edit distance between `String1` and
-    `String2`.
+    select Name, similarity_t(Name, "Vladimir Iosifovich Levenshtein") as
+        EditDist from Customers where similarity_t(Name, "Vladimir Iosifovich Levenshtein")  <= 0.2;
 
-    Example Usage:
+The above will return all rows `(Name, EditDist)` from the `Customers` table
+where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
 
-        SELECT Name, DAMLEVP(Name, "Vladimir Iosifovich Levenshtein") AS
-            EditDist FROM CUSTOMERS WHERE DAMLEVP(Name, "Vladimir Iosifovich Levenshtein")  <= 0.2;
-
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 20% of "Vladimir Iosifovich Levenshtein".
-
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
 
@@ -65,23 +33,23 @@
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        DAMLEVP_ARG_NUM_ERROR[] = "Wrong number of arguments. DAMLEVP() requires three arguments:\n"
+        SIMILARITY_T_ARG_NUM_ERROR[] = "Wrong number of arguments. similarity_t() requires three arguments:\n"
                                   "\t1. A string.\n"
                                   "\t2. Another string.\n"
                                   "\t3. A real number.";
-constexpr const auto DAMLEVP_ARG_NUM_ERROR_LEN = std::size(DAMLEVP_ARG_NUM_ERROR) + 1;
-constexpr const char DAMLEVP_MEM_ERROR[] = "Failed to allocate memory for DAMLEVP"
+constexpr const auto SIMILARITY_T_ARG_NUM_ERROR_LEN = std::size(SIMILARITY_T_ARG_NUM_ERROR) + 1;
+constexpr const char SIMILARITY_T_MEM_ERROR[] = "Failed to allocate memory for similarity_t"
                                            " function.";
-constexpr const auto DAMLEVP_MEM_ERROR_LEN = std::size(DAMLEVP_MEM_ERROR) + 1;
+constexpr const auto SIMILARITY_T_MEM_ERROR_LEN = std::size(SIMILARITY_T_MEM_ERROR) + 1;
 constexpr const char
-        DAMLEVP_ARG_TYPE_ERROR[] = "Arguments have wrong type. DAMLEVP() requires three arguments:\n"
+        SIMILARITY_T_ARG_TYPE_ERROR[] = "Arguments have wrong type. similarity_t() requires three arguments:\n"
                                    "\t1. A string.\n"
                                    "\t2. Another string.\n"
                                    "\t3. A real number.";
-constexpr const auto DAMLEVP_ARG_TYPE_ERROR_LEN = std::size(DAMLEVP_ARG_TYPE_ERROR) + 1;
+constexpr const auto SIMILARITY_T_ARG_TYPE_ERROR_LEN = std::size(SIMILARITY_T_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES_TYPE(damlevp, double)
+UDF_SIGNATURES_TYPE(similarity_t, double)
 
 /// Converts minimum allowed similarity to maximum allowed number of edits for a given string length.
 /// Assumes similarity is in the interval [0.0, 1.0].
@@ -90,22 +58,22 @@ inline constexpr long long similarity_to_max_edits(double similarity, int length
 }
 
 [[maybe_unused]]
-int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int similarity_t_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
-        strncpy(message, DAMLEVP_ARG_NUM_ERROR, DAMLEVP_ARG_NUM_ERROR_LEN);
+        strncpy(message, SIMILARITY_T_ARG_NUM_ERROR, SIMILARITY_T_ARG_NUM_ERROR_LEN);
         return 1;
     }
         // The arguments need to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != REAL_RESULT) {
-        strncpy(message, DAMLEVP_ARG_TYPE_ERROR, DAMLEVP_ARG_TYPE_ERROR_LEN);
+        strncpy(message, SIMILARITY_T_ARG_TYPE_ERROR, SIMILARITY_T_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to preallocate a buffer.
     initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
-        strncpy(message, DAMLEVP_MEM_ERROR, DAMLEVP_MEM_ERROR_LEN);
+        strncpy(message, SIMILARITY_T_MEM_ERROR, SIMILARITY_T_MEM_ERROR_LEN);
         return 1;
     }
 
@@ -123,21 +91,21 @@ int damlevp_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void damlevp_deinit(UDF_INIT *initid) {
+void similarity_t_deinit(UDF_INIT *initid) {
     delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-double damlevp(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+double similarity_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 
 #ifdef PRINT_DEBUG
-    std::cout << "damlevp" << "\n";
+    std::cout << "similarity_t" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[5];
+    PerformanceMetrics &metrics = performance_metrics[7];
 #endif
 
-    // Fetch preallocated buffer. The only difference between damlevminp and damlevp is that damlevmin also persists
+    // Fetch preallocated buffer. The only difference between min_similarity_t and similarity_t is that min_edit_dist_t also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
     // Retrieve the similarity and compute max.

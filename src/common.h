@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2019 Robert Jacobson
+Copyright (C) 2024 Robert Jacobson
 Distributed under the MIT License. See License.txt for details.
 
 Common definitions needed for every algorithm:

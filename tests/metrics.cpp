@@ -1,3 +1,7 @@
+/*
+Copyright (C) 2024 Robert Jacobson
+Distributed under the MIT License. See License.txt for details.
+*/
 #include "metrics.hpp"
 #include <iostream>
 #include <iomanip> // for std::setw
@@ -10,18 +14,18 @@ PerformanceMetrics performance_metrics[ALGORITHM_COUNT];
 // Algorithm names
 // ToDo: Surely there is a better way to do this.
 const char *algorithm_names[ALGORITHM_COUNT] = {
-        // "damlev2D",       // 3
-        "lev",          // 0
-        "levlim",       // 1
-        "levmin",       // 2
-        "damlev",       // 3
-        "damlevlim",    // 4
-        "damlevmin",    // 5
-        "damlevminp",   // 6
-        "damlevp",      // 7
-        "postgres",     // 8
-        "levlimopt",    // 9
-        "noop",         // 10
+        // "edit_dist_t_2d",     // *
+        // "bounded_edit_dist_OLD", // *
+        "bounded_edit_dist",     // 0
+        "bounded_edit_dist_t",   // 1
+        "edit_dist",             // 2
+        "edit_dist_t",           // 3
+        "min_edit_dist",         // 4
+        "min_edit_dist_t",       // 5
+        "min_similarity_t",      // 6
+        "similarity_t",          // 7
+        "postgres",              // 8
+        "noop",                  // 9
 };
 
 // Function to initialize all performance metrics
@@ -57,7 +61,7 @@ std::string formatWithCommas(uint64_t value) {
 
 void print_metrics() {
     // Print table header
-    std::cout << std::right << std::setw(15) << "Algorithm"
+    std::cout << std::right << std::setw(20) << "Algorithm"
               << std::setw(12) << "Call Count"
               << std::setw(14) << "Mem Exceeded"
               << std::setw(17) << "Total Time (ms)"
@@ -67,12 +71,12 @@ void print_metrics() {
               << std::setw(16) << "Cells Computed"
               << std::endl;
 
-    std::cout << std::string(115, '-') << std::endl; // Adjusted to match the total width of the header
+    std::cout << std::string(120, '-') << std::endl; // Adjusted to match the total width of the header
 
     // Iterate through the metrics and print details for called algorithms
     for (int i = 0; i < ALGORITHM_COUNT; i++) {
         if (performance_metrics[i].call_count > 0) { // Only print if the algorithm was called
-            std::cout << std::right << std::setw(15) << performance_metrics[i].algorithm_name
+            std::cout << std::right << std::setw(20) << performance_metrics[i].algorithm_name
                       << std::setw(12) << formatWithCommas(performance_metrics[i].call_count)
                       << std::setw(14) << formatWithCommas(performance_metrics[i].buffer_exceeded)
                       << std::setw(17) << (int)std::round(performance_metrics[i].total_time*1000.0)

@@ -1,66 +1,34 @@
 /*
-    Levenshtein Edit Distance UDF for MySQL.
+Copyright (C) 2024 Robert Jacobson
+Distributed under the MIT License. See License.txt for details.
 
-    17 January 2019
+`edit_dist_simd()` computes the Levenshtein edit distance between two strings when the
+edit distance is less than a given number.
 
-    This implementation is better than most others out there. It is extremely
-    fast and efficient.
-            __—R.__
+Syntax:
 
-    <hr>
-    `LEV()` computes the Levenshtein edit distance between two strings when the
-    edit distance is less than a given number.
+    edit_dist_simd(String1, String2, PosInt);
 
-    Syntax:
+`String1`:  A string constant or column.
+`String2`:  A string constant or column to be compared to `String1`.
+`PosInt`:   A positive integer. If the distance between `String1` and
+            `String2` is greater than `PosInt`, `edit_dist_simd()` will stop its
+            computation at `PosInt` and return `PosInt`. Make `PosInt` as
+            small as you can to improve speed and efficiency. For example,
+            if you put `where edit_dist_simd(...) < k` in a `where`-clause, make
+            `PosInt` be `k`.
 
-        LEV(String1, String2, PosInt);
+Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
+whichever is smaller.
 
-    `String1`:  A string constant or column.
-    `String2`:  A string constant or column to be compared to `String1`.
-    `PosInt`:   A positive integer. If the distance between `String1` and
-                `String2` is greater than `PosInt`, `LEV()` will stop its
-                computation at `PosInt` and return `PosInt`. Make `PosInt` as
-                small as you can to improve speed and efficiency. For example,
-                if you put `WHERE LEV(...) < k` in a `WHERE`-clause, make
-                `PosInt` be `k`.
+Example Usage:
 
-    Returns: Either an integer equal to the edit distance between `String1` and `String2` or `k`,
-    whichever is smaller.
+    select Name, edit_dist_simd(Name, "Vladimir Iosifovich Levenshtein", 6) AS
+        EditDist from Customers where  edit_dist_simd(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
 
-    Example Usage:
+The above will return all rows `(Name, EditDist)` from the `Customers` table
+where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
 
-        SELECT Name, LEV(Name, "Vladimir Iosifovich Levenshtein", 6) AS
-            EditDist FROM CUSTOMERS WHERE  LEV(Name, "Vladimir Iosifovich Levenshtein", 6) <= 6;
-
-    The above will return all rows `(Name, EditDist)` from the `CUSTOMERS` table
-    where `Name` has edit distance within 6 of "Vladimir Iosifovich Levenshtein".
-
-    <hr>
-
-    Copyright (C) 2019 Robert Jacobson. Released under the MIT license.
-
-    Based on "Iosifovich", Copyright (C) 2019 Frederik Hertzum, which is
-    licensed under the MIT license: https://bitbucket.org/clearer/iosifovich.
-
-    The MIT License
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to
-    deal in the Software without restriction, including without limitation the
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
 */
 #include "common.h"
 
@@ -68,47 +36,46 @@
 void printMatrix(const int* dp, int n, int m, const std::string_view& S1, const std::string_view& S2);
 #endif
 
-
 // Error messages.
 // MySQL error messages can be a maximum of MYSQL_ERRMSG_SIZE bytes long. In
 // version 8.0, MYSQL_ERRMSG_SIZE == 512. However, the example says to "try to
 // keep the error message less than 80 bytes long!" Rules were meant to be
 // broken.
 constexpr const char
-        LEV_ARG_NUM_ERROR[] = "Wrong number of arguments. LEV() requires two arguments:\n"
-                                    "\t1. A string\n"
-                                    "\t2. A string";
-constexpr const auto LEV_ARG_NUM_ERROR_LEN = std::size(LEV_ARG_NUM_ERROR) + 1;
-constexpr const char LEV_MEM_ERROR[] = "Failed to allocate memory for LEV"
-                                             " function.";
-constexpr const auto LEV_MEM_ERROR_LEN = std::size(LEV_MEM_ERROR) + 1;
+        EDIT_DIST_SIMD_ARG_NUM_ERROR[] = "Wrong number of arguments. edit_dist_simd() requires two arguments:\n"
+                                 "\t1. A string\n"
+                                 "\t2. A string";
+constexpr const auto EDIT_DIST_SIMD_ARG_NUM_ERROR_LEN = std::size(EDIT_DIST_SIMD_ARG_NUM_ERROR) + 1;
+constexpr const char EDIT_DIST_SIMD_MEM_ERROR[] = "Failed to allocate memory for edit_dist_simd"
+                                          " function.";
+constexpr const auto EDIT_DIST_SIMD_MEM_ERROR_LEN = std::size(EDIT_DIST_SIMD_MEM_ERROR) + 1;
 constexpr const char
-        LEV_ARG_TYPE_ERROR[] = "Arguments have wrong type. LEV() requires two arguments:\n"
-                                     "\t1. A string\n"
-                                     "\t2. A string";
-constexpr const auto LEV_ARG_TYPE_ERROR_LEN = std::size(LEV_ARG_TYPE_ERROR) + 1;
+        EDIT_DIST_SIMD_ARG_TYPE_ERROR[] = "Arguments have wrong type. edit_dist_simd() requires two arguments:\n"
+                                  "\t1. A string\n"
+                                  "\t2. A string";
+constexpr const auto EDIT_DIST_SIMD_ARG_TYPE_ERROR_LEN = std::size(EDIT_DIST_SIMD_ARG_TYPE_ERROR) + 1;
 
 
-UDF_SIGNATURES(lev)
+UDF_SIGNATURES(edit_dist_simd)
 
 
 [[maybe_unused]]
-int lev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int edit_dist_simd_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     // We require 2 arguments:
     if (args->arg_count != 2) {
-        strncpy(message, LEV_ARG_NUM_ERROR, LEV_ARG_NUM_ERROR_LEN);
+        strncpy(message, EDIT_DIST_SIMD_ARG_NUM_ERROR, EDIT_DIST_SIMD_ARG_NUM_ERROR_LEN);
         return 1;
     }
-    // The arguments need to be of the right type.
+        // The arguments need to be of the right type.
     else if (args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT) {
-        strncpy(message, LEV_ARG_TYPE_ERROR, LEV_ARG_TYPE_ERROR_LEN);
+        strncpy(message, EDIT_DIST_SIMD_ARG_TYPE_ERROR, EDIT_DIST_SIMD_ARG_TYPE_ERROR_LEN);
         return 1;
     }
 
     // Attempt to preallocate a buffer.
     initid->ptr = (char *)new(std::nothrow) int[DAMLEV_MAX_EDIT_DIST];
     if (initid->ptr == nullptr) {
-        strncpy(message, LEV_MEM_ERROR, LEV_MEM_ERROR_LEN);
+        strncpy(message, EDIT_DIST_SIMD_MEM_ERROR, EDIT_DIST_SIMD_MEM_ERROR_LEN);
         return 1;
     }
 
@@ -126,20 +93,20 @@ int lev_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 [[maybe_unused]]
-void lev_deinit(UDF_INIT *initid) {
+void edit_dist_simd_deinit(UDF_INIT *initid) {
     delete[] reinterpret_cast<int*>(initid->ptr);
 }
 
 [[maybe_unused]]
-long long lev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long edit_dist_simd(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
 #ifdef PRINT_DEBUG
-    std::cout << "lev" << "\n";
+    std::cout << "edit_dist_simd" << "\n";
 #endif
 #ifdef CAPTURE_METRICS
-    PerformanceMetrics &metrics = performance_metrics[0];
+    PerformanceMetrics &metrics = performance_metrics[3];
 #endif
 
-    // Fetch preallocated buffer. The only difference between levmin and lev is that levmin also persists
+    // Fetch preallocated buffer. The only difference between min_edit_dist_t and damlev is that min_edit_dist_t also persists
     // the max and updates it right before the final return statement.
     int *buffer   = reinterpret_cast<int *>(initid->ptr);
 
@@ -147,7 +114,72 @@ long long lev(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, 
     //     - basic setup & initialization
     //     - trimming of common prefix/suffix
 #define SUPPRESS_MAX_CHECK
-#include "prealgorithm.h"
+
+#ifdef CAPTURE_METRICS
+    metrics.call_count++;
+    Timer call_timer;
+    call_timer.start();
+#endif
+
+    // Handle null strings
+    if (!args->args[0] || !args->args[1]) {
+#ifdef CAPTURE_METRICS
+        metrics.total_time += call_timer.elapsed();
+        metrics.exit_length_difference++;
+#endif
+        return static_cast<long long>(std::max(args->lengths[0], args->lengths[1]));
+    }
+
+    // Let's make some string views so we can use the STL.
+    // std::string_view query{args->args[0], args->lengths[0]};
+    // std::string_view subject{args->args[1], args->lengths[1]};
+
+    // Skip any common prefix.
+    auto [query, subject] = strip_common_prefix_suffix(args->args[0], args->lengths[0], args->args[1], args->lengths[1]);
+
+    // Ensure 'subject' is the smaller string for efficiency
+    if (query.length() < subject.length()) {
+        std::swap(subject, query);
+    }
+
+    const int n = static_cast<int>(subject.length()); // Cast size_type to int
+    const int m = static_cast<int>(query.length()); // Cast size_type to int
+    const int m_n = m-n; // We use this a lot.
+
+    // It's possible we "trimmed" an entire string.
+    if(n==0) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return m;
+    }
+
+#ifndef SUPPRESS_MAX_CHECK
+    // Distance is at least the difference in the lengths of the strings.
+    if (m-n > static_cast<int>(max)) {
+#ifdef CAPTURE_METRICS
+        metrics.exit_length_difference++;
+        metrics.total_time += call_timer.elapsed();
+#endif
+        return max + 1; // Return max+1 by convention.
+    }
+#endif
+    // Re-initialize buffer before calculation
+    std::iota(buffer, buffer + m + 1, 0);
+
+#ifdef CAPTURE_METRICS
+    Timer algorithm_timer;
+    algorithm_timer.start();
+#endif
+#ifdef PRINT_DEBUG
+    std::cout << "subject: " << subject << '\n';
+    std::cout << "query:   " << query << '\n';
+#ifndef SUPPRESS_MAX_CHECK
+    std::cout << "max: " << max << '\n';
+#endif
+#endif
+
 #undef SUPPRESS_MAX_CHECK
 
     // Check if buffer size required exceeds available buffer size. This algorithm needs

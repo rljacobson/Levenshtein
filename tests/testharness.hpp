@@ -14,7 +14,7 @@ from your code.
 
 // Default definitions in case CMake does not define them.
 #ifndef LEV_FUNCTION
-#define LEV_FUNCTION damlevlim
+#define LEV_FUNCTION bounded_edit_dist_t
 #endif
 
 // This should be unconditional, as it may be a redefinition.

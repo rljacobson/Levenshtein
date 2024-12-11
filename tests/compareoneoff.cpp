@@ -8,10 +8,10 @@
 
 // The two algorithms will be referred to as ALGORITHM_A and ALGORITHM_B. We
 // need to capture four symbols in each case:
-//   1. `LEV_SETUP`
-//   2. `LEV_TEARDOWN`
-//   3. `LEV_CALL`
-//   4. `LEV_ALGORITHM_NAME`
+//   1. `EDIT_DIST_SETUP`
+//   2. `EDIT_DIST_TEARDOWN`
+//   3. `EDIT_DIST_CALL`
+//   4. `EDIT_DIST_ALGORITHM_NAME`
 //
 // We capture them in the symbols `ALGORITHM_X_SETUP`, `ALGORITHM_X_TEARDOWN`,
 // `ALGORITHM_X_CALL`, and `ALGORITHM_X_NAME` respectively, where `X` stands
@@ -38,7 +38,7 @@ char * algorithm_a_name = LEV_ALGORITHM_NAME;
 #define LEV_ALGORITHM_COUNT ALGORITHM_B_COUNT
 #else
 // The "default" comparison is to plain vanilla damlev.
-#define LEV_FUNCTION damlev2D
+#define LEV_FUNCTION edit_dist_t_2d
 // Keep in synch with LEV_FUNCTION default above.
 #define LEV_ALGORITHM_COUNT 2
 #endif
@@ -58,8 +58,8 @@ void (* const algorithm_a_teardown)() = LEV_TEARDOWN;
 long long (* const algorithm_a_call)(char*, size_t, char*, size_t, long long) = LEV_CALL;
 char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
-// The "default" comparison is to plain vanilla damlev2D.
-#define LEV_FUNCTION damlev2D
+// The "default" comparison is to plain vanilla edit_dist_t_2d.
+#define LEV_FUNCTION edit_dist_t_2d
 // Keep in synch with LEV_FUNCTION default above.
 #define LEV_ALGORITHM_COUNT 2
 #include "testharness.hpp"
