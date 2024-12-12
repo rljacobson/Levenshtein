@@ -49,9 +49,9 @@ Common definitions needed for every algorithm:
 /// just wants to use the code.
 #ifndef DAMLEV_BUFFER_SIZE
 // 640k should be good enough for anybody.
-#define DAMLEV_BUFFER_SIZE 4096ull
+#define DAMLEV_BUFFER_SIZE 4096
 #endif
-constexpr long long DAMLEV_MAX_EDIT_DIST = std::max(0ull, std::min(16384ull, DAMLEV_BUFFER_SIZE));
+constexpr int DAMLEV_MAX_EDIT_DIST = std::max(0, std::min(16384, DAMLEV_BUFFER_SIZE));
 
 #ifdef PRINT_DEBUG
 #include <iostream>

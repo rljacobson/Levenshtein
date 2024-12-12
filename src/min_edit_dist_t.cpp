@@ -164,6 +164,8 @@ long long min_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] cha
         return 0;
     }
 
+    const int m_n = m-n; // We use this a lot.
+
     // We keep track of only two rows for this algorithm. See below for details.
     int *current  = buffer;
     int *previous = buffer + m + 1;

@@ -104,7 +104,7 @@ std::string remove_internal_control_chars(const std::string_view s) {
     return result;
 }
 
-std::vector<std::string> get_subsample(std::vector<std::string> &list, u_int64_t sample_size, std::vector<std::string> &sample_list){
+void get_subsample(std::vector<std::string> &list, u_int64_t sample_size, std::vector<std::string> &sample_list){
     // std::random_device rd;
     // std::mt19937 gen(rd());
 
@@ -114,7 +114,7 @@ std::vector<std::string> get_subsample(std::vector<std::string> &list, u_int64_t
     sample_size = std::min(sample_size, static_cast<u_int64_t>(list.size()));  // Prevent out-of-bounds access
 
     // sample_list.reserve(sample_size);
-    for(int i=0; i < sample_size; i++){
+    for(u_int64_t i=0; i < sample_size; i++){
         sample_list.push_back(list[i]);
     }
     // std::sample(
@@ -450,7 +450,7 @@ int benchmark_on_list(std::vector<std::string> &subject_words, std::vector<std::
 }
 
 
-int main(int argc, char *argv[]) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[]) {
 #ifdef CAPTURE_METRICS
     initialize_metrics();
 #endif

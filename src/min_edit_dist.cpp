@@ -152,6 +152,7 @@ long long min_edit_dist(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char 
         return 0;
     }
 
+    const int m_n    = m-n; // We use this a lot.
     int current_cell = 0;
 
     // Keeping track of start and end is slightly faster than keeping track of

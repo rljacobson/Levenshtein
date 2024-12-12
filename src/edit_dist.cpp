@@ -91,7 +91,7 @@ void edit_dist_deinit(UDF_INIT *initid) {
 }
 
 [[maybe_unused]]
-long long edit_dist(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, char *error) {
+long long edit_dist(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_null, [[maybe_unused]] char *error) {
 #ifdef PRINT_DEBUG
     std::cout << "edit_dist" << "\n";
 #endif

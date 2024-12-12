@@ -1,5 +1,3 @@
-#define PRINT_DEBUG
-#define CAPTURE_METRICS
 #include <iostream>
 #include <string>
 
@@ -30,11 +28,13 @@ long long (* const algorithm_a_call)(char*, size_t, char*, size_t, long long) = 
 #else
 long long (* const algorithm_a_call)(char*, size_t, char*, size_t) = LEV_CALL;
 #endif
-char * algorithm_a_name = LEV_ALGORITHM_NAME;
+const char * algorithm_a_name = LEV_ALGORITHM_NAME;
 
 // Now include for ALGORITHM_B
 #ifdef ALGORITHM_B
+#undef LEV_FUNCTION
 #define LEV_FUNCTION ALGORITHM_B
+#undef LEV_ALGORITHM_COUNT
 #define LEV_ALGORITHM_COUNT ALGORITHM_B_COUNT
 #else
 // The "default" comparison is to plain vanilla damlev.

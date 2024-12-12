@@ -15,7 +15,7 @@ UDF_SIGNATURES(postgres)
 
 
 [[maybe_unused]]
-int postgres_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
+int postgres_init(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *message) {
     // We require 3 arguments:
     if (args->arg_count != 3) {
         return 1;

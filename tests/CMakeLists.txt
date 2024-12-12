@@ -23,7 +23,7 @@ endif()
 set(ALGORITHM "edit_dist_t_2d")
 
 set(WORDS_PATH "/usr/share/dict/words" CACHE STRING "Path to the word list file.")
-set(DAMLEV_BUFFER_SIZE 4096ull CACHE STRING "Buffer size for the algorithm.")
+set(DAMLEV_BUFFER_SIZE 4096 CACHE STRING "Buffer size for the algorithm.")
 
 # ===============================
 # Executable Definitions

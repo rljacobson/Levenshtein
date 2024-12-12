@@ -191,6 +191,8 @@ double min_similarity_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char 
     double max_result = (1.0-static_cast<double>(max+1)/static_cast<double>(m));
     max_result = std::max(0.0, max_result); // Must be positive.
 
+    const int m_n = m-n; // We use this a lot.
+
     // We keep track of only two rows for this algorithm. See below for details.
     int *current  = buffer;
     int *previous = buffer + m + 1;

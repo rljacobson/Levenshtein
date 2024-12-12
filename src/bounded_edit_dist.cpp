@@ -110,7 +110,7 @@ long long bounded_edit_dist(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] c
     // Fetch preallocated buffer. The only difference between min_edit_dist and bounded_edit_dist is that min_edit_dist also persists
     // the max and updates it right before the final return statement.
     int *buffer = reinterpret_cast<int *>(initid->ptr);
-    int max = static_cast<int>(std::min(*(reinterpret_cast<long long *>(args->args[2])), DAMLEV_MAX_EDIT_DIST));
+    int max = static_cast<int>(std::min(static_cast<int>(*(reinterpret_cast<long long *>(args->args[2]))), DAMLEV_MAX_EDIT_DIST));
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -166,6 +166,7 @@ long long bounded_edit_dist(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] c
     know we will exceed `max_d`.
     */
 
+    const int m_n = m-n; // We use this a lot.
 
     // Keeping track of start and end is slightly faster than keeping track of
     // right/left band for reasons I don't understand.

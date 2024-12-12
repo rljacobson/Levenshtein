@@ -64,7 +64,6 @@ In my benchmarks, trimming any common prefix/suffix makes no statistically signi
 
     const int n = static_cast<int>(subject.length()); // Cast size_type to int
     const int m = static_cast<int>(query.length()); // Cast size_type to int
-    const int m_n = m-n; // We use this a lot.
 
     // It's possible we "trimmed" an entire string.
     if(n==0) {

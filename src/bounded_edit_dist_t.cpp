@@ -142,6 +142,9 @@ long long bounded_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]]
     int previous_cell          = 0;
     int current_cell           = 0;
 
+    const int m_n = m-n; // We use this a lot.
+
+
     // Keeping track of start and end is slightly faster than keeping track of
     // right/left band for reasons I don't understand.
     // first cell computed

@@ -74,6 +74,8 @@ request!
 
 I have tested this library extensively, but a single person is susceptible to making the same mistake over and over again. There is no substitute for quality peer review. I invite other people to test and critique this library and report back to me. 
 
+I could also use some help with support for the Windows platform. (See open issues.)
+
 ## Authors and License
 
 Copyright (C) 2019-2024 Robert Jacobson. Released under the MIT license.

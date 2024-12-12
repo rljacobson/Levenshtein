@@ -133,6 +133,8 @@ double similarity_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] char *is_
         return 0;
     }
 
+    const int m_n = m-n; // We use this a lot.
+
     // We also use the following as the similarity analog of `max+1`. This is somewhat
     // arbitrary, but we need to be able to return a similarity smaller than the
     // minimum required similarity.
