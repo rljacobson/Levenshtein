@@ -1,4 +1,8 @@
 
+# Building From Source
+
+If you have downloaded a binary, skip to the installation section.
+
 ## Requirements
 
 * MySQL version 8.0 or greater. Or not. I'm not sure. That's just what I used.
@@ -10,25 +14,22 @@
 
 ### Acquiring prebuilt binaries
 
-This is probably the easiest and fastest way to get going. Get pre-built binaries on [the Releases page](https://github.com/rljacobson/Levenshtein/releases). There are pre-built binaries for Linux, macOS, and Windows. Download the file and put it in your MySQL plugins directory. Then procede to the [Installing](#installing) section.
+This is probably the easiest and fastest way to get going. Get pre-built binaries on [the Releases page](https://github.com/rljacobson/Levenshtein/releases). There are pre-built binaries for Linux, macOS, and Windows. Download the file and put it in your MySQL `plugins` directory. Then procede to the [Installing](#installing) section.
 
 ### Configuration
 
 You can configure the following options within the `CMakeLists.txt` file.
 
-| Option | Description | Values (Default) |
-|:-----:|:-----|:-----|
-| `BUFFER_SIZE` | Size of allocated buffer. This effectively limits the size of the strings you are able to compare. (See note below.) | unsigned long long number of bytes (`4096ull`, which is 4KB) |
-| Insufficient Buffer Size Policy | Policy for handling strings that require a buffer size greater than the allocated buffer. (See note below.) | `TRUNCATE_ON_BUFFER_EXCEEDED` (default)<br>`RETURN_ZERO_ON_BUFFER_EXCEEDED`<br>`RETURN_NULL_ON_BUFFER_EXCEEDED` |
-| Bad Max Policy | The behavior if the user provides a negative maximum edit distance. | `RETURN_ZERO_ON_BAD_MAX` (default)<br>`RETURN_NULL_ON_BAD_MAX` |
+| Option | Description                                                                                                                | Values (Default) |
+|:-----:|:---------------------------------------------------------------------------------------------------------------------------|:-----|
+| `BUFFER_SIZE` | Size of allocated buffer. This effectively limits the size of the strings you are able to compare. (See note below.)       | unsigned long long number of bytes (`4096ull`, which is 4KB) |
+| Insufficient Buffer Size Policy | UNIMPLEMENTED. Policy for handling strings that require a buffer size greater than the allocated buffer. (See note below.) | `TRUNCATE_ON_BUFFER_EXCEEDED` (default)<br>`RETURN_ZERO_ON_BUFFER_EXCEEDED`<br>`RETURN_NULL_ON_BUFFER_EXCEEDED` |
+| Bad Max Policy | The behavior if the user provides a negative maximum edit distance.                                                        | `RETURN_ZERO_ON_BAD_MAX` (default)<br>`RETURN_NULL_ON_BAD_MAX` |
 
 *Notes on buffer size.*
 
-For a single-row buffer, the size of the buffer required is just the size of the shortest string plus 1. The buffer is only used to compare the part of the strings *after* the common prefix and suffix are trimmed. Consequently, for any given set of strings being compared, you will only require a maximum of the size of the *second* largest string plus 1, as the largest string compared against itself will "trim" the entire string.
+For a single-row buffer, the size of the buffer required is just the size of the shortest string plus 1. There is a hard max set at ~16KB. This is the wrong tool for the job if you are using it for strings that large.
 
-For a 2D matrix buffer, we require a buffer size of (shortest + 1)*(longest + 1).  You should therefore keep your strings smaller than $\sqrt{\text{buffer size}} - 1$.
-
-There is a hard max set at ~16KB. This is the wrong tool for the job if you are using it for strings that large.
 ### Building from Docker
 
 The Docker configuration is set up to persist the `build` directory. When you run the Docker container, the `.so` file will be generated in this directory. It's crucial to ensure that the chip architecture of your Docker environment matches your host machine to ensure compatibility with the `.so` file.
@@ -89,14 +90,13 @@ damlev_udf  | [100%] Built target benchmark
 
 ### Building from source
 
-
 The preferred CMake build process with `ninja`:
 
 ```bash
 $ mkdir build
 $ cd build
 $ cmake .. -G Ninja 
-$ ninja
+$ ninja damlev
 $ ninja install
 ```
 
@@ -106,11 +106,13 @@ Alternatively, you can use the usual CMake build process with `make`:
 $ mkdir build
 $ cd build
 $ cmake .. 
-$ make
+$ make damlev
 $ make install
 ```
 
-This will build the shared library `libdamlev.so` (`.dll` on Windows, `.dylib` on macOS).
+ - This will build the shared library `libdamlev.so` (`.dll` on Windows, `.dylib` on macOS).
+ - You might need `sudo` for the installation step: `sudo ninja install` / `sudo make install`.
+ - Use plain `ninja` (or `make`) instead of `ninja damlev` (respectively `make damlev`) to make all targets, which includes benchmarks, unit tests, and diagnostic code. Most users won't want this.
 
 #### Troubleshooting the build
 
@@ -123,16 +125,32 @@ $ cmake -DMYSQL_INCLUDE="C:\Program Files\MySQL\MySQL Server 8.0\include" -DMYSQ
 1. The build script tries to find the required header files with `mysql_config --include`.
    Otherwise, it takes a wild guess. Check to see if `mysql_config --plugindir` works on your command
    line.
-2. As in #1, the install script tries to find the plugins directory with
+2. As in #1, the install script tries to find the `plugins` directory with
    `mysql_config --plugindir`. See if that works on the command line.
 
-### Installing
+# Installation
 
-After building, install the shared library `libdamlev.so` to the plugins directory of your MySQL
-installation:
+## Install the binary
+
+After building (or downloading a prebuilt binary), install the shared library `libdamlev.so` to the `plugins` directory of your MySQL
+installation. If you have built the library from source, installation is done automatically with the command: 
 
 ```bash
-$ sudo make install # or ninja install
+$ ninja install # or make install
+```
+
+If you have downloaded a prebuilt binary, you will need to put it in your MySQL / MariaDB `plugins` directory. You can query MySQL for 
+that directory with the command:
+
+```bash
+$ mysql_config --plugindir
+```
+
+## Register the plugin with MySQL
+
+You will need elevated privileges to register the plugin. Start the MySQL command line tool:
+
+```bash
 $ mysql -u root
 ```
 
@@ -140,29 +158,40 @@ Enter your MySQL root user password to log in as root. Then follow the "usual" i
 installing a compiled UDF. Note that the names are case sensitive. Change out `.so` for `.dll` if you are on Windows and `.dylib` if you are on macOS.
 
 ```sql
-CREATE FUNCTION damlev RETURNS INTEGER
-  SONAME 'libdamlev.so';
-CREATE FUNCTION bounded_edit_dist_t RETURNS INTEGER
-  SONAME 'libdamlev.so';
-CREATE FUNCTION damlevconst RETURNS INTEGER
-  SONAME 'libdamlev.so';
-CREATE FUNCTION similarity_t RETURNS REAL
-  SONAME 'libdamlev.so';
-CREATE FUNCTION edit_dist_t_2d RETURNS REAL
-  SONAME 'libdamlev.so';
+CREATE FUNCTION edit_dist RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION edit_dist_t RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION bounded_edit_dist RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION bounded_edit_dist_t RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION min_edit_dist RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION min_edit_dist_t RETURNS INTEGER SONAME 'libdamlev.so';
+CREATE FUNCTION similarity_t RETURNS REAL SONAME 'libdamlev.so';
+CREATE FUNCTION min_similarity_t RETURNS REAL SONAME 'libdamlev.so';
 ```
 
-To uninstall:
+# Uninstallation
+
+To uninstall, unregister the UDF functions from within MySQL and delete the binary plugin.
+
+You will need elevated privileges. Start the MySQL commandline tool:
+
+```bash
+$ mysql_config --plugindir
+```
+
+Then execute the following to deregister the functions:
 
 ```sql
-DROP FUNCTION damlev;
+DROP FUNCTION edit_dist;
+DROP FUNCTION edit_dist_t;
+DROP FUNCTION bounded_edit_dist;
 DROP FUNCTION bounded_edit_dist_t;
+DROP FUNCTION min_edit_dist;
+DROP FUNCTION min_edit_dist_t;
 DROP FUNCTION similarity_t;
-DROP FUNCTION edit_dist_t_2d;
-DROP FUNCTION damlevconst;
+DROP FUNCTION min_similarity_t;
 ```
 
-Then optionally remove the library file from the plugins directory:
+Now remove the library file from the `plugins` directory:
 
 ```bash
 $ rm /path/to/plugin/dir/libdamlev.so

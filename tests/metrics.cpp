@@ -7,6 +7,7 @@ Distributed under the MIT License. See License.txt for details.
 #include <iomanip> // for std::setw
 #include <locale>
 #include <sstream>
+#include <cmath>
 
 // Global array to hold performance metrics for each algorithm
 PerformanceMetrics performance_metrics[ALGORITHM_COUNT];

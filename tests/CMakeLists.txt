@@ -1,6 +1,10 @@
 # tests/CMakeLists.txt
 
-# Integrate Google Test using FetchContent
+# Integrate Google Test
+
+# Disable Google Test installation
+set(INSTALL_GTEST OFF CACHE BOOL "Do not install GoogleTest headers")
+
 include(FetchContent)
 FetchContent_Declare(
         googletest
