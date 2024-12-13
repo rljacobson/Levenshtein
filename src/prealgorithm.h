@@ -81,7 +81,7 @@ In my benchmarks, trimming any common prefix/suffix makes no statistically signi
         metrics.exit_length_difference++;
         metrics.total_time += call_timer.elapsed();
 #endif
-        return max + 1; // Return max+1 by convention.
+        return user_max + 1; // Return max+1 by convention.
     }
 #endif
     // Re-initialize buffer before calculation

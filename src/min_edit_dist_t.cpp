@@ -75,9 +75,10 @@ UDF_SIGNATURES(min_edit_dist_t)
 
 struct MinEditDistTPersistant {
     int max;
+    int user_max;
     int *buffer; // Takes ownership of this buffer
 
-    MinEditDistTPersistant(int max, int *buffer): max(max), buffer(buffer){}
+    MinEditDistTPersistant(int max, int *buffer): max(max), user_max(max), buffer(buffer){}
 
     ~MinEditDistTPersistant(){ delete this->buffer; }
 };
@@ -138,11 +139,9 @@ long long min_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] cha
     MinEditDistTPersistant *data = reinterpret_cast<MinEditDistTPersistant *>(initid->ptr);
     // This line and the line updating `data->max` right before the final `return` statement are the only differences
     // between min_edit_dist_t and bounded_edit_dist_t.
-    int max = std::min(
-            *(reinterpret_cast<long long *>(args->args[2])),
-            static_cast<long long>(data->max)
-        );
+    int max = data->max;
     int *buffer = data->buffer;
+
 
     // Validate max distance and update.
     // This code is common to algorithms with limits.
@@ -301,7 +300,7 @@ long long min_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] cha
 #ifdef PRINT_DEBUG
             std::cout << "EMPTY BAND: " << start_j << " <= j <= " << end_j << '\n';
 #endif
-            return max + 1;
+            return user_max + 1;
         }
     }
 
@@ -314,5 +313,5 @@ long long min_edit_dist_t(UDF_INIT *initid, UDF_ARGS *args, [[maybe_unused]] cha
     metrics.algorithm_time += algorithm_timer.elapsed();
     metrics.total_time += call_timer.elapsed();
 #endif
-    return std::min(max + 1, current_cell);
+    return std::min(user_max + 1, current_cell);
 }

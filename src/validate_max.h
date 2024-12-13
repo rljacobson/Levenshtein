@@ -2,9 +2,10 @@
 Validate max distance and update.
 This code is common to algorithms with limits.
 */
+    int user_max = max;
 
     if (args->args[2]) {
-        int user_max = static_cast<int>(*(reinterpret_cast<long long *>(args->args[2])));
+        user_max = static_cast<int>(*(reinterpret_cast<long long *>(args->args[2])));
         if (user_max < 0) {
             set_error(error, "Maximum edit distance cannot be negative.");
             // We can either return 0 or return null if given a bad max edit distance. This policy is configurable

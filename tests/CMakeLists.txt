@@ -36,14 +36,14 @@ set(DAMLEV_BUFFER_SIZE 4096 CACHE STRING "Buffer size for the algorithm.")
 add_executable(unittest
         ${CMAKE_CURRENT_SOURCE_DIR}/comparetests.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/edit_operations.cpp
-        ../src/edit_dist.cpp
+        ../src/min_edit_dist.cpp
         ../src/bounded_edit_dist.cpp
         print_matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/metrics.cpp
 )
 target_compile_definitions(unittest PRIVATE
-        ALGORITHM_A=edit_dist
-        ALGORITHM_A_COUNT=2
+        ALGORITHM_A=min_edit_dist
+        ALGORITHM_A_COUNT=3
         ALGORITHM_B=bounded_edit_dist
         ALGORITHM_B_COUNT=3
         DAMLEV_BUFFER_SIZE=${BUFFER_SIZE}
