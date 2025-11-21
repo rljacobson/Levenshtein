@@ -22,6 +22,5 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 # Verify Git installation
 RUN git --version
 
-ap
 # Default command or entry point for the container
 CMD ["bash"]
